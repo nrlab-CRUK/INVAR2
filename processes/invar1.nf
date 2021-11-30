@@ -210,7 +210,8 @@ workflow invar1
     
     SlopBED(bed_channel, genome_channel)
     
-    bam_channel = channel.fromPath("${launchDir}/bam/*.bam")
+    bamList = file("${launchDir}/to_run.txt").readLines()
+    bam_channel = channel.fromList(bamList).map { f -> file(f, checkIfExists: true) }
     
     mpileup(SlopBED.out, fasta_channel, bam_channel) | biallelic
     
