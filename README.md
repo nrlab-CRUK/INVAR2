@@ -1,2 +1,4 @@
 # INVAR2
-restructured version of invar
+
+Restructured version of invar based on Nextflow.
+
