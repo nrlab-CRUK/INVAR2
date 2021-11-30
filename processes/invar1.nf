@@ -200,35 +200,40 @@ process annotateMutation
 
 workflow invar1
 {
-    bed_channel = channel.fromPath(params.BED)
-    genome_channel = channel.fromPath(params.HG19_GENOME)
-    fasta_channel = channel.fromPath(params.FASTAREF)
-    snp_channel = channel.fromPath(params.K1G_DB)
-    snp_index_channel = channel.fromPath("${params.K1G_DB}.tbi")
-    cosmic_channel = channel.fromPath(params.COSMIC_DB)
-    cosmic_index_channel = channel.fromPath("${params.COSMIC_DB}.tbi")
+    main:
+        bed_channel = channel.fromPath(params.BED)
+        genome_channel = channel.fromPath(params.HG19_GENOME)
+        fasta_channel = channel.fromPath(params.FASTAREF)
+        snp_channel = channel.fromPath(params.K1G_DB)
+        snp_index_channel = channel.fromPath("${params.K1G_DB}.tbi")
+        cosmic_channel = channel.fromPath(params.COSMIC_DB)
+        cosmic_index_channel = channel.fromPath("${params.COSMIC_DB}.tbi")
+        
+        SlopBED(bed_channel, genome_channel)
+        
+        bamList = file("${launchDir}/to_run.txt").readLines()
+        bam_channel = channel.fromList(bamList).map { f -> file(f, checkIfExists: true) }
+        
+        mpileup(SlopBED.out, fasta_channel, bam_channel) | biallelic
+        
+        mutation_channel = biallelic.out
+            .filter(f -> f.countLines() > 1)
+            .splitCsv(header: true, by: 1, sep: '\t')
+            .map(m -> tuple(m['SLX'], m['BARCODE'], m['CHROM'], m['POS'], m))
+        
+        tabixSnp(snp_channel, snp_index_channel, mutation_channel)
+        tabixCosmic(cosmic_channel, cosmic_index_channel, mutation_channel)
+        trinucleotide(fasta_channel, mutation_channel)
+        
+        all_info_channel = tabixSnp.out
+            .join(tabixCosmic.out, by: 0..3, failOnDuplicate: true, failOnMismatch: true)
+            .join(trinucleotide.out, by: 0..3, failOnDuplicate: true, failOnMismatch: true)
     
-    SlopBED(bed_channel, genome_channel)
-    
-    bamList = file("${launchDir}/to_run.txt").readLines()
-    bam_channel = channel.fromList(bamList).map { f -> file(f, checkIfExists: true) }
-    
-    mpileup(SlopBED.out, fasta_channel, bam_channel) | biallelic
-    
-    mutation_channel = biallelic.out
-        .filter(f -> f.countLines() > 1)
-        .splitCsv(header: true, by: 1, sep: '\t')
-        .map(m -> tuple(m['SLX'], m['BARCODE'], m['CHROM'], m['POS'], m))
-    
-    tabixSnp(snp_channel, snp_index_channel, mutation_channel)
-    tabixCosmic(cosmic_channel, cosmic_index_channel, mutation_channel)
-    trinucleotide(fasta_channel, mutation_channel)
-    
-    combined_channel = tabixSnp.out
-        .join(tabixCosmic.out, by: 0..3, failOnDuplicate: true, failOnMismatch: true)
-        .join(trinucleotide.out, by: 0..3, failOnDuplicate: true, failOnMismatch: true)
+        combined_channel =
+            annotateMutation(all_info_channel)
+                .map { slx, barcode, chr, pos, file -> file }
+                .collectFile(storeDir: 'mutations', keepHeader: true, skip: 1, sort: false)
 
-    annotateMutation(combined_channel)
-        .map { slx, barcode, chr, pos, file -> file }
-        .collectFile(storeDir: 'mutations', keepHeader: true, skip: 1, newLine: true)
+    emit:
+        mutationFiles = combined_channel
 }

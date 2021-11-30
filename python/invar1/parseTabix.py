@@ -38,6 +38,8 @@ def get_tabix_info(values):
 k1g_af = 0
 with open(snp_tabix_file, 'r') as fp:
     for vcf_line in fp:
+        vcf_line = vcf_line.strip()
+
         vcf_values     = vcf_line.split("\t")
         k1g_chromosome = vcf_values[0]
         k1g_position   = vcf_values[1]
@@ -67,6 +69,8 @@ cosmic_sampleN = 0
 cosmic_snp = 0
 with open(cosmic_tabix_file, 'r') as fp:
     for vcf_line in fp:
+        vcf_line = vcf_line.strip()
+
         cosmic_values    = vcf_line.split("\t")
         cosmic_chromsome = cosmic_values[0]
         cosmic_position  = cosmic_values[1]
