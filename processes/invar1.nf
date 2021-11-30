@@ -54,8 +54,6 @@ process biallelic
     cpus 1
     time '5m'
     
-    publishDir "mpileup", mode: 'link'
-    
     input:
         path vcfFile
     
@@ -169,7 +167,7 @@ process trinucleotide
         trinucleotidePosition = "chr${chromosome_short}:${position - 1}-${position + 1}"
         
         """
-        samtools faidx "!{fastaReference}" "!{trinucleotidePosition}" | tail -n -1 > trinucleotide.txt
+        samtools faidx "!{fastaReference}" "!{trinucleotidePosition}" > trinucleotide.txt
         """
 }
 
@@ -191,7 +189,7 @@ process annotateMutation
         annotationFile = "${slx}_${barcode}.mutations.tsv"
         
         """
-        groovy "!{projectDir}/groovy/invar1/parseTabix.groovy" \
+        python3 "!{projectDir}/python/invar1/parseTabix.py" \
             '!{mutationJson}' \
             !{snp} \
             !{cosmic} \

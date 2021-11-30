@@ -22,7 +22,7 @@ RUN dnf makecache && dnf update -y
 RUN dnf install -y \
 	bzip2 bzip2-devel gcc-c++ git java-11-openjdk-headless \
 	libcurl-devel libxml2-devel make ncurses-devel openssl-devel \
-	python2 R-core R-devel unzip wget xz-devel zlib-devel
+	python2 python3 R-core R-devel unzip wget xz-devel zlib-devel
 
 RUN alternatives --set python /usr/bin/python2
 RUN mkdir -p ${INSTALL_DIR} ${BUILD_DIR}
