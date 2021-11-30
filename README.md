@@ -1,2 +1,2 @@
 # INVAR_1.1
-restructures version of invar
+restructured version of invar
