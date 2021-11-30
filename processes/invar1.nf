@@ -108,7 +108,7 @@ process tabixSnp
         tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation) 
     
     output:
-        tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation), path('snp.tabix')
+        tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation), path('snp.vcf')
         
     shell:
         chromosome_short = mutation['CHROM'].toUpperCase().replaceAll("CHR", "")
@@ -117,7 +117,7 @@ process tabixSnp
         mutationPosition = "${chromosome_short}:${position}-${position}"
         
         """
-        tabix "!{snpDatabase}" "!{mutationPosition}" > snp.tabix
+        tabix "!{snpDatabase}" "!{mutationPosition}" > snp.vcf
         """
 }
 
@@ -134,7 +134,7 @@ process tabixCosmic
         tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation) 
     
     output:
-        tuple val(slx), val(barcode), val(chromosome), val(position), path('cosmic.tabix')
+        tuple val(slx), val(barcode), val(chromosome), val(position), path('cosmic.vcf')
         
     shell:
         chromosome_short = mutation['CHROM'].toUpperCase().replaceAll("CHR", "")
@@ -143,7 +143,7 @@ process tabixCosmic
         mutationPosition = "${chromosome_short}:${position}-${position}"
         
         """
-        tabix "!{cosmicDatabase}" "!{mutationPosition}" > cosmic.tabix
+        tabix "!{cosmicDatabase}" "!{mutationPosition}" > cosmic.vcf
         """
 }
 
@@ -158,7 +158,7 @@ process trinucleotide
         tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation) 
     
     output:
-        tuple val(slx), val(barcode), val(chromosome), val(position), path('trinucleotide.txt')
+        tuple val(slx), val(barcode), val(chromosome), val(position), path('trinucleotide.fa')
         
     shell:
         chromosome_short = mutation['CHROM'].toUpperCase().replaceAll("CHR", "")
@@ -167,7 +167,7 @@ process trinucleotide
         trinucleotidePosition = "chr${chromosome_short}:${position - 1}-${position + 1}"
         
         """
-        samtools faidx "!{fastaReference}" "!{trinucleotidePosition}" > trinucleotide.txt
+        samtools faidx "!{fastaReference}" "!{trinucleotidePosition}" > trinucleotide.fa
         """
 }
 
