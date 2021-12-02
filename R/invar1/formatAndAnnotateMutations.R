@@ -21,13 +21,14 @@ table <-
         col_types = 'ciccicccc')
 
 converted <- table %>%
+    filter(DP >= minDP & MQSB != '.') %>%
     mutate(REF_F = as.integer(ifelse(ALT == '.', ADF, str_split_fixed(ADF, ',', Inf)[,1])),
            ALT_F = as.integer(ifelse(ALT == '.', 0, str_split_fixed(ADF, ',', Inf)[,2])),
            REF_R = as.integer(ifelse(ALT == '.', ADR, str_split_fixed(ADR, ',', Inf)[,1])),
            ALT_R = as.integer(ifelse(ALT == '.', 0, str_split_fixed(ADR, ',', Inf)[,2])),
            .before = 'MQSB') %>%
     select(-ADF, -ADR) %>%
-    mutate(SLX = slx, BARCODE = barcode) %>%
-    filter(DP >= minDP)
+    mutate(MQSB = as.integer(MQSB)) %>%
+    mutate(SLX = slx, BARCODE = barcode)
 
 write_tsv(converted, outFile)
