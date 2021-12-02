@@ -58,11 +58,9 @@ process biallelic
         path vcfFile
     
     output:
-        path mutationFile, emit: "mutationFile"
+        tuple val(slx), val(barcode), path(mutationFile)
     
     shell:
-        mutationFile = "${vcfFile.baseName}.BQ_${params.BASEQ}.MQ_${params.MAPQ}.final.tsv"
-        
         slx = ""
         
         def matcher = vcfFile.name =~ /(SLX-\d+)/
@@ -91,6 +89,8 @@ process biallelic
             barcode = matcher[0][1]
         }
     
+        mutationFile = "${slx}_${barcode}.BQ_${params.BASEQ}.MQ_${params.MAPQ}.final.tsv"
+        
         template "invar1/biallelic.sh"
 }
 
@@ -100,25 +100,20 @@ process tabixSnp
     executor 'local'
     memory '32m'
     cpus 1
-    time '5m'
+    time '1h'
     
     input:
-        each path(snpDatabase)
-        each path(snpDatabaseIndex)
-        tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation) 
+        each path(tabixDatabase)
+        each path(tabixDatabaseIndex)
+        tuple val(slx), val(barcode), path(mutationFile) 
     
     output:
-        tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation), path('snp.vcf')
+        tuple val(slx), val(barcode), path(tabixFile)
         
     shell:
-        chromosome_short = mutation['CHROM'].toUpperCase().replaceAll("CHR", "")
-        position = mutation['POS'] as long
+        tabixFile = "${slx}_${barcode}_snp.vcf"
         
-        mutationPosition = "${chromosome_short}:${position}-${position}"
-        
-        """
-        tabix "!{snpDatabase}" "!{mutationPosition}" > snp.vcf
-        """
+        template "invar1/tabix.sh"
 }
 
 process tabixCosmic
@@ -126,25 +121,20 @@ process tabixCosmic
     executor 'local'
     memory '32m'
     cpus 1
-    time '5m'
+    time '1h'
     
     input:
-        each path(cosmicDatabase)
-        each path(cosmicDatabaseIndex)
-        tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation) 
+        each path(tabixDatabase)
+        each path(tabixDatabaseIndex)
+        tuple val(slx), val(barcode), path(mutationFile) 
     
     output:
-        tuple val(slx), val(barcode), val(chromosome), val(position), path('cosmic.vcf')
+        tuple val(slx), val(barcode), path(tabixFile)
         
     shell:
-        chromosome_short = mutation['CHROM'].toUpperCase().replaceAll("CHR", "")
-        position = mutation['POS'] as long
+        tabixFile = "${slx}_${barcode}_cosmic.vcf"
         
-        mutationPosition = "${chromosome_short}:${position}-${position}"
-        
-        """
-        tabix "!{cosmicDatabase}" "!{mutationPosition}" > cosmic.vcf
-        """
+        template "invar1/tabix.sh"
 }
 
 process trinucleotide
@@ -155,42 +145,38 @@ process trinucleotide
     
     input:
         each path(fastaReference)
-        tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation) 
+        tuple val(slx), val(barcode), path(mutationFile) 
     
     output:
-        tuple val(slx), val(barcode), val(chromosome), val(position), path('trinucleotide.fa')
+        tuple val(slx), val(barcode), path(trinucleotideFile)
         
     shell:
-        chromosome_short = mutation['CHROM'].toUpperCase().replaceAll("CHR", "")
-        position = mutation['POS'] as long
+        trinucleotideFile = "${slx}_${barcode}_trinucleotide.fa"
         
-        trinucleotidePosition = "chr${chromosome_short}:${position - 1}-${position + 1}"
-        
-        """
-        samtools faidx "!{fastaReference}" "!{trinucleotidePosition}" > trinucleotide.fa
-        """
+        template "invar1/samtools_faidx.sh"
 }
 
 process annotateMutation
 {
     executor 'local'
-    memory '32m'
+    memory '1G'
     cpus 1
-    time '5m'
+    time '1h'
+    
+    publishDir 'mutations', mode: 'link'
     
     input:
-        tuple val(slx), val(barcode), val(chromosome), val(position), val(mutation), path(snp), path(cosmic), path(trinucleotide)
+        tuple val(slx), val(barcode), path(mutationFile), path(snp), path(cosmic), path(trinucleotide)
     
     output:
-        tuple val(slx), val(barcode), val(chromosome), val(position), path(annotationFile)
+        tuple val(slx), val(barcode), path(annotationFile)
     
     shell:
-        mutationJson = JsonOutput.toJson(mutation)
         annotationFile = "${slx}_${barcode}.mutations.tsv"
         
         """
-        python3 "!{projectDir}/python/invar1/parseTabix.py" \
-            '!{mutationJson}' \
+        python3 "!{projectDir}/python/invar1/addTabixAndTrinuc.py" \
+            !{mutationFile} \
             !{snp} \
             !{cosmic} \
             !{trinucleotide} \
@@ -216,22 +202,20 @@ workflow invar1
         
         mpileup(SlopBED.out, fasta_channel, bam_channel) | biallelic
         
-        mutation_channel = biallelic.out
-            .filter(f -> f.countLines() > 1)
-            .splitCsv(header: true, by: 1, sep: '\t')
-            .map(m -> tuple(m['SLX'], m['BARCODE'], m['CHROM'], m['POS'], m))
+        mutation_channel = biallelic.out.filter { slx, bc, f -> f.countLines() > 1 }
         
         tabixSnp(snp_channel, snp_index_channel, mutation_channel)
         tabixCosmic(cosmic_channel, cosmic_index_channel, mutation_channel)
         trinucleotide(fasta_channel, mutation_channel)
         
-        all_info_channel = tabixSnp.out
-            .join(tabixCosmic.out, by: 0..3, failOnDuplicate: true, failOnMismatch: true)
-            .join(trinucleotide.out, by: 0..3, failOnDuplicate: true, failOnMismatch: true)
+        by_bam_mutation_channel = mutation_channel 
+            .join(tabixSnp.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
+            .join(tabixCosmic.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
+            .join(trinucleotide.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
     
         all_mutations_channel =
-            annotateMutation(all_info_channel)
-                .map { slx, barcode, chr, pos, file -> file }
+            annotateMutation(by_bam_mutation_channel)
+                .map { slx, barcode, file -> file }
                 .collectFile(name: "${params.FINAL_PREFIX}.combined.final.ann.tsv",
                              storeDir: 'mutations', keepHeader: true, skip: 1, sort: false)
 
