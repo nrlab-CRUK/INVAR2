@@ -201,17 +201,17 @@ process annotateMutation
 workflow invar1
 {
     main:
-        bed_channel = channel.fromPath(params.BED)
-        genome_channel = channel.fromPath(params.HG19_GENOME)
-        fasta_channel = channel.fromPath(params.FASTAREF)
-        snp_channel = channel.fromPath(params.K1G_DB)
+        bed_channel = channel.fromPath(params.BED, checkIfExists: true)
+        genome_channel = channel.fromPath(params.HG19_GENOME, checkIfExists: true)
+        fasta_channel = channel.fromPath(params.FASTAREF, checkIfExists: true)
+        snp_channel = channel.fromPath(params.K1G_DB, checkIfExists: true)
         snp_index_channel = channel.fromPath("${params.K1G_DB}.tbi")
-        cosmic_channel = channel.fromPath(params.COSMIC_DB)
+        cosmic_channel = channel.fromPath(params.COSMIC_DB, checkIfExists: true)
         cosmic_index_channel = channel.fromPath("${params.COSMIC_DB}.tbi")
         
         SlopBED(bed_channel, genome_channel)
         
-        bamList = file("${launchDir}/to_run.txt").readLines()
+        bamList = file("${launchDir}/to_run.txt", checkIfExists: true).readLines()
         bam_channel = channel.fromList(bamList).map { f -> file(f, checkIfExists: true) }
         
         mpileup(SlopBED.out, fasta_channel, bam_channel) | biallelic
