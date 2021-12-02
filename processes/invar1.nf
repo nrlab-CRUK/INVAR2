@@ -229,11 +229,12 @@ workflow invar1
             .join(tabixCosmic.out, by: 0..3, failOnDuplicate: true, failOnMismatch: true)
             .join(trinucleotide.out, by: 0..3, failOnDuplicate: true, failOnMismatch: true)
     
-        combined_channel =
+        all_mutations_channel =
             annotateMutation(all_info_channel)
                 .map { slx, barcode, chr, pos, file -> file }
-                .collectFile(storeDir: 'mutations', keepHeader: true, skip: 1, sort: false)
+                .collectFile(name: "${params.FINAL_PREFIX}.combined.final.ann.tsv",
+                             storeDir: 'mutations', keepHeader: true, skip: 1, sort: false)
 
     emit:
-        mutationFiles = combined_channel
+        mutationFile = all_mutations_channel
 }
