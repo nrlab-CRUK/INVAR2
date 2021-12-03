@@ -1,6 +1,6 @@
 #!/bin/sh
 
-python3 "!{projectDir}/python/invar1/toRegions.py" "!{mutationFile}" | split -l 500 - "regions.txt."
+python3 "!{projectDir}/python/invar1/toRegions.py" "!{mutationFile}" | split -l 800 - "regions.txt."
 
 rm -f "!{tabixFile}"
 
