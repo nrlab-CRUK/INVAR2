@@ -9,7 +9,7 @@ ARG BEDTOOLS=2.27.1
 ARG PICARD=2.10.2
 ARG HTSLIB=1.9
 ARG SAMTOOLS=1.9
-ARG BCFTOOLS=1.9
+ARG BCFTOOLS=1.6
 
 ARG TAROPTS="--no-same-owner --no-same-permissions"
 
@@ -28,19 +28,22 @@ RUN alternatives --set python /usr/bin/python2
 RUN mkdir -p ${INSTALL_DIR} ${BUILD_DIR}
 
 # htslib
-RUN cd ${BUILD_DIR}; \
-    wget https://github.com/samtools/htslib/releases/download/${HTSLIB}/htslib-${HTSLIB}.tar.bz2 && \
-    tar ${TAROPTS} -jxf htslib-${HTSLIB}.tar.bz2
-RUN cd ${BUILD_DIR}/htslib-${HTSLIB}; \
-    ./configure --prefix="${INSTALL_DIR}" && \
-    make install
+# RUN cd ${BUILD_DIR}; \
+#     wget https://github.com/samtools/htslib/releases/download/${HTSLIB}/htslib-${HTSLIB}.tar.bz2 && \
+#     tar ${TAROPTS} -jxf htslib-${HTSLIB}.tar.bz2
+# RUN cd ${BUILD_DIR}/htslib-${HTSLIB}; \
+#     ./configure --prefix="${INSTALL_DIR}" && \
+#     make install
+
+# Can add "--with-htslib=system" to use a shared htslib in samtools & bcftools, if the same version.
 
 # samtools
 RUN cd ${BUILD_DIR}; \
     wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS}/samtools-${SAMTOOLS}.tar.bz2 && \
     tar ${TAROPTS} -jxf samtools-${SAMTOOLS}.tar.bz2
 RUN cd ${BUILD_DIR}/samtools-${SAMTOOLS}; \
-    ./configure --prefix="${INSTALL_DIR}" --with-htslib=system && \
+    ./configure --prefix="${INSTALL_DIR}" && \
+    make && \
     make install
 
 # bcftools
@@ -48,7 +51,8 @@ RUN cd ${BUILD_DIR}; \
     wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS}/bcftools-${BCFTOOLS}.tar.bz2 && \
     tar ${TAROPTS} -jxf bcftools-${BCFTOOLS}.tar.bz2
 RUN cd ${BUILD_DIR}/bcftools-${BCFTOOLS}; \
-    ./configure --prefix="${INSTALL_DIR}" --with-htslib=system && \
+    ./configure --prefix="${INSTALL_DIR}" && \
+    make && \
     make install
 
 # bedtools2

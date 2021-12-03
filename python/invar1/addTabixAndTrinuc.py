@@ -32,12 +32,9 @@ def get_position_key(mutation):
 def get_tabix_info(values):
     infoDict = {}
     for pair in values.split(';'):
-        try:
-            key,value = pair.split('=')
-            infoDict[key] = value
-        except ValueError:
-            ## for boolean field use 1 as the value
-            infoDict[pair] = '1'
+        keyValue = pair.split('=')
+        # for boolean field (no value) use 1 as the value
+        infoDict[keyValue[0]] = keyValue[1] if len(keyValue) > 1 else '1'
     return infoDict
 
 def read_tabix_file(file):
@@ -71,7 +68,7 @@ def read_fasta_file(file):
                     chr = m.group(2)
                     pos = int(m.group(3)) + 1
                     key = frozenset([chr, pos])
-                    fastaDict[key] = trinuc
+                    fastaDict[key] = trinuc.rstrip()
             else:
                 break
     return fastaDict

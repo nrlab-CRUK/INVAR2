@@ -28,7 +28,7 @@ converted <- table %>%
            ALT_R = as.integer(ifelse(ALT == '.', 0, str_split_fixed(ADR, ',', Inf)[,2])),
            .before = 'MQSB') %>%
     select(-ADF, -ADR) %>%
-    mutate(MQSB = as.integer(MQSB)) %>%
+    mutate(MQSB = as.double(MQSB)) %>%
     mutate(SLX = slx, BARCODE = barcode)
 
 write_tsv(converted, outFile)
