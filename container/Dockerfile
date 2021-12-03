@@ -5,11 +5,11 @@ LABEL   maintainer="Richard Bowers<richard.bowers@cruk.cam.ac.uk>"
 ARG INSTALL_DIR=/usr/local
 ARG BUILD_DIR=/var/tmp/invar_software_build
 
-ARG BEDTOOLS=2.30.0
-ARG PICARD=2.26.6
-ARG HTSLIB=1.14
-ARG SAMTOOLS=1.14
-ARG BCFTOOLS=1.14
+ARG BEDTOOLS=2.27.1
+ARG PICARD=2.10.2
+ARG HTSLIB=1.9
+ARG SAMTOOLS=1.9
+ARG BCFTOOLS=1.9
 
 ARG TAROPTS="--no-same-owner --no-same-permissions"
 
