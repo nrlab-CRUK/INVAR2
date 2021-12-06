@@ -42,7 +42,7 @@ process mpileup
     shell:
         vcfFile = "${bamFile.baseName}.vcf"
         
-        dedupFlags = params.removeDuplicates ? "-R --ff UNMAP" : ""
+        dedupFlags = params.REMOVE_DUPLICATES ? "-R --ff UNMAP" : ""
 
         template "invar1/mpileup.sh"
 }
@@ -197,7 +197,7 @@ workflow invar1
         
         SlopBED(bed_channel, genome_channel)
         
-        bamList = file("${launchDir}/to_run.txt", checkIfExists: true).readLines()
+        bamList = file(params.INPUT_FILES, checkIfExists: true).readLines()
         bam_channel = channel.fromList(bamList).map { f -> file(f, checkIfExists: true) }
         
         mpileup(SlopBED.out, fasta_channel, bam_channel) | biallelic

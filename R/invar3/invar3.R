@@ -1,4 +1,5 @@
 library(readr)
+library(stringr)
 
 if (!require(invar2tapas))
 {
@@ -31,7 +32,7 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile,
                  col_types = 'ciicc') %>%
         mutate(uniq_pos = str_c(CHROM, END, sep=':'))
 
-    data <- read_tsv(mutationsFile, col_types = 'ciccicddddicciidc')
+    data <- read_tsv(mutationsFile, col_types = 'ciccicdddddcciidc')
 
     # Add columns
     # remove soft-masked repeats, identified by lowercase
