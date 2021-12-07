@@ -7,11 +7,11 @@ def checkBedFile(bedFile)
     file(bedFile).withReader
     {
         reader ->
-        
+
         def message = "Your BED file is not of 1bp positions, aborting. Check your bed file\n" +
                       "NEEDS TO BE: CHR  POS-1 POS REF ALT" +
                       "No more than 1 line of header! Separated\tby\ttabs!"
-        
+
         def line
         while (line = reader.readLine())
         {
@@ -22,7 +22,7 @@ def checkBedFile(bedFile)
             }
             def start = parts[1] as long
             def end = parts[2] as long
-            
+
             if (end - start != -1L)
             {
                 throw new Exception(message)

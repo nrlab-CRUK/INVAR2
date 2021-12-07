@@ -10,38 +10,38 @@ library(stringr)
 
 # Filter out rows where the MSQB value is greater than the threshold.
 
-blacklist.MQSB <- function(data, individual_MQSB_threshold)
+blacklist.MQSB <- function(mutationTable, individual_MQSB_threshold)
 {
-    message("number of unique loci (pre MQSB): ", length(unique(data$UNIQUE_POS)))
+    message("number of unique loci (pre MQSB): ", length(unique(mutationTable$UNIQUE_POS)))
 
-    message("applying an indvidiual MQSB threshold of ", individual_MQSB_threshold)
+    message("applying an individiual MQSB threshold of ", individual_MQSB_threshold)
 
-    filtered_data <- data %>%
+    filteredMutationTable <- mutationTable %>%
         filter(MQSB > individual_MQSB_threshold)
 
-    message("number of unique loci (post MQSB): ", length(unique(filtered_data$UNIQUE_POS)))
+    message("number of unique loci (post MQSB): ", length(unique(filteredMutationTable$UNIQUE_POS)))
 
-    filtered_data
+    filteredMutationTable
 }
 
 # Create a list of loci that have more than the given number of alleles.
 
-createMultiallelicBlacklist <- function(data, n_alt_alleles_threshold = 3, minor_alt_allele_threshold = 2)
+createMultiallelicBlacklist <- function(mutationTable, n_alt_alleles_threshold = 3, minor_alt_allele_threshold = 2)
 {
-   # Filter for rows with positive AF and
+    # Filter for rows with positive AF and
     # determine the number of alt alleles per UNIQUE_POS
-    multiallelic <- data %>%
-        filter(`1KG_AF` > 0) %>%
+    multiallelic <- mutationTable %>%
+        filter(AF > 0) %>%
         mutate(MUT_SUM = ALT_F + ALT_R) %>%
         select(UNIQUE_POS, ALT, MUT_SUM) %>%
         arrange(UNIQUE_POS)
 
     # Identify loci with >1 alt alleles (e.g. both A>C and A>T at a position)
-    duplicate_positions <- multiallelic %>%
+    duplicatePositions <- multiallelic %>%
         filter(duplicated(UNIQUE_POS))
 
     multiallelic <- multiallelic %>%
-        filter(UNIQUE_POS %in% duplicate_positions)
+        filter(UNIQUE_POS %in% duplicatePositions)
 
     # Create a list of loci that have more than one allele.
 
@@ -65,13 +65,13 @@ createMultiallelicBlacklist <- function(data, n_alt_alleles_threshold = 3, minor
 # Tidy multiallelic sites. Filter out those that have more than the requested
 # number of alleles.
 
-blacklist.multiallelic <- function(data,
+blacklist.multiallelic <- function(mutationTable,
                                    n_alt_alleles_threshold = 3, minor_alt_allele_threshold = 2,
                                    blacklistFile = NULL)
 {
-    message("starting rows before multiallelic blacklist: ", nrow(data))
+    message("starting rows before multiallelic blacklist: ", nrow(mutationTable))
 
-    multiallelic_blacklist <- createMultiallelicBlacklist(data, n_alt_alleles_threshold, minor_alt_allele_threshold)
+    multiallelic_blacklist <- createMultiallelicBlacklist(mutationTable, n_alt_alleles_threshold, minor_alt_allele_threshold)
 
     message("length of multiallelic blacklist is ", nrow(multiallelic_blacklist))
 
@@ -81,30 +81,23 @@ blacklist.multiallelic <- function(data,
         write_tsv(multiallelic_blacklist, blacklistFile, col_names = FALSE, quote = 'none')
     }
 
-    filtered_data <- data %>%
-        filter(!UNIQUE_POS %in% multiallelic_blacklist)
+    filteredMutationTable <- mutationTable
 
-    message("rows after multiallelic blacklist filtering: ", nrow(filtered_data))
+    if (nrow(multiallelic_blacklist) > 0)
+    {
+        filteredMutationTable <- mutationTable %>%
+            filter(!UNIQUE_POS %in% multiallelic_blacklist)
+    }
 
-    filtered_data
+    message("rows after multiallelic blacklist filtering: ", nrow(filteredMutationTable))
+
+    filteredMutationTable
 }
 
 
 ##
 # Loading functions.
 #
-
-
-# Add columns for SLX + barcode pair, chromosome + position pair,
-# and an id that is all of these.
-
-add.identifier.columns <- function(data)
-{
-    data %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
-        mutate(SLX_BARCODE = str_c(SLX, BARCODE, sep='_')) %>%
-        mutate(UNIQUE_ID = str_c(UNIQUE_POS, SLX_BARCODE, sep='_'))
-}
 
 
 # Load the mutations table from file and filter.
@@ -114,6 +107,16 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
                                  individual_MQSB_threshold = 0.01,
                                  n_alt_alleles_threshold = 3, minor_alt_allele_threshold = 2)
 {
+    mutationTableRDSFile <- str_c(tapasSetting, '.rds')
+
+    if (file.exists(mutationTableRDSFile))
+    {
+        # When run in a pipeline, this will never exist.
+        # In development, it might and can save some time to use it.
+        message("Read mutations table from previously saved ", mutationTableRDSFile)
+        return(readRDS(mutationTableRDSFile))
+    }
+
     message("Reading in table from ", mutationsFile)
 
     patient_specific <-
@@ -122,15 +125,15 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
                  col_types = 'ciicc') %>%
         mutate(UNIQUE_POS = str_c(CHROM, END, sep=':'))
 
-    data <- read_tsv(mutationsFile, col_types = 'ciccicdddddcciidc')
+    mutationTable <- read_tsv(mutationsFile, col_types = 'ciccicdddddcciidc')
 
-    # Add SLX & positional columns
-    data <- add.identifier.columns(data)
-
-    # Remove soft-masked repeats, identified by lowercase
-    # Add columns
-    data <- data %>%
+    # Remove soft-masked repeats, identified by lowercase.
+    # Add columns of derived values and combined identifiers.
+    mutationTable <- mutationTable %>%
         filter(!(str_detect(REF, '[acgt]') | str_detect(ALT, '[acgt]'))) %>%
+        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
+        mutate(SLX_BARCODE = str_c(SLX, BARCODE, sep='_')) %>%
+        mutate(UNIQUE_ID = str_c(UNIQUE_POS, SLX_BARCODE, sep='_')) %>%
         mutate(AF = (ALT_F + ALT_R) / DP) %>%
         mutate(COSMIC = COSMIC_MUTATIONS > cosmic_threshold) %>%
         mutate(SNP = `1KG_AF` > 0) %>%
@@ -138,46 +141,46 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
 
 
     # save on.target pre-filtering
-    data_dt.prefilter <- data %>%
+    mutationTable.prefilter <- mutationTable %>%
         filter(ON_TARGET & nchar(ALT) == 1 & nchar(REF) == 1)
 
-    saveRDS(data_dt.prefilter, file = str_c(tapasSetting, ".on_target.prefilter.rds"))
+    saveRDS(mutationTable.prefilter, file = str_c(tapasSetting, ".on_target.prefilter.rds"))
 
     # Apply filters to blacklist loci
-    data <- data %>%
+    mutationTable <- mutationTable %>%
         filter(DP < max_DP & !SNP & REF_R + REF_F >= min_ref_DP & (ON_TARGET | !COSMIC))
 
-    data <- blacklist.MQSB(data, individual_MQSB_threshold)
-    data <- blacklist.multiallelic(data, n_alt_alleles_threshold, minor_alt_allele_threshold)
+    mutationTable <- blacklist.MQSB(mutationTable, individual_MQSB_threshold)
+    mutationTable <- blacklist.multiallelic(mutationTable, n_alt_alleles_threshold, minor_alt_allele_threshold)
 
-    saveRDS(data, file = str_c(tapasSetting, '.rds'))
+    saveRDS(mutationTable, mutationTableRDSFile)
 
-    data
+    mutationTable
 }
 
 # Filter rows that are on target.
 
-filter.for.ontarget <- function(data)
+filter.for.ontarget <- function(mutationTable)
 {
-    data %>% filter(ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
+    mutationTable %>% filter(ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
 }
 
-error.free.positions <- function(data)
+error.free.positions <- function(mutationTable)
 {
-    erf <- data %>% summarise(ERROR_FREE_POSITIONS = (1 - sum(BACKGROUND_AF > 0) / n()) * 100)
+    erf <- mutationTable %>% summarise(ERROR_FREE_POSITIONS = (1 - sum(BACKGROUND_AF > 0) / n()) * 100)
     as.numeric(erf)
 }
 
-print.error.free.positions <- function(data)
+print.error.free.positions <- function(mutationTable)
 {
-    erf <- error.free.positions(data)
+    erf <- error.free.positions(mutationTable)
     message("error-free positions: ", erf)
     erf
 }
 
 #' Annotate with locus error rate
 #' Locus error rate = overall background error rate per locus, aggregated across control samples
-annotate_with_locus_error_rate <- function(data,
+annotate_with_locus_error_rate <- function(mutationTable,
                                            slx_layout_path,
                                            proportion_of_controls = 0.1,
                                            max_background_mean_AF = 0.01,
@@ -187,38 +190,37 @@ annotate_with_locus_error_rate <- function(data,
 
     if (is.blood_spot)
     {
-        message("sWGS/blood spot data, do not set a max_background_mean_AF value as it is not appropriate in the low unique depth setting")
+        message("sWGS/blood spot mutationTable, do not set a max_background_mean_AF value as it is not appropriate in the low unique depth setting")
         max_background_mean_AF <- 1
     }
 
-    patient_SLX_barcode <-
+    patientSamples <-
         read_csv(file = slx_layout_path, col_names = TRUE) %>%
         filter(case_or_control == "case") %>%
         mutate(SLX_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
         select(SLX_BARCODE)
 
-    data <- add.identifier.columns(data)
-
+    # This just seems to be a way of cutting down the number of mutations
     if (on_target)
     {
-        message("running code on on-target bases, only using nonptspec dataframe")
+        #message("running code on on-target bases, only using nonptspec dataframe")
 
         # TODO - What is this "data" column?
-        # data <- filter(data == "nonptspec")
+        # mutationTable <- filter(data == "nonptspec")
 
         rFileName <- "locus_error_rates.on_target.rds"
     }
     else
     {
-        message("running code on cluster, using all off-target bases")
+        #message("running code on cluster, using all off-target bases")
 
-        message("Generated list of all patients accross all cohorts that can be used for locus noise filter determination. Total: ", length(patient_SLX_barcode), " cases")
+        #message("Generated list of all patients across all cohorts that can be used for locus noise filter determination. Total: ", nrow(patientSamples), " cases")
 
-        rFileName <- "locus_error_rates.off_target.Rdata"
+        rFileName <- "locus_error_rates.off_target.rds"
     }
 
-    error_rate.raw <- data %>%
-       #filter(SLX_BARCODE %in% patient_SLX_barcode) %>%
+    errorRateTable <- mutationTable %>%
+       filter(SLX_BARCODE %in% patientSamples$SLX_BARCODE) %>%
        mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SLX_BARCODE, NA)) %>%
        summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
                  DP = sum(DP),
@@ -226,40 +228,40 @@ annotate_with_locus_error_rate <- function(data,
                  N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE)) %>%
        mutate(BACKGROUND_AF = MUT_SUM / DP)
 
-    saveRDS(error_rate.raw, rFileName)
+    saveRDS(errorRateTable, rFileName)
 
-    error_rate.raw <- error_rate.raw %>%
+    errorRateTable <- errorRateTable %>%
         mutate(PROPORTION = N_SAMPLES_WITH_SIGNAL / N_SAMPLES,
                LOCUS_NOISE.PASS = PROPORTION < proportion_of_controls & BACKGROUND_AF < max_background_mean_AF,
                HAS_AF = BACKGROUND_AF > 0,
                LOCUS_NOISE.FAIL = !LOCUS_NOISE.PASS)
 
-#    nonzero_background_AFs <- error_rate.raw %>%
+#    nonzero_background_AFs <- errorRateTable %>%
 #        filter(LOCUS_NOISE.PASS & BACKGROUND_AF > 0)
 #        select(BACKGROUND_AF)
 
-    counts <- error_rate.raw %>%
+    counts <- errorRateTable %>%
         summarize(NON_ZERO_LOCI_PERCENT = sum(HAS_AF) / n() * 100,
                   LOCUS_NOISE_FAIL_PERCENT = sum(LOCUS_NOISE.FAIL) / n() * 100)
 
     ## TODO Copy and update plot code.
 
-    proportion_positions <- error_rate.raw %>%
+    proportion_positions <- errorRateTable %>%
         filter(PROPORTION < proportion_of_controls) %>%
         select(UNIQUE_POS)
 
-    background_af_positions <- error_rate.raw %>%
+    background_af_positions <- errorRateTable %>%
         filter(BACKGROUND_AF < max_background_mean_AF) %>%
         select(UNIQUE_POS)
 
-    data %>%
+    mutationTable %>%
         mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% proportion_positions & UNIQUE_POS %in% background_af_positions)
 }
 
 #take only off_target bases, exclude INDELs
-take.offtarget <- function(data, slx_layout_path, use_cosmic, is.blood_spot = FALSE)
+take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_spot = FALSE)
 {
-    data.off_target <- data %>%
+    mutationTable.off_target <- mutationTable %>%
         filter(!ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
 
     if (use_cosmic)
@@ -269,12 +271,12 @@ take.offtarget <- function(data, slx_layout_path, use_cosmic, is.blood_spot = FA
     else
     {
         message("Removing cosmic loci")
-        data.off_target <- data.off_target %>%
+        mutationTable.off_target <- mutationTable.off_target %>%
             filter(!COSMIC)
     }
 
     # error rate per locus filters
-    background_error.raw <- data.off_target %>%
+    background_error.raw <- mutationTable.off_target %>%
         group_by(SLX, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
         mutate(MUT_SUM = sum(ALT_F)+sum(ALT_R),
                TOTAL_DP = sum(DP),
@@ -283,12 +285,12 @@ take.offtarget <- function(data, slx_layout_path, use_cosmic, is.blood_spot = FA
 
     # print.error.free.positions(background_error.raw)
 
-    data_dt.off_target <- annotate_with_locus_error_rate(data.off_target,
+    mutations.off_target <- annotate_with_locus_error_rate(mutationTable.off_target,
                                                          slx_layout_path,
                                                          is.blood_spot = is.blood_spot,
                                                          on_target = FALSE)
 
-    data_dt.off_target
+    mutations.off_target
 }
 
 #mutationsFile <- args[1]
@@ -297,15 +299,16 @@ take.offtarget <- function(data, slx_layout_path, use_cosmic, is.blood_spot = FA
 #SLX_layout_path <- args[4]
 
 mutationsFile <- 'mutations/SLX-19722_SXTLI005.mutations.tsv'
+mutationsFile <- '/mnt/scratchb/bioinformatics/bowers01/invar_emma/EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv'
 TAPAS.setting <- 'f0.9_s2.BQ_30.MQ_60'
 mutations_bed <- 'bed/PARADIGM_mutation_list_full_cohort_hg19.bed'
 slxLayoutFile <- 'bed/combined.SLX_table_with_controls_031220.csv'
 
-data <- load.mutations.table(mutationsFile, mutations_bed, TAPAS.setting)
+mutationTable <- load.mutations.table(mutationsFile, mutations_bed, TAPAS.setting)
 
 ## TODO : REMOVE
-data <- data %>% filter(ALT != '.')
+# mutationTable <- mutationTable %>% filter(ALT != '.')
 
-on_target <- filter.for.ontarget(data)
+on_target <- filter.for.ontarget(mutationTable)
 
-off_target <- take.offtarget(data, slxLayoutFile, TRUE)
+off_target <- take.offtarget(mutationTable, slxLayoutFile, TRUE)
