@@ -113,7 +113,7 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
     {
         # When run in a pipeline, this will never exist.
         # In development, it might and can save some time to use it.
-        message("Read mutations table from previously saved ", mutationTableRDSFile)
+        warning("Read mutations table from previously saved ", mutationTableRDSFile)
         return(readRDS(mutationTableRDSFile))
     }
 
@@ -219,16 +219,27 @@ annotate_with_locus_error_rate <- function(mutationTable,
         rFileName <- "locus_error_rates.off_target.rds"
     }
 
-    errorRateTable <- mutationTable %>%
-       filter(SLX_BARCODE %in% patientSamples$SLX_BARCODE) %>%
-       mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SLX_BARCODE, NA)) %>%
-       summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
-                 DP = sum(DP),
-                 N_SAMPLES = n_distinct(SLX_BARCODE),
-                 N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE)) %>%
-       mutate(BACKGROUND_AF = MUT_SUM / DP)
+    # To speed up testing.
+    if (file.exists(rFileName))
+    {
+        warning("Reading error rate table from ", rFileName)
+        errorRateTable <- readRDS(rFileName)
+    }
+    else
+    {
+        errorRateTable <- mutationTable %>%
+            filter(SLX_BARCODE %in% patientSamples$SLX_BARCODE) %>%
+            mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SLX_BARCODE, NA)) %>%
+            group_by(UNIQUE_POS, TRINUCLEOTIDE) %>%
+            summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
+                      DP_SUM = sum(DP),
+                      BACKGROUND_AF = MUT_SUM / DP_SUM,
+                      N_SAMPLES = n_distinct(SLX_BARCODE),
+                      N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
+                      .groups = 'drop')
 
-    saveRDS(errorRateTable, rFileName)
+        saveRDS(errorRateTable, rFileName)
+    }
 
     errorRateTable <- errorRateTable %>%
         mutate(PROPORTION = N_SAMPLES_WITH_SIGNAL / N_SAMPLES,
@@ -246,16 +257,16 @@ annotate_with_locus_error_rate <- function(mutationTable,
 
     ## TODO Copy and update plot code.
 
-    proportion_positions <- errorRateTable %>%
-        filter(PROPORTION < proportion_of_controls) %>%
-        select(UNIQUE_POS)
+    proportionPositions <- errorRateTable %>%
+        filter(PROPORTION < proportion_of_controls)
 
-    background_af_positions <- errorRateTable %>%
-        filter(BACKGROUND_AF < max_background_mean_AF) %>%
-        select(UNIQUE_POS)
+    backgroundAFPositions <- errorRateTable %>%
+        filter(BACKGROUND_AF < max_background_mean_AF)
 
-    mutationTable %>%
-        mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% proportion_positions & UNIQUE_POS %in% background_af_positions)
+    extendedMutationTable <- mutationTable %>%
+        mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% proportionPositions$UNIQUE_POS & UNIQUE_POS %in% backgroundAFPositions$UNIQUE_POS)
+
+    extendedMutationTable
 }
 
 #take only off_target bases, exclude INDELs
@@ -264,31 +275,23 @@ take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_
     mutationTable.off_target <- mutationTable %>%
         filter(!ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
 
-    if (use_cosmic)
+    if (!use_cosmic)
     {
-        message("NOT removing cosmic loci")
-    }
-    else
-    {
-        message("Removing cosmic loci")
         mutationTable.off_target <- mutationTable.off_target %>%
             filter(!COSMIC)
     }
 
     # error rate per locus filters
-    background_error.raw <- mutationTable.off_target %>%
+    backgroundErrorTable <- mutationTable.off_target %>%
         group_by(SLX, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
-        mutate(MUT_SUM = sum(ALT_F)+sum(ALT_R),
-               TOTAL_DP = sum(DP),
-               BACKGROUND_AF = MUT_SUM / TOTAL_DP) %>%
-        select(SLX, BARCODE, REF, ALT, TRINUCLEOTIDE, BACKGROUND_AF)
+        summarize(BACKGROUND_AF = (sum(ALT_F) + sum(ALT_R)) / sum(DP))
 
     # print.error.free.positions(background_error.raw)
 
     mutations.off_target <- annotate_with_locus_error_rate(mutationTable.off_target,
-                                                         slx_layout_path,
-                                                         is.blood_spot = is.blood_spot,
-                                                         on_target = FALSE)
+                                                           slx_layout_path,
+                                                           is.blood_spot = is.blood_spot,
+                                                           on_target = FALSE)
 
     mutations.off_target
 }
