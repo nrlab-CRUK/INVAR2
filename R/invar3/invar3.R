@@ -175,7 +175,8 @@ annotate_with_locus_error_rate <- function(mutationTable,
                                            proportion_of_controls = 0.1,
                                            max_background_mean_AF = 0.01,
                                            is.blood_spot = FALSE,
-                                           on_target = TRUE, plot = TRUE)
+                                           on_target = TRUE, plot = TRUE,
+                                           errorRateFile = NULL)
 {
 
     if (is.blood_spot)
@@ -197,25 +198,24 @@ annotate_with_locus_error_rate <- function(mutationTable,
 
         # TODO - What is this "data" column?
         # mutationTable <- filter(data == "nonptspec")
-
-        rFileName <- "locus_error_rates.on_target.rds"
     }
     else
     {
         #message("running code on cluster, using all off-target bases")
 
         #message("Generated list of all patients across all cohorts that can be used for locus noise filter determination. Total: ", nrow(patientSamples), " cases")
-
-        rFileName <- "locus_error_rates.off_target.rds"
     }
 
-    # To speed up testing.
-    if (file.exists(rFileName))
+    errorRateTable <- NULL
+
+    if (!is.null(errorRateFile) & file.exists(errorRateFile))
     {
-        warning("Reading error rate table from ", rFileName)
-        errorRateTable <- readRDS(rFileName)
+        # To speed up testing.
+        warning("Reading error rate table from ", errorRateFile)
+        errorRateTable <- readRDS(errorRateFile)
     }
-    else
+
+    if (is.null(errorRateTable))
     {
         errorRateTable <- mutationTable %>%
             filter(SLX_BARCODE %in% patientSamples$SLX_BARCODE) %>%
@@ -228,7 +228,10 @@ annotate_with_locus_error_rate <- function(mutationTable,
                       N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                       .groups = 'drop')
 
-        saveRDS(errorRateTable, rFileName)
+        if (!is.null(errorRateFile))
+        {
+            saveRDS(errorRateTable, errorRateFile)
+        }
     }
 
     errorRateTable <- errorRateTable %>%
@@ -255,10 +258,15 @@ annotate_with_locus_error_rate <- function(mutationTable,
     extendedMutationTable
 }
 
-#take only off_target bases, exclude INDELs
+##
+# This function is built from the code after loading in INVAR3.R
+#
+# take only off_target bases, exclude INDELs
 take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_spot = FALSE)
 {
     # Common function. Takes in a mutation table.
+    # Adds MUT_SUM, DP_SUM, BACKGROUND_AF columns on rows grouped by
+    # SLX, BARCODE, REF, ALT, TRINUCLEOTIDE
     groupAndSummarize <- function(mt)
     {
         mt %>%
@@ -283,10 +291,13 @@ take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_
     backgroundErrorTable <- mutationTable.off_target %>%
         groupAndSummarize()
 
+    locusErrorRateFile <- str_c('locus_error_rates.off_target.', ifelse(use_cosmic, 'cosmic', 'no_cosmic'), '.rds')
+
     mutations.off_target <- annotate_with_locus_error_rate(mutationTable.off_target,
                                                            slx_layout_path,
                                                            is.blood_spot = is.blood_spot,
-                                                           on_target = FALSE)
+                                                           on_target = FALSE,
+                                                           errorRateFile = locusErrorRateFile)
 
     # annotate with both strand information
     mutations.off_target <- mutations.off_target %>%
@@ -312,14 +323,12 @@ take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
         groupAndSummarize()
 
-    ## Assemble and save
+    ## Assemble all error rates.
 
     error_rates <- list(pre_filter = backgroundErrorTable,
                         locus_noise_filter_only = background_error.locus_noise,
                         both_strands_only = background_error.both_strands,
                         locus_noise.both_strands = background_error.locus_noise.both_strands)
-
-    saveRDS(error_rates, str_c("cosmic_", use_cosmic, ".error_rates.rds"))
 
     error_rates
 }
@@ -346,5 +355,8 @@ mutationTable <- load.mutations.table(mutationsFile, mutationsBedFile, TAPAS.set
 on_target <- filter.for.ontarget(mutationTable)
 invisible(saveRDS(on_target, str_c(TAPAS.setting, '.on_target.rds')))
 
-invisible(take.offtarget(mutationTable, slxLayoutFile, TRUE))
-invisible(take.offtarget(mutationTable, slxLayoutFile, FALSE))
+off_target.cosmic <- take.offtarget(mutationTable, slxLayoutFile, TRUE)
+invisible(saveRDS(off_target.cosmic, str_c(TAPAS.setting, '.off_target.cosmic.error_rates.rds')))
+
+off_target.no_cosmic <- take.offtarget(mutationTable, slxLayoutFile, FALSE)
+invisible(saveRDS(off_target.no_cosmic, str_c(TAPAS.setting, '.off_target.no_cosmic.error_rates.rds')))
