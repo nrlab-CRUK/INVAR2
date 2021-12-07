@@ -1,6 +1,6 @@
-library(dplyr)
-library(readr)
-library(stringr)
+suppressWarnings(library(dplyr))
+suppressWarnings(library(readr))
+suppressWarnings(library(stringr))
 
 
 ##
@@ -165,19 +165,9 @@ filter.for.ontarget <- function(mutationTable)
     mutationTable %>% filter(ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
 }
 
-error.free.positions <- function(mutationTable)
-{
-    erf <- mutationTable %>% summarise(ERROR_FREE_POSITIONS = (1 - sum(BACKGROUND_AF > 0) / n()) * 100)
-    as.numeric(erf)
-}
-
-print.error.free.positions <- function(mutationTable)
-{
-    erf <- error.free.positions(mutationTable)
-    message("error-free positions: ", erf)
-    erf
-}
-
+##
+# From TAPAS_functions.R
+#
 #' Annotate with locus error rate
 #' Locus error rate = overall background error rate per locus, aggregated across control samples
 annotate_with_locus_error_rate <- function(mutationTable,
@@ -195,7 +185,7 @@ annotate_with_locus_error_rate <- function(mutationTable,
     }
 
     patientSamples <-
-        read_csv(file = slx_layout_path, col_names = TRUE) %>%
+        read_csv(file = slx_layout_path, col_names = TRUE, show_col_types = FALSE) %>%
         filter(case_or_control == "case") %>%
         mutate(SLX_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
         select(SLX_BARCODE)
@@ -247,10 +237,6 @@ annotate_with_locus_error_rate <- function(mutationTable,
                HAS_AF = BACKGROUND_AF > 0,
                LOCUS_NOISE.FAIL = !LOCUS_NOISE.PASS)
 
-#    nonzero_background_AFs <- errorRateTable %>%
-#        filter(LOCUS_NOISE.PASS & BACKGROUND_AF > 0)
-#        select(BACKGROUND_AF)
-
     counts <- errorRateTable %>%
         summarize(NON_ZERO_LOCI_PERCENT = sum(HAS_AF) / n() * 100,
                   LOCUS_NOISE_FAIL_PERCENT = sum(LOCUS_NOISE.FAIL) / n() * 100)
@@ -272,6 +258,18 @@ annotate_with_locus_error_rate <- function(mutationTable,
 #take only off_target bases, exclude INDELs
 take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_spot = FALSE)
 {
+    # Common function. Takes in a mutation table.
+    groupAndSummarize <- function(mt)
+    {
+        mt %>%
+            group_by(SLX, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
+            summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
+                      DP_SUM = sum(DP),
+                      BACKGROUND_AF= (sum(ALT_F) + sum(ALT_R)) / sum(DP),
+                      .groups = 'drop')
+
+    }
+
     mutationTable.off_target <- mutationTable %>%
         filter(!ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
 
@@ -283,35 +281,70 @@ take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_
 
     # error rate per locus filters
     backgroundErrorTable <- mutationTable.off_target %>%
-        group_by(SLX, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
-        summarize(BACKGROUND_AF = (sum(ALT_F) + sum(ALT_R)) / sum(DP))
-
-    # print.error.free.positions(background_error.raw)
+        groupAndSummarize()
 
     mutations.off_target <- annotate_with_locus_error_rate(mutationTable.off_target,
                                                            slx_layout_path,
                                                            is.blood_spot = is.blood_spot,
                                                            on_target = FALSE)
 
-    mutations.off_target
+    # annotate with both strand information
+    mutations.off_target <- mutations.off_target %>%
+        mutate(BOTH_STRANDS = (ALT_R > 0 & ALT_F > 0) | AF == 0)
+
+    ## Calculate error rate with differnt settings
+
+    # locus noise pass
+
+    background_error.locus_noise <- mutations.off_target %>%
+        filter(LOCUS_NOISE.PASS) %>%
+        groupAndSummarize()
+
+    # both strands
+
+    background_error.both_strands <- mutations.off_target %>%
+        filter(BOTH_STRANDS) %>%
+        groupAndSummarize()
+
+    # locus noise AND both strands
+
+    background_error.locus_noise.both_strands <- mutations.off_target %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
+        groupAndSummarize()
+
+    ## Assemble and save
+
+    error_rates <- list(pre_filter = backgroundErrorTable,
+                        locus_noise_filter_only = background_error.locus_noise,
+                        both_strands_only = background_error.both_strands,
+                        locus_noise.both_strands = background_error.locus_noise.both_strands)
+
+    saveRDS(error_rates, str_c("cosmic_", use_cosmic, ".error_rates.rds"))
+
+    error_rates
 }
 
-#mutationsFile <- args[1]
-#TAPAS.setting <- args[2] #'f0.9_s2.BQ_30.MQ_60'
-#mutations_bed  <- args[3] #MELR: "~/bed/M2/JXP0128_4_MELR_TAPAS.bed" #AVASTM: A1-7_panels.combined.tidy.180109.bed #LUCID:
-#SLX_layout_path <- args[4]
+args <- commandArgs(TRUE)
+if (length(args) != 4)
+{
+    stop("invar3.R expects exactly four arguments.")
+}
 
-mutationsFile <- 'mutations/SLX-19722_SXTLI005.mutations.tsv'
-mutationsFile <- '/mnt/scratchb/bioinformatics/bowers01/invar_emma/EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv'
-TAPAS.setting <- 'f0.9_s2.BQ_30.MQ_60'
-mutations_bed <- 'bed/PARADIGM_mutation_list_full_cohort_hg19.bed'
-slxLayoutFile <- 'bed/combined.SLX_table_with_controls_031220.csv'
+mutationsFile <- args[1]
+TAPAS.setting <- args[2] #'f0.9_s2.BQ_30.MQ_60'
+mutationsBedFile  <- args[3] #MELR: "~/bed/M2/JXP0128_4_MELR_TAPAS.bed" #AVASTM: A1-7_panels.combined.tidy.180109.bed #LUCID:
+slxLayoutFile <- args[4]
 
-mutationTable <- load.mutations.table(mutationsFile, mutations_bed, TAPAS.setting)
+#mutationsFile <- 'mutations/SLX-19722_SXTLI005.mutations.tsv'
+#mutationsFile <- '/mnt/scratchb/bioinformatics/bowers01/invar_emma/EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv'
+#TAPAS.setting <- 'f0.9_s2.BQ_30.MQ_60'
+#mutationsBedFile <- 'bed/PARADIGM_mutation_list_full_cohort_hg19.bed'
+#slxLayoutFile <- 'bed/combined.SLX_table_with_controls_031220.csv'
 
-## TODO : REMOVE
-# mutationTable <- mutationTable %>% filter(ALT != '.')
+mutationTable <- load.mutations.table(mutationsFile, mutationsBedFile, TAPAS.setting)
 
 on_target <- filter.for.ontarget(mutationTable)
+invisible(saveRDS(on_target, str_c(TAPAS.setting, '.on_target.rds')))
 
-off_target <- take.offtarget(mutationTable, slxLayoutFile, TRUE)
+invisible(take.offtarget(mutationTable, slxLayoutFile, TRUE))
+invisible(take.offtarget(mutationTable, slxLayoutFile, FALSE))

@@ -1,7 +1,5 @@
 include { logException } from '../functions/debugging'
 
-import groovy.json.JsonOutput
-
 
 process SlopBED
 {
