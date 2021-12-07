@@ -1,6 +1,6 @@
-suppressWarnings(library(dplyr))
-suppressWarnings(library(readr))
-suppressWarnings(library(stringr))
+library(dplyr, warn.conflicts = FALSE)
+library(readr)
+library(stringr)
 
 
 ##
@@ -171,7 +171,7 @@ filter.for.ontarget <- function(mutationTable)
 #' Annotate with locus error rate
 #' Locus error rate = overall background error rate per locus, aggregated across control samples
 annotate_with_locus_error_rate <- function(mutationTable,
-                                           slx_layout_path,
+                                           slxLayoutFile,
                                            proportion_of_controls = 0.1,
                                            max_background_mean_AF = 0.01,
                                            is.blood_spot = FALSE,
@@ -185,7 +185,7 @@ annotate_with_locus_error_rate <- function(mutationTable,
     }
 
     patientSamples <-
-        read_csv(file = slx_layout_path, col_names = TRUE, show_col_types = FALSE) %>%
+        read_csv(file = slxLayoutFile, col_names = TRUE, show_col_types = FALSE) %>%
         filter(case_or_control == "case") %>%
         mutate(SLX_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
         select(SLX_BARCODE)
