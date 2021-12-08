@@ -1,6 +1,66 @@
-library(dplyr, warn.conflicts = FALSE)
-library(readr)
-library(stringr)
+suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(readr))
+suppressPackageStartupMessages(library(stringr))
+
+
+##
+# Parse options from the command line.
+#
+
+parseOptions <- function()
+{
+    defaultMarker <- "<REQUIRED>"
+
+    options_list <- list(
+        make_option(c("-t", "--tapas"), type="character", metavar="string",
+                    dest="TAPAS_SETTING", help="The TAPAS setting string",
+                    default=defaultMarker),
+        make_option(c("-m", "--mutations-list"), type="character", metavar="file",
+                    dest="MUTATIONS_BED_FILE", help="The source mutations list file",
+                    default=defaultMarker),
+        make_option(c("-l", "--layout"), type="character", metavar="file",
+                    dest="LAYOUT_FILE", help="The sequencing layout file",
+                    default=defaultMarker),
+        make_option(c("-b", "--bloodspot"), action="store_true", default=FALSE,
+                    dest="BLOODSPOT", help="Indicate this is blood spot data."))
+
+    opts <- OptionParser(option_list=options_list, usage="%prog [options] <mutation file>") %>%
+        parse_args(positional_arguments = TRUE)
+
+    missingRequired <- which(opts$options == defaultMarker)
+    if (any(missingRequired))
+    {
+        missing <- names(opts$options)[missingRequired]
+        stop(str_c("ERROR: One or more required arguments have not been provided: ", str_c(missing, collapse = ' ')))
+    }
+
+    if (length(opts$args) != 1)
+    {
+        stop("The mutation file has not been provided.")
+    }
+
+    scriptOptions <- list(MUTATIONS_FILE = opts$args[1])
+    for (v in names(opts$options))
+    {
+        scriptOptions[v] = opts$options[v]
+    }
+
+    scriptOptions
+}
+
+# Test options for my (Rich) local set up in RStudio.
+
+richTestOptions <- function()
+{
+    #mutationsFile <- 'mutations/SLX-19722_SXTLI005.mutations.tsv'
+    list(
+        MUTATIONS_FILE = '/mnt/scratchb/bioinformatics/bowers01/invar_emma/EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv',
+        TAPAS_SETTING = 'f0.9_s2.BQ_30.MQ_60',
+        MUTATIONS_BED_FILE = 'bed/PARADIGM_mutation_list_full_cohort_hg19.bed',
+        LAYOUT_FILE = 'bed/combined.SLX_table_with_controls_031220.csv'
+    )
+}
 
 
 ##
@@ -158,6 +218,16 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
     mutationTable
 }
 
+# Read the layout file and extract unique pool id and barcode pairs.
+
+load.patient.samples <- function(layoutFile)
+{
+    read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE) %>%
+    filter(case_or_control == "case") %>%
+    mutate(SLX_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
+    select(distinct(SLX_BARCODE))
+}
+
 # Filter rows that are on target.
 
 filter.for.ontarget <- function(mutationTable)
@@ -171,11 +241,11 @@ filter.for.ontarget <- function(mutationTable)
 #' Annotate with locus error rate
 #' Locus error rate = overall background error rate per locus, aggregated across control samples
 annotate_with_locus_error_rate <- function(mutationTable,
-                                           slxLayoutFile,
+                                           patientSamples,
                                            proportion_of_controls = 0.1,
                                            max_background_mean_AF = 0.01,
                                            is.blood_spot = FALSE,
-                                           on_target = TRUE, plot = TRUE,
+                                           on_target = TRUE,
                                            errorRateFile = NULL)
 {
 
@@ -183,27 +253,6 @@ annotate_with_locus_error_rate <- function(mutationTable,
     {
         message("sWGS/blood spot mutationTable, do not set a max_background_mean_AF value as it is not appropriate in the low unique depth setting")
         max_background_mean_AF <- 1
-    }
-
-    patientSamples <-
-        read_csv(file = slxLayoutFile, col_names = TRUE, show_col_types = FALSE) %>%
-        filter(case_or_control == "case") %>%
-        mutate(SLX_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
-        select(SLX_BARCODE)
-
-    # This just seems to be a way of cutting down the number of mutations
-    if (on_target)
-    {
-        #message("running code on on-target bases, only using nonptspec dataframe")
-
-        # TODO - What is this "data" column?
-        # mutationTable <- filter(data == "nonptspec")
-    }
-    else
-    {
-        #message("running code on cluster, using all off-target bases")
-
-        #message("Generated list of all patients across all cohorts that can be used for locus noise filter determination. Total: ", nrow(patientSamples), " cases")
     }
 
     errorRateTable <- NULL
@@ -245,6 +294,7 @@ annotate_with_locus_error_rate <- function(mutationTable,
                   LOCUS_NOISE_FAIL_PERCENT = sum(LOCUS_NOISE.FAIL) / n() * 100)
 
     ## TODO Copy and update plot code.
+    ## That said, seems that's for a special case that doesn't apply for most work.
 
     proportionPositions <- errorRateTable %>%
         filter(PROPORTION < proportion_of_controls)
@@ -262,7 +312,7 @@ annotate_with_locus_error_rate <- function(mutationTable,
 # This function is built from the code after loading in INVAR3.R
 #
 # take only off_target bases, exclude INDELs
-take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_spot = FALSE)
+take.offtarget <- function(mutationTable, patientSamples, use_cosmic, is.blood_spot = FALSE)
 {
     # Common function. Takes in a mutation table.
     # Adds MUT_SUM, DP_SUM, BACKGROUND_AF columns on rows grouped by
@@ -294,7 +344,7 @@ take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_
     locusErrorRateFile <- str_c('locus_error_rates.off_target.', ifelse(use_cosmic, 'cosmic', 'no_cosmic'), '.rds')
 
     mutations.off_target <- annotate_with_locus_error_rate(mutationTable.off_target,
-                                                           slx_layout_path,
+                                                           patientSamples,
                                                            is.blood_spot = is.blood_spot,
                                                            on_target = FALSE,
                                                            errorRateFile = locusErrorRateFile)
@@ -333,31 +383,27 @@ take.offtarget <- function(mutationTable, slx_layout_path, use_cosmic, is.blood_
     error_rates
 }
 
-args <- commandArgs(TRUE)
-if (length(args) != 4)
+##
+# The main script, wrapped as a function.
+#
+
+main <- function(scriptArgs)
 {
-    stop("invar3.R expects exactly four arguments.")
+    mutationTable <- load.mutations.table(scriptArgs$MUTATIONS_FILE, scriptArgs$MUTATIONS_BED_FILE, scriptArgs$TAPAS_SETTING)
+
+    patientSamples <- load.patient.samples(scriptArgs$LAYOUT_FILE)
+
+    on_target <- filter.for.ontarget(mutationTable)
+    saveRDS(on_target, str_c(scriptArgs$TAPAS_SETTING, '.on_target.rds'))
+    write_tsv(on_target, str_c(scriptArgs$TAPAS_SETTING, '.on_target.tsv'))
+
+    off_target.cosmic <- take.offtarget(mutationTable, patientSamples, TRUE, scriptArgs$BLOODSPOT)
+    saveRDS(off_target.cosmic, str_c(scriptArgs$TAPAS_SETTING, '.off_target.cosmic.error_rates.rds'))
+
+    off_target.no_cosmic <- take.offtarget(mutationTable, patientSamples, FALSE, scriptArgs$BLOODSPOT)
+    saveRDS(off_target.no_cosmic, str_c(scriptArgs$TAPAS_SETTING, '.off_target.no_cosmic.error_rates.rds'))
 }
 
-mutationsFile <- args[1]
-TAPAS.setting <- args[2] #'f0.9_s2.BQ_30.MQ_60'
-mutationsBedFile  <- args[3] #MELR: "~/bed/M2/JXP0128_4_MELR_TAPAS.bed" #AVASTM: A1-7_panels.combined.tidy.180109.bed #LUCID:
-slxLayoutFile <- args[4]
+# Launch it.
 
-#mutationsFile <- 'mutations/SLX-19722_SXTLI005.mutations.tsv'
-#mutationsFile <- '/mnt/scratchb/bioinformatics/bowers01/invar_emma/EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv'
-#TAPAS.setting <- 'f0.9_s2.BQ_30.MQ_60'
-#mutationsBedFile <- 'bed/PARADIGM_mutation_list_full_cohort_hg19.bed'
-#slxLayoutFile <- 'bed/combined.SLX_table_with_controls_031220.csv'
-
-mutationTable <- load.mutations.table(mutationsFile, mutationsBedFile, TAPAS.setting)
-
-on_target <- filter.for.ontarget(mutationTable)
-invisible(saveRDS(on_target, str_c(TAPAS.setting, '.on_target.rds')))
-invisible(write_tsv(on_target, str_c(TAPAS.setting, '.on_target.tsv')))
-
-off_target.cosmic <- take.offtarget(mutationTable, slxLayoutFile, TRUE)
-invisible(saveRDS(off_target.cosmic, str_c(TAPAS.setting, '.off_target.cosmic.error_rates.rds')))
-
-off_target.no_cosmic <- take.offtarget(mutationTable, slxLayoutFile, FALSE)
-invisible(saveRDS(off_target.no_cosmic, str_c(TAPAS.setting, '.off_target.no_cosmic.error_rates.rds')))
+invisible(main(parseOptions()))
