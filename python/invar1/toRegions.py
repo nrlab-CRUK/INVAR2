@@ -11,11 +11,11 @@ mutationsFile = sys.argv[1]
 offset = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 prefix = sys.argv[3] if len(sys.argv) > 3 else ""
 
-chr_remover = re.compile('^chr', re.IGNORECASE)
+chrRemover = re.compile('^chr', re.IGNORECASE)
 
 with open(mutationsFile, 'r') as fp1:
     csvReader = csv.DictReader(fp1, delimiter = '\t')
     for mutation in csvReader:
-        chr = chr_remover.sub("", mutation['CHROM']).upper()
+        chr = chrRemover.sub("", mutation['CHROM']).upper()
         pos = int(mutation['POS'])
         print(f"{prefix}{chr}:{pos - offset}-{pos + offset}")

@@ -56,15 +56,15 @@ process biallelic
         path vcfFile
 
     output:
-        tuple val(slx), val(barcode), path(mutationFile)
+        tuple val(pool), val(barcode), path(mutationFile)
 
     shell:
-        slx = ""
+        pool = ""
 
         def matcher = vcfFile.name =~ /(SLX-\d+)/
         if (matcher.find())
         {
-            slx = matcher[0][1]
+            pool = matcher[0][1]
         }
 
         switch (params.LIBRARY_PREP)
@@ -87,7 +87,7 @@ process biallelic
             barcode = matcher[0][1]
         }
 
-        mutationFile = "${slx}_${barcode}.BQ_${params.BASEQ}.MQ_${params.MAPQ}.final.tsv"
+        mutationFile = "${pool}_${barcode}.BQ_${params.BASEQ}.MQ_${params.MAPQ}.final.tsv"
 
         template "invar1/biallelic.sh"
 }
@@ -103,13 +103,13 @@ process tabixSnp
     input:
         each path(tabixDatabase)
         each path(tabixDatabaseIndex)
-        tuple val(slx), val(barcode), path(mutationFile)
+        tuple val(pool), val(barcode), path(mutationFile)
 
     output:
-        tuple val(slx), val(barcode), path(tabixFile)
+        tuple val(pool), val(barcode), path(tabixFile)
 
     shell:
-        tabixFile = "${slx}_${barcode}_snp.vcf"
+        tabixFile = "${pool}_${barcode}_snp.vcf"
 
         template "invar1/tabix.sh"
 }
@@ -124,13 +124,13 @@ process tabixCosmic
     input:
         each path(tabixDatabase)
         each path(tabixDatabaseIndex)
-        tuple val(slx), val(barcode), path(mutationFile)
+        tuple val(pool), val(barcode), path(mutationFile)
 
     output:
-        tuple val(slx), val(barcode), path(tabixFile)
+        tuple val(pool), val(barcode), path(tabixFile)
 
     shell:
-        tabixFile = "${slx}_${barcode}_cosmic.vcf"
+        tabixFile = "${pool}_${barcode}_cosmic.vcf"
 
         template "invar1/tabix.sh"
 }
@@ -143,13 +143,13 @@ process trinucleotide
 
     input:
         each path(fastaReference)
-        tuple val(slx), val(barcode), path(mutationFile)
+        tuple val(pool), val(barcode), path(mutationFile)
 
     output:
-        tuple val(slx), val(barcode), path(trinucleotideFile)
+        tuple val(pool), val(barcode), path(trinucleotideFile)
 
     shell:
-        trinucleotideFile = "${slx}_${barcode}_trinucleotide.fa"
+        trinucleotideFile = "${pool}_${barcode}_trinucleotide.fa"
 
         template "invar1/samtools_faidx.sh"
 }
@@ -164,16 +164,16 @@ process annotateMutation
     publishDir 'mutations', mode: 'link'
 
     input:
-        tuple val(slx), val(barcode), path(mutationFile), path(snp), path(cosmic), path(trinucleotide)
+        tuple val(pool), val(barcode), path(mutationFile), path(snp), path(cosmic), path(trinucleotide)
 
     output:
-        tuple val(slx), val(barcode), path(annotationFile)
+        tuple val(pool), val(barcode), path(annotationFile)
 
     shell:
-        annotationFile = "${slx}_${barcode}.mutations.tsv"
+        annotationFile = "${pool}_${barcode}.mutations.tsv"
 
         """
-        python3 "!{projectDir}/python/invar1/addTabixAndTrinuc.py" \
+        python3 "!{projectDir}/python/invar1/addTabixAndTrinucleotides.py" \
             !{mutationFile} \
             !{snp} \
             !{cosmic} \
@@ -200,7 +200,7 @@ workflow invar1
 
         mpileup(SlopBED.out, fasta_channel, bam_channel) | biallelic
 
-        mutation_channel = biallelic.out.filter { slx, bc, f -> f.countLines() > 1 }
+        mutation_channel = biallelic.out.filter { pool, bc, f -> f.countLines() > 1 }
 
         tabixSnp(snp_channel, snp_index_channel, mutation_channel)
         tabixCosmic(cosmic_channel, cosmic_index_channel, mutation_channel)
@@ -213,7 +213,7 @@ workflow invar1
 
         all_mutations_channel =
             annotateMutation(by_bam_mutation_channel)
-                .map { slx, barcode, file -> file }
+                .map { pool, barcode, file -> file }
                 .collectFile(name: "${params.FINAL_PREFIX}.combined.final.ann.tsv",
                              storeDir: 'mutations', keepHeader: true, skip: 1, sort: false)
 

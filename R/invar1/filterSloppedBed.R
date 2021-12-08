@@ -1,5 +1,5 @@
-suppressWarnings(require(dplyr))
-suppressWarnings(require(readr))
+suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
+suppressPackageStartupMessages(library(readr))
 
 args <- commandArgs(trailingOnly = TRUE)
 

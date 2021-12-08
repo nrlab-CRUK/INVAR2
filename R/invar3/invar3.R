@@ -185,15 +185,15 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
                  col_types = 'ciicc') %>%
         mutate(UNIQUE_POS = str_c(CHROM, END, sep=':'))
 
-    mutationTable <- read_tsv(mutationsFile, col_types = 'ciccicdddddcciidc')
+    mutationTable <- read_tsv(mutationsFile, col_types = 'ciccicdddddccildc')
 
     # Remove soft-masked repeats, identified by lowercase.
     # Add columns of derived values and combined identifiers.
     mutationTable <- mutationTable %>%
         filter(!(str_detect(REF, '[acgt]') | str_detect(ALT, '[acgt]'))) %>%
         mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
-        mutate(SLX_BARCODE = str_c(SLX, BARCODE, sep='_')) %>%
-        mutate(UNIQUE_ID = str_c(UNIQUE_POS, SLX_BARCODE, sep='_')) %>%
+        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
+        mutate(UNIQUE_ID = str_c(UNIQUE_POS, POOL_BARCODE, sep='_')) %>%
         mutate(AF = (ALT_F + ALT_R) / DP) %>%
         mutate(COSMIC = COSMIC_MUTATIONS > cosmic_threshold) %>%
         mutate(SNP = `1KG_AF` > 0) %>%
@@ -224,8 +224,8 @@ load.patient.samples <- function(layoutFile)
 {
     read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE) %>%
     filter(case_or_control == "case") %>%
-    mutate(SLX_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
-    select(distinct(SLX_BARCODE))
+    mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
+    select(distinct(POOL_BARCODE))
 }
 
 # Filter rows that are on target.
@@ -248,7 +248,6 @@ annotate_with_locus_error_rate <- function(mutationTable,
                                            on_target = TRUE,
                                            errorRateFile = NULL)
 {
-
     if (is.blood_spot)
     {
         message("sWGS/blood spot mutationTable, do not set a max_background_mean_AF value as it is not appropriate in the low unique depth setting")
@@ -267,13 +266,13 @@ annotate_with_locus_error_rate <- function(mutationTable,
     if (is.null(errorRateTable))
     {
         errorRateTable <- mutationTable %>%
-            filter(SLX_BARCODE %in% patientSamples$SLX_BARCODE) %>%
-            mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SLX_BARCODE, NA)) %>%
+            filter(POOL_BARCODE %in% patientSamples$POOL_BARCODE) %>%
+            mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, POOL_BARCODE, NA)) %>%
             group_by(UNIQUE_POS, TRINUCLEOTIDE) %>%
             summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
                       DP_SUM = sum(DP),
                       BACKGROUND_AF = MUT_SUM / DP_SUM,
-                      N_SAMPLES = n_distinct(SLX_BARCODE),
+                      N_SAMPLES = n_distinct(POOL_BARCODE),
                       N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                       .groups = 'drop')
 
@@ -316,11 +315,11 @@ take.offtarget <- function(mutationTable, patientSamples, use_cosmic, is.blood_s
 {
     # Common function. Takes in a mutation table.
     # Adds MUT_SUM, DP_SUM, BACKGROUND_AF columns on rows grouped by
-    # SLX, BARCODE, REF, ALT, TRINUCLEOTIDE
+    # POOL, BARCODE, REF, ALT, TRINUCLEOTIDE
     groupAndSummarize <- function(mt)
     {
         mt %>%
-            group_by(SLX, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
+            group_by(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
             summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
                       DP_SUM = sum(DP),
                       BACKGROUND_AF= (sum(ALT_F) + sum(ALT_R)) / sum(DP),

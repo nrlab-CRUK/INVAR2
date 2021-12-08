@@ -1,6 +1,6 @@
-suppressWarnings(require(dplyr))
-suppressWarnings(require(readr))
-suppressWarnings(require(stringr))
+suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
+suppressPackageStartupMessages(library(readr))
+suppressPackageStartupMessages(library(stringr))
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -9,10 +9,10 @@ if (length(args) != 5)
     stop("Wrong number of arguments given to formatAndAnnotateMutations.R. Expect five.")
 }
 
-inFile <- args[1]
+inFile  <- args[1]
 outFile <- args[2]
-minDP <- as.integer(args[3])
-slx <- args[4]
+minDP   <- as.integer(args[3])
+pool    <- args[4]
 barcode <- args[5]
 
 table <-
@@ -28,7 +28,8 @@ converted <- table %>%
            ALT_R = as.integer(ifelse(ALT == '.', 0, str_split_fixed(ADR, ',', Inf)[,2])),
            .before = 'MQSB') %>%
     select(-ADF, -ADR) %>%
-    mutate(MQSB = as.double(MQSB)) %>%
-    mutate(SLX = slx, BARCODE = barcode)
+    mutate(MQSB = as.double(MQSB),
+           POOL = pool,
+           BARCODE = barcode)
 
 write_tsv(converted, outFile)
