@@ -354,6 +354,7 @@ mutationTable <- load.mutations.table(mutationsFile, mutationsBedFile, TAPAS.set
 
 on_target <- filter.for.ontarget(mutationTable)
 invisible(saveRDS(on_target, str_c(TAPAS.setting, '.on_target.rds')))
+invisible(write_tsv(on_target, str_c(TAPAS.setting, '.on_target.tsv')))
 
 off_target.cosmic <- take.offtarget(mutationTable, slxLayoutFile, TRUE)
 invisible(saveRDS(off_target.cosmic, str_c(TAPAS.setting, '.off_target.cosmic.error_rates.rds')))
