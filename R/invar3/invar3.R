@@ -225,7 +225,8 @@ load.patient.samples <- function(layoutFile)
     read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE) %>%
     filter(case_or_control == "case") %>%
     mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
-    select(distinct(POOL_BARCODE))
+    select(POOL_BARCODE) %>%
+    distinct(POOL_BARCODE)
 }
 
 # Filter rows that are on target.

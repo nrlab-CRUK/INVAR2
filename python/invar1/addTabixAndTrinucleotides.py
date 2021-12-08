@@ -79,7 +79,7 @@ def addSnpInfo(mutation, tabixInfo):
     chr, pos = getPosition(mutation)
     key = frozenset([chr, pos])
     
-    zero = '0.0'
+    zero = '0'
     mutation['1KG_AF'] = zero
     
     snpInfo = tabixInfo.get(key)
