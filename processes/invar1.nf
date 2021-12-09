@@ -7,16 +7,16 @@ process patientListToBed
     memory '256m'
     cpus 1
     time '5m'
-    
+
     input:
         path csvFile
 
     output:
         path bedFile
-    
+
     shell:
         bedFile = "${csvFile.baseName}.bed"
-        
+
         """
         Rscript --vanilla "!{projectDir}/R/invar1/patientListCsvToBed.R" \
             "!{csvFile}" "!{bedFile}"

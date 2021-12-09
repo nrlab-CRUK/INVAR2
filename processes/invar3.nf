@@ -1,14 +1,14 @@
-process FilterMutationsAndCalculateRates
+process FilterMutationsAndCalculateErrorRates
 {
     memory '8g'
     cpus 1
     time '1h'
-    
+
     publishDir 'invar3', mode: 'link'
 
     input:
         path mutationFile
-        path patientBedFile
+        path tumourMutationsFile
         path layoutFile
 
     output:
@@ -18,13 +18,13 @@ process FilterMutationsAndCalculateRates
     shell:
         tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"
         onTargetFile = "${tapasSetting}.on_target.tsv"
-        
+
         """
         export INVAR_HOME="!{projectDir}"
-        
-        Rscript --vanilla "${INVAR_HOME}/R/invar3/invar3.R" \
-            --mutations-list="!{patientBedFile}" \
+
+        Rscript --vanilla "!{projectDir}/R/invar3/invar3.R" \
             --tapas="!{tapasSetting}" \
+            --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
             "!{mutationFile}"
         """
@@ -37,11 +37,11 @@ workflow invar3
         mutation_channel
 
     main:
-        bed_channel = channel.fromPath(params.BED, checkIfExists: true)
+        tumour_mutations_channel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
         layout_channel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
 
-        FilterMutationsAndCalculateRates(mutation_channel, bed_channel, layout_channel)
+        FilterMutationsAndCalculateErrorRates(mutation_channel, tumour_mutations_channel, layout_channel)
 
     emit:
-        onTargetFile = FilterMutationsAndCalculateRates.out.onTargetFile
+        onTargetFile = FilterMutationsAndCalculateErrorRates.out.onTargetFile
 }

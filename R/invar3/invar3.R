@@ -14,10 +14,10 @@ parseOptions <- function()
 
     options_list <- list(
         make_option(c("-t", "--tapas"), type="character", metavar="string",
-                    dest="TAPAS_SETTING", help="The TAPAS setting string",
+                    dest="TAPAS_SETTING", help="The TAPAS setting",
                     default=defaultMarker),
-        make_option(c("-m", "--mutations-list"), type="character", metavar="file",
-                    dest="MUTATIONS_BED_FILE", help="The source mutations list file",
+        make_option(c("-m", "--tumour-mutations"), type="character", metavar="file",
+                    dest="TUMOUR_MUTATIONS_FILE", help="The source patient mutations file",
                     default=defaultMarker),
         make_option(c("-l", "--layout"), type="character", metavar="file",
                     dest="LAYOUT_FILE", help="The sequencing layout file",
@@ -56,9 +56,10 @@ richTestOptions <- function()
     #mutationsFile <- 'mutations/SLX-19722_SXTLI005.mutations.tsv'
     list(
         MUTATIONS_FILE = '/mnt/scratchb/bioinformatics/bowers01/invar_emma/EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv',
-        TAPAS_SETTING = 'f0.9_s2.BQ_30.MQ_60',
-        MUTATIONS_BED_FILE = 'bed/PARADIGM_mutation_list_full_cohort_hg19.bed',
-        LAYOUT_FILE = 'bed/combined.SLX_table_with_controls_031220.csv'
+        TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
+        TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
+        LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
+        BLOODSPOT = FALSE
     )
 }
 
@@ -160,9 +161,20 @@ blacklist.multiallelic <- function(mutationTable,
 #
 
 
+# Load the patient specific tumour mutations file
+
+load.tumour.mutations.table <- function(tumourMutationsFile)
+{
+    read_csv(tumourMutationsFile, col_types = 'ciccd', show_col_types = FALSE) %>%
+    select(-contains('uniq'), -mut) %>%
+    rename_with(str_to_upper) %>%
+    rename(CHROM = CHR) %>%
+    mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'))
+}
+
 # Load the mutations table from file and filter.
 
-load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSetting,
+load.mutations.table <- function(mutationsFile, tumourMutationsTable, tapasSetting,
                                  cosmic_threshold = 0, max_DP = 1500, min_ref_DP = 5,
                                  individual_MQSB_threshold = 0.01,
                                  n_alt_alleles_threshold = 3, minor_alt_allele_threshold = 2)
@@ -179,12 +191,6 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
 
     message("Reading in table from ", mutationsFile)
 
-    patient_specific <-
-        read_tsv(patientSpecificFile,
-                 col_names = c('CHROM', 'START', 'END', 'REF', 'ALT'),
-                 col_types = 'ciicc') %>%
-        mutate(UNIQUE_POS = str_c(CHROM, END, sep=':'))
-
     mutationTable <- read_tsv(mutationsFile, col_types = 'ciccicdddddccildc')
 
     # Remove soft-masked repeats, identified by lowercase.
@@ -197,7 +203,7 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
         mutate(AF = (ALT_F + ALT_R) / DP) %>%
         mutate(COSMIC = COSMIC_MUTATIONS > cosmic_threshold) %>%
         mutate(SNP = `1KG_AF` > 0) %>%
-        mutate(ON_TARGET = UNIQUE_POS %in% patient_specific$UNIQUE_POS)
+        mutate(ON_TARGET = UNIQUE_POS %in% tumourMutationsTable$UNIQUE_POS)
 
 
     # save on.target pre-filtering
@@ -220,9 +226,9 @@ load.mutations.table <- function(mutationsFile, patientSpecificFile, tapasSettin
 
 # Read the layout file and extract unique pool id and barcode pairs.
 
-load.patient.samples <- function(layoutFile)
+load.layout.file <- function(layoutFile)
 {
-    read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE) %>%
+    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
     filter(case_or_control == "case") %>%
     mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
     select(POOL_BARCODE) %>%
@@ -242,7 +248,7 @@ filter.for.ontarget <- function(mutationTable)
 #' Annotate with locus error rate
 #' Locus error rate = overall background error rate per locus, aggregated across control samples
 annotate_with_locus_error_rate <- function(mutationTable,
-                                           patientSamples,
+                                           layoutTable,
                                            proportion_of_controls = 0.1,
                                            max_background_mean_AF = 0.01,
                                            is.blood_spot = FALSE,
@@ -257,7 +263,7 @@ annotate_with_locus_error_rate <- function(mutationTable,
 
     errorRateTable <- NULL
 
-    if (!is.null(errorRateFile) & file.exists(errorRateFile))
+    if (!is.null(errorRateFile) && file.exists(errorRateFile))
     {
         # To speed up testing.
         warning("Reading error rate table from ", errorRateFile)
@@ -267,7 +273,7 @@ annotate_with_locus_error_rate <- function(mutationTable,
     if (is.null(errorRateTable))
     {
         errorRateTable <- mutationTable %>%
-            filter(POOL_BARCODE %in% patientSamples$POOL_BARCODE) %>%
+            filter(POOL_BARCODE %in% layoutTable$POOL_BARCODE) %>%
             mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, POOL_BARCODE, NA)) %>%
             group_by(UNIQUE_POS, TRINUCLEOTIDE) %>%
             summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
@@ -312,7 +318,7 @@ annotate_with_locus_error_rate <- function(mutationTable,
 # This function is built from the code after loading in INVAR3.R
 #
 # take only off_target bases, exclude INDELs
-take.offtarget <- function(mutationTable, patientSamples, use_cosmic, is.blood_spot = FALSE)
+take.offtarget <- function(mutationTable, layoutTable, use_cosmic, is.blood_spot = FALSE)
 {
     # Common function. Takes in a mutation table.
     # Adds MUT_SUM, DP_SUM, BACKGROUND_AF columns on rows grouped by
@@ -344,7 +350,7 @@ take.offtarget <- function(mutationTable, patientSamples, use_cosmic, is.blood_s
     locusErrorRateFile <- str_c('locus_error_rates.off_target.', ifelse(use_cosmic, 'cosmic', 'no_cosmic'), '.rds')
 
     mutations.off_target <- annotate_with_locus_error_rate(mutationTable.off_target,
-                                                           patientSamples,
+                                                           layoutTable,
                                                            is.blood_spot = is.blood_spot,
                                                            on_target = FALSE,
                                                            errorRateFile = locusErrorRateFile)
@@ -389,18 +395,22 @@ take.offtarget <- function(mutationTable, patientSamples, use_cosmic, is.blood_s
 
 main <- function(scriptArgs)
 {
-    mutationTable <- load.mutations.table(scriptArgs$MUTATIONS_FILE, scriptArgs$MUTATIONS_BED_FILE, scriptArgs$TAPAS_SETTING)
+    tumourMutationTable <- load.tumour.mutations.table(scriptArgs$TUMOUR_MUTATIONS_FILE)
 
-    patientSamples <- load.patient.samples(scriptArgs$LAYOUT_FILE)
+    layoutTable <- load.layout.file(scriptArgs$LAYOUT_FILE)
+
+    mutationTable <- load.mutations.table(scriptArgs$MUTATIONS_FILE, tumourMutationTable, scriptArgs$TAPAS_SETTING)
 
     on_target <- filter.for.ontarget(mutationTable)
+    on_target <- annotate_with_locus_error_rate(on_target, layoutTable, is.blood_spot = scriptArgs$BLOODSPOT, on_target = TRUE)
+
     saveRDS(on_target, str_c(scriptArgs$TAPAS_SETTING, '.on_target.rds'))
     write_tsv(on_target, str_c(scriptArgs$TAPAS_SETTING, '.on_target.tsv'))
 
-    off_target.cosmic <- take.offtarget(mutationTable, patientSamples, TRUE, scriptArgs$BLOODSPOT)
+    off_target.cosmic <- take.offtarget(mutationTable, layoutTable, TRUE, scriptArgs$BLOODSPOT)
     saveRDS(off_target.cosmic, str_c(scriptArgs$TAPAS_SETTING, '.off_target.cosmic.error_rates.rds'))
 
-    off_target.no_cosmic <- take.offtarget(mutationTable, patientSamples, FALSE, scriptArgs$BLOODSPOT)
+    off_target.no_cosmic <- take.offtarget(mutationTable, layoutTable, FALSE, scriptArgs$BLOODSPOT)
     saveRDS(off_target.no_cosmic, str_c(scriptArgs$TAPAS_SETTING, '.off_target.no_cosmic.error_rates.rds'))
 }
 

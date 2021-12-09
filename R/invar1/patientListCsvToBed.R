@@ -11,7 +11,7 @@ if (length(args) != 2)
 csvFile <- args[1]
 bedFile <- args[2]
 
-read_csv(csvFile, col_names = TRUE, show_col_types = FALSE) %>% 
+read_csv(csvFile, col_names = TRUE, show_col_types = FALSE) %>%
 select(CHROM = chr, POS = pos, REF, ALT) %>%
 mutate(POS = as.integer(POS)) %>%
 mutate(START = POS - 1, .before = POS) %>%
