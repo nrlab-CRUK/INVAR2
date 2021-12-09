@@ -20,7 +20,9 @@ process FilterMutationsAndCalculateRates
         onTargetFile = "${tapasSetting}.on_target.tsv"
         
         """
-        Rscript --vanilla "!{projectDir}/R/invar3/invar3.R" \
+        export INVAR_HOME="!{projectDir}"
+        
+        Rscript --vanilla "${INVAR_HOME}/R/invar3/invar3.R" \
             --mutations-list="!{patientBedFile}" \
             --tapas="!{tapasSetting}" \
             --layout="!{layoutFile}" \

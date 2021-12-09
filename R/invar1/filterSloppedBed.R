@@ -13,12 +13,8 @@ outFile <- args[2]
 
 maximumIntervalSize <- 100
 
-table <-
-    read_tsv(inFile,
-        col_names = c('CHROM', 'START', 'END', 'REF', 'ALT'),
-        col_types = 'ciicc')
-
-filtered <- table %>%
-    filter(END - START <= maximumIntervalSize)
-
-write_tsv(filtered, outFile, col_names = FALSE)
+read_tsv(inFile,
+    col_names = c('CHROM', 'START', 'END', 'REF', 'ALT'),
+    col_types = 'ciicc') %>%
+filter(END - START <= maximumIntervalSize) %>%
+write_tsv(file = outFile, col_names = FALSE)

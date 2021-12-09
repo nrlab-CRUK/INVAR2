@@ -1,7 +1,30 @@
 include { logException } from '../functions/debugging'
 
 
-process SlopBED
+process patientListToBed
+{
+    executor 'local'
+    memory '256m'
+    cpus 1
+    time '5m'
+    
+    input:
+        path csvFile
+
+    output:
+        path bedFile
+    
+    shell:
+        bedFile = "${csvFile.baseName}.bed"
+        
+        """
+        Rscript --vanilla "!{projectDir}/R/invar1/patientListCsvToBed.R" \
+            "!{csvFile}" "!{bedFile}"
+        """
+}
+
+
+process slopBedFile
 {
     executor 'local'
     memory '32m'
@@ -16,7 +39,7 @@ process SlopBED
         path filteredBedFile, emit: "sloppedBed"
 
     shell:
-        filteredBedFile = "slopped.filtered.bed"
+        filteredBedFile = "${bedFile.baseName}.slopped.filtered.bed"
 
         template "invar1/slopbed.sh"
 }
@@ -185,7 +208,7 @@ process annotateMutation
 workflow invar1
 {
     main:
-        bed_channel = channel.fromPath(params.BED, checkIfExists: true)
+        patient_list_channel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
         genome_channel = channel.fromPath(params.HG19_GENOME, checkIfExists: true)
         fasta_channel = channel.fromPath(params.FASTAREF, checkIfExists: true)
         snp_channel = channel.fromPath(params.K1G_DB, checkIfExists: true)
@@ -193,12 +216,13 @@ workflow invar1
         cosmic_channel = channel.fromPath(params.COSMIC_DB, checkIfExists: true)
         cosmic_index_channel = channel.fromPath("${params.COSMIC_DB}.tbi")
 
-        SlopBED(bed_channel, genome_channel)
+        patientListToBed(patient_list_channel)
+        slopBedFile(patientListToBed.out, genome_channel)
 
         bamList = file(params.INPUT_FILES, checkIfExists: true).readLines()
         bam_channel = channel.fromList(bamList).map { f -> file(f, checkIfExists: true) }
 
-        mpileup(SlopBED.out, fasta_channel, bam_channel) | biallelic
+        mpileup(slopBedFile.out, fasta_channel, bam_channel) | biallelic
 
         mutation_channel = biallelic.out.filter { pool, bc, f -> f.countLines() > 1 }
 
