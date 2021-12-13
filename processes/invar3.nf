@@ -19,8 +19,6 @@ process createMutationsTable
         tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"
 
         """
-        export INVAR_HOME="!{projectDir}"
-
         Rscript --vanilla "!{projectDir}/R/invar34/createMutationsTable.R" \
             --mutations="!{mutationFile}" \
             --tapas="!{tapasSetting}" \
@@ -56,9 +54,9 @@ process offTargetErrorRate
         export INVAR_HOME="!{projectDir}"
 
         Rscript --vanilla "!{projectDir}/R/invar34/offTargetErrorRate.R" \
+            --mutations="!{mutationRDSFile}" \
             --layout="!{layoutFile}" \
-            !{cosmic ? "--cosmic" : ""} \
-            "!{mutationRDSFile}"
+            !{cosmic ? "--cosmic" : ""}
         """
 }
 
@@ -73,7 +71,7 @@ workflow invar3
         layout_channel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
 
         createMutationsTable(mutation_channel, tumour_mutations_channel, layout_channel)
-        
+
         offTargetErrorRate(createMutationsTable.out.filteredMutationFile, layout_channel, channel.of(true, false))
 
 }

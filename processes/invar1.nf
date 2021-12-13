@@ -257,7 +257,7 @@ workflow invar1
         all_mutations_channel =
             annotateMutation(by_bam_mutation_channel)
                 .collect { pool, barcode, file -> file }
-        
+
         combineCSV(all_mutations_channel)
 
     emit:

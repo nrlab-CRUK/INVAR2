@@ -116,11 +116,11 @@ createMultiallelicBlacklist <- function(mutationTable, n_alt_alleles_threshold, 
 
     # Create a list of loci that have more than one allele.
 
-    multiallelic_blacklist <- tibble(UNIQUE_POS = character(), .rows = 0)
+    multiallelicBlacklist <- tibble(UNIQUE_POS = character(), .rows = 0)
 
     if (nrow(multiallelic) > 0)
     {
-        multiallelic_blacklist <- multiallelic %>%
+        multiallelicBlacklist <- multiallelic %>%
             group_by(UNIQUE_POS) %>%
             mutate(N_ALT_ALLELES = n(), MIN = min(MUT_SUM), MAX = max(MUT_SUM)) %>%
             filter(N_ALT_ALLELES >= n_alt_alleles_threshold &
@@ -130,31 +130,24 @@ createMultiallelicBlacklist <- function(mutationTable, n_alt_alleles_threshold, 
             distinct(UNIQUE_POS)
     }
 
-    multiallelic_blacklist
+    multiallelicBlacklist
 }
 
 # Tidy multiallelic sites. Filter out those that have more than the requested
 # number of alleles.
 
 blacklist.multiallelic <- function(mutationTable,
+                                   multiallelicBlacklist,
                                    n_alt_alleles_threshold,
                                    minor_alt_allele_threshold)
 {
-    # message("starting rows before multiallelic blacklist: ", nrow(mutationTable))
-
-    multiallelic_blacklist <- createMultiallelicBlacklist(mutationTable, n_alt_alleles_threshold, minor_alt_allele_threshold)
-
-    # message("length of multiallelic blacklist is ", nrow(multiallelic_blacklist))
-
     filteredMutationTable <- mutationTable
 
-    if (nrow(multiallelic_blacklist) > 0)
+    if (nrow(multiallelicBlacklist) > 0)
     {
         filteredMutationTable <- mutationTable %>%
-            filter(!UNIQUE_POS %in% multiallelic_blacklist)
+            filter(!UNIQUE_POS %in% multiallelicBlacklist)
     }
-
-    # message("rows after multiallelic blacklist filtering: ", nrow(filteredMutationTable))
 
     filteredMutationTable
 }
@@ -187,6 +180,14 @@ load.layout.file <- function(layoutFile)
         distinct(POOL_BARCODE)
 }
 
+addDerivedColumns <- function(mutationTable)
+{
+    mutationTable %>%
+        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
+        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
+        mutate(UNIQUE_ID = str_c(UNIQUE_POS, POOL_BARCODE, sep='_'))
+}
+
 # Load the mutations table from file.
 
 load.mutations.table <- function(mutationsFile, tumourMutationsTable, tapasSetting, cosmic_threshold)
@@ -197,9 +198,7 @@ load.mutations.table <- function(mutationsFile, tumourMutationsTable, tapasSetti
     # Add columns of derived values and combined identifiers.
     read_tsv(mutationsFile, col_types = 'ciccicdddddccildc') %>%
         filter(!(str_detect(REF, '[acgt]') | str_detect(ALT, '[acgt]'))) %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
-        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
-        mutate(UNIQUE_ID = str_c(UNIQUE_POS, POOL_BARCODE, sep='_')) %>%
+        addDerivedColumns() %>%
         mutate(AF = (ALT_F + ALT_R) / DP) %>%
         mutate(COSMIC = COSMIC_MUTATIONS > cosmic_threshold) %>%
         mutate(SNP = `1KG_AF` > 0) %>%
@@ -211,6 +210,7 @@ load.mutations.table <- function(mutationsFile, tumourMutationsTable, tapasSetti
 
 filter.mutations.table <- function(mutationTable,
                                    tumourMutationsTable,
+                                   multiallelicBlacklist,
                                    individual_MQSB_threshold,
                                    max_DP,
                                    min_ref_DP,
@@ -221,7 +221,24 @@ filter.mutations.table <- function(mutationTable,
     mutationTable %>%
         filter(DP < max_DP & !SNP & REF_R + REF_F >= min_ref_DP & (ON_TARGET | !COSMIC)) %>%
         blacklist.MQSB(individual_MQSB_threshold) %>%
-        blacklist.multiallelic(n_alt_alleles_threshold, minor_alt_allele_threshold)
+        blacklist.multiallelic(multiallelicBlacklist, n_alt_alleles_threshold, minor_alt_allele_threshold)
+}
+
+saveRDSandTSV <- function(t, file)
+{
+    cleaned <- t %>%
+        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE', 'UNIQUE_ID')))
+
+    saveRDS(cleaned, file)
+
+    tsv <- str_replace(file, "\\.rds$", ".tsv")
+
+    if (tsv != file)
+    {
+        write_tsv(cleaned, tsv)
+    }
+
+    t
 }
 
 ##
@@ -239,26 +256,29 @@ main <- function(scriptArgs)
                                               scriptArgs$TAPAS_SETTING,
                                               scriptArgs$COSMIC_THRESHOLD)
 
-    saveRDS(mutationTable.all, 'mutation_table.all.rds')
-
-    mutationTable.all %>%
-        filter.mutations.table(individual_MQSB_threshold = scriptArgs$MQSB_THRESHOLD,
-                               max_DP = scriptArgs$MAX_DP,
-                               min_ref_DP = scriptArgs$MIN_REF_DP,
-                               n_alt_alleles_threshold = scriptArgs$ALT_ALLELES_THRESHOLD,
-                               minor_alt_allele_threshold = scriptArgs$MINOR_ALT_ALLELE_THRESHOLD) %>%
-        saveRDS("mutation_table.filtered.rds")
+    saveRDSandTSV(mutationTable.all, 'mutation_table.all.rds')
 
     multiallelicBlacklist <- mutationTable.all %>%
         blacklist.MQSB(scriptArgs$MQSB_THRESHOLD) %>%
         createMultiallelicBlacklist(scriptArgs$ALT_ALLELES_THRESHOLD, scriptArgs$MINOR_ALT_ALLELE_THRESHOLD)
 
+    mutationTable.all %>%
+        filter.mutations.table(tumourMutationTable,
+                               multiallelicBlacklist,
+                               individual_MQSB_threshold = scriptArgs$MQSB_THRESHOLD,
+                               max_DP = scriptArgs$MAX_DP,
+                               min_ref_DP = scriptArgs$MIN_REF_DP,
+                               n_alt_alleles_threshold = scriptArgs$ALT_ALLELES_THRESHOLD,
+                               minor_alt_allele_threshold = scriptArgs$MINOR_ALT_ALLELE_THRESHOLD) %>%
+        saveRDSandTSV("mutation_table.filtered.rds")
+
     if (nrow(multiallelicBlacklist) > 0)
     {
-        write_tsv(multiallelicBlacklist, 'multiallelic_blacklist.tsv')
+        write_tsv(multiallelicBlacklist, 'multiallelic_blacklist.tsv', col_names = FALSE)
     }
 }
 
 # Launch it.
 
 invisible(main(parseOptions()))
+#invisible(main(richTestOptions()))

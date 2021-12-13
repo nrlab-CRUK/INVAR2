@@ -1,5 +1,6 @@
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 
@@ -13,12 +14,15 @@ parseOptions <- function()
     defaultMarker <- "<REQUIRED>"
 
     options_list <- list(
-        make_option(c("-l", "--layout"), type="character", metavar="file",
+        make_option(c("--mutations"), type="character", metavar="file",
+                    dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by createMutationsTable.R",
+                    default=defaultMarker),
+        make_option(c("--layout"), type="character", metavar="file",
                     dest="LAYOUT_FILE", help="The sequencing layout file",
                     default=defaultMarker),
-        make_option(c("-b", "--bloodspot"), action="store_true", default=FALSE,
+        make_option(c("--bloodspot"), action="store_true", default=FALSE,
                     dest="BLOODSPOT", help="Indicate this is blood spot data."),
-        make_option(c("-c", "--cosmic"), action="store_true", default=FALSE,
+        make_option(c("--cosmic"), action="store_true", default=FALSE,
                     dest="COSMIC", help="Keep Cosmic scores."))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options] <mutation file>") %>%
@@ -31,12 +35,7 @@ parseOptions <- function()
         stop(str_c("ERROR: One or more required arguments have not been provided: ", str_c(missing, collapse = ' ')))
     }
 
-    if (length(opts$args) != 1)
-    {
-        stop("The mutation table file (RDS) has not been provided.")
-    }
-
-    scriptOptions <- list(MUTATIONS_TABLE_FILE = opts$args[1])
+    scriptOptions <- list()
     for (v in names(opts$options))
     {
         scriptOptions[v] = opts$options[v]
@@ -50,7 +49,7 @@ parseOptions <- function()
 richTestOptions <- function()
 {
     list(
-        MUTATIONS_TABLE_FILE = 'invar34/mutation_table.filtered.rds',
+        MUTATIONS_TABLE_FILE = 'my_tables/mutation_table.filtered.rds',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         BLOODSPOT = FALSE,
         COSMIC = TRUE
@@ -71,6 +70,14 @@ load.layout.file <- function(layoutFile)
     mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
     select(POOL_BARCODE) %>%
     distinct(POOL_BARCODE)
+}
+
+addDerivedColumns <- function(mutationTable)
+{
+    mutationTable %>%
+        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
+        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
+        mutate(UNIQUE_ID = str_c(UNIQUE_POS, POOL_BARCODE, sep='_'))
 }
 
 ##
@@ -108,6 +115,13 @@ createErrorRateTable <- function(mutationTable,
                LOCUS_NOISE.PASS = PROPORTION < proportion_of_controls & BACKGROUND_AF < max_background_mean_AF,
                HAS_AF = BACKGROUND_AF > 0,
                LOCUS_NOISE.FAIL = !LOCUS_NOISE.PASS)
+}
+
+saveErrorRateTable <- function(errorRateTable, file)
+{
+    errorRateTable %>%
+        select(-any_of(c('PROPORTION', 'LOCUS_NOISE.PASS', 'HAS_AF', 'LOCUS_NOISE.FAIL'))) %>%
+        saveRDSandTSV(file)
 }
 
 # Common function. Takes in a mutation table.
@@ -153,52 +167,97 @@ add.locus_noise_pass <- function(mutationTable, errorRateTable)
                BOTH_STRANDS = (ALT_R > 0 & ALT_F > 0) | AF == 0)
 }
 
+removeDerivedColums <- function(mutationTable)
+{
+    mutationTable %>%
+        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE', 'UNIQUE_ID')))
+}
+
+saveRDSandTSV <- function(t, file)
+{
+    saveRDS(t, file)
+
+    tsv <- str_replace(file, "\\.rds$", ".tsv")
+
+    if (tsv != file)
+    {
+        write_tsv(t, tsv)
+    }
+
+    t
+}
+
+cleanAndSaveRDSandTSV <- function(t, file)
+{
+    t %>%
+        removeDerivedColums() %>%
+        saveRDSandTSV(file)
+
+    t
+}
+
+##
+# Part of main, where this code is run with and without cosmic.
+#
+
+doMain <- function(withCosmic, mutationTable, layoutTable, errorRateTable)
+{
+    cosmicFilePart = ifelse(withCosmic, 'cosmic', 'no_cosmic')
+
+    mutationTable.off_target <- mutationTable %>%
+        filter.off_target(withCosmic) %>%
+        add.locus_noise_pass(errorRateTable)
+
+    mutationTable.off_target %>%
+        groupAndSummarizeForErrorRate() %>%
+        cleanAndSaveRDSandTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.all.rds'))
+
+    ## Calculate error rate with different settings and save
+
+    # locus noise pass
+
+    mutationTable.off_target %>%
+        filter(LOCUS_NOISE.PASS) %>%
+        groupAndSummarizeForErrorRate() %>%
+        cleanAndSaveRDSandTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoisepass.rds'))
+
+    # both strands
+
+    mutationTable.off_target %>%
+        filter(BOTH_STRANDS) %>%
+        groupAndSummarizeForErrorRate() %>%
+        cleanAndSaveRDSandTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.bothstrands.rds'))
+
+    # locus noise AND both strands
+
+    mutationTable.off_target %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
+        groupAndSummarizeForErrorRate() %>%
+        cleanAndSaveRDSandTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoisepass_bothstrands.rds'))
+}
+
 ##
 # The main script, wrapped as a function.
 #
 
 main <- function(scriptArgs)
 {
-    cosmicFilePart = ifelse(scriptArgs$COSMIC, 'cosmic', 'no_cosmic')
-
     layoutTable <- load.layout.file(scriptArgs$LAYOUT_FILE)
 
-    mutationTable <- readRDS(scriptArgs$MUTATIONS_TABLE_FILE)
+    mutationTable <-
+        readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
+        addDerivedColumns()
 
     errorRateTable <- createErrorRateTable(mutationTable, layoutTable, FALSE, scriptArgs$BLOODSPOT)
 
-    mutationTable.off_target <- mutationTable %>%
-        filter.off_target(scriptArgs$COSMIC) %>%
-        add.locus_noise_pass(errorRateTable)
+    saveErrorRateTable(errorRateTable, 'locus_error_rates.off_target.rds')
 
-    mutationTable.off_target %>%
-        groupAndSummarize() %>%
-        writeRDS(str_c('locus_error_rates.off_target.', cosmicFilePart, '.all.rds'))
-
-    ## Calculate error rate with different settings and save
-
-    # locus noise pass
-
-    mutations.off_target %>%
-        filter(LOCUS_NOISE.PASS) %>%
-        groupAndSummarize() %>%
-        writeRDS(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoisepass.rds'))
-
-    # both strands
-
-    mutations.off_target %>%
-        filter(BOTH_STRANDS) %>%
-        groupAndSummarize() %>%
-        writeRDS(str_c('mutation_table.off_target.', cosmicFilePart, '.bothstrands.rds'))
-
-    # locus noise AND both strands
-
-    background_error.locus_noise.both_strands <- mutations.off_target %>%
-        filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
-        groupAndSummarize() %>%
-        writeRDS(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoisepass_bothstrands.rds'))
+    #mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, errorRateTable)
+    doMain(TRUE, mutationTable, layoutTable, errorRateTable)
+    doMain(FALSE, mutationTable, layoutTable, errorRateTable)
 }
 
 # Launch it.
 
-invisible(main(parseOptions()))
+#invisible(main(parseOptions()))
+invisible(main(richTestOptions()))
