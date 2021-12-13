@@ -50,8 +50,6 @@ process mpileup
     cpus 1
     time '4h'
 
-    publishDir "mpileup", mode: 'link'
-
     input:
         path sloppedBedFile
         path fastaReference
@@ -205,6 +203,27 @@ process annotateMutation
         """
 }
 
+process combineCSV
+{
+    executor 'local'
+    memory '32m'
+    cpus 1
+    time '1h'
+
+    publishDir 'mutations', mode: 'link'
+
+    input:
+        path(csvFiles)
+
+    output:
+        path(combinedFile)
+
+    shell:
+        combinedFile = "${params.FINAL_PREFIX}.combined.final.ann.tsv"
+
+        template "invar1/catCSV.sh"
+}
+
 workflow invar1
 {
     main:
@@ -237,10 +256,10 @@ workflow invar1
 
         all_mutations_channel =
             annotateMutation(by_bam_mutation_channel)
-                .map { pool, barcode, file -> file }
-                .collectFile(name: "${params.FINAL_PREFIX}.combined.final.ann.tsv",
-                             storeDir: 'mutations', keepHeader: true, skip: 1, sort: false)
+                .collect { pool, barcode, file -> file }
+        
+        combineCSV(all_mutations_channel)
 
     emit:
-        mutationFile = all_mutations_channel
+        mutationFile = combineCSV.out
 }

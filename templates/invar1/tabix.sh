@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -l
 
 python3 "!{projectDir}/python/invar1/toRegions.py" "!{mutationFile}" | split -l 800 - "regions.txt."
 

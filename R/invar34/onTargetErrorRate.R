@@ -23,7 +23,9 @@ parseOptions <- function()
                     dest="LAYOUT_FILE", help="The sequencing layout file",
                     default=defaultMarker),
         make_option(c("-b", "--bloodspot"), action="store_true", default=FALSE,
-                    dest="BLOODSPOT", help="Indicate this is blood spot data."))
+                    dest="BLOODSPOT", help="Indicate this is blood spot data."),
+        make_option(c("-c", "--cosmic"), action="store_true", default=FALSE,
+                    dest="COSMIC", help="Keep Cosmic scores."))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options] <mutation file>") %>%
         parse_args(positional_arguments = TRUE)
@@ -37,10 +39,10 @@ parseOptions <- function()
 
     if (length(opts$args) != 1)
     {
-        stop("The mutation file has not been provided.")
+        stop("The mutation table file (RDS) has not been provided.")
     }
 
-    scriptOptions <- list(MUTATIONS_FILE = opts$args[1])
+    scriptOptions <- list(MUTATIONS_TABLE_FILE = opts$args[1])
     for (v in names(opts$options))
     {
         scriptOptions[v] = opts$options[v]
@@ -59,100 +61,9 @@ richTestOptions <- function()
         TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
-        BLOODSPOT = FALSE
+        BLOODSPOT = FALSE,
+        COSMIC = TRUE
     )
-}
-
-
-##
-# Taken from TAPAS_functions.R
-# Multiallelic blacklisting.
-#
-
-# Filter out rows where the MSQB value is greater than the threshold.
-
-blacklist.MQSB <- function(mutationTable, individual_MQSB_threshold)
-{
-    message("number of unique loci (pre MQSB): ", length(unique(mutationTable$UNIQUE_POS)))
-
-    message("applying an individiual MQSB threshold of ", individual_MQSB_threshold)
-
-    filteredMutationTable <- mutationTable %>%
-        filter(MQSB > individual_MQSB_threshold)
-
-    message("number of unique loci (post MQSB): ", length(unique(filteredMutationTable$UNIQUE_POS)))
-
-    filteredMutationTable
-}
-
-# Create a list of loci that have more than the given number of alleles.
-
-createMultiallelicBlacklist <- function(mutationTable, n_alt_alleles_threshold = 3, minor_alt_allele_threshold = 2)
-{
-    # Filter for rows with positive AF and
-    # determine the number of alt alleles per UNIQUE_POS
-    multiallelic <- mutationTable %>%
-        filter(AF > 0) %>%
-        mutate(MUT_SUM = ALT_F + ALT_R) %>%
-        select(UNIQUE_POS, ALT, MUT_SUM) %>%
-        arrange(UNIQUE_POS)
-
-    # Identify loci with >1 alt alleles (e.g. both A>C and A>T at a position)
-    duplicatePositions <- multiallelic %>%
-        filter(duplicated(UNIQUE_POS))
-
-    multiallelic <- multiallelic %>%
-        filter(UNIQUE_POS %in% duplicatePositions)
-
-    # Create a list of loci that have more than one allele.
-
-    multiallelic_blacklist <- tibble('UNIQUE_POS', .rows = 0)
-
-    if (nrow(multiallelic) > 0)
-    {
-        multiallelic_blacklist <- multiallelic %>%
-            group_by(UNIQUE_POS) %>%
-            mutate(N_ALT_ALLELES = n(), MIN = min(MUT_SUM), MAX = max(MUT_SUM)) %>%
-            filter(N_ALT_ALLELES >= n_alt_alleles_threshold &
-                   MIN >= minor_alt_allele_threshold &
-                   MAX >= minor_alt_allele_threshold) %>%
-            select(UNIQUE_POS) %>%
-            distinct(UNIQUE_POS)
-    }
-
-    multiallelic_blacklist
-}
-
-# Tidy multiallelic sites. Filter out those that have more than the requested
-# number of alleles.
-
-blacklist.multiallelic <- function(mutationTable,
-                                   n_alt_alleles_threshold = 3, minor_alt_allele_threshold = 2,
-                                   blacklistFile = NULL)
-{
-    message("starting rows before multiallelic blacklist: ", nrow(mutationTable))
-
-    multiallelic_blacklist <- createMultiallelicBlacklist(mutationTable, n_alt_alleles_threshold, minor_alt_allele_threshold)
-
-    message("length of multiallelic blacklist is ", nrow(multiallelic_blacklist))
-
-    # save the list of multiallelic loci for reference
-    if (!is.null(blacklistFile))
-    {
-        write_tsv(multiallelic_blacklist, blacklistFile, col_names = FALSE, quote = 'none')
-    }
-
-    filteredMutationTable <- mutationTable
-
-    if (nrow(multiallelic_blacklist) > 0)
-    {
-        filteredMutationTable <- mutationTable %>%
-            filter(!UNIQUE_POS %in% multiallelic_blacklist)
-    }
-
-    message("rows after multiallelic blacklist filtering: ", nrow(filteredMutationTable))
-
-    filteredMutationTable
 }
 
 
@@ -172,57 +83,6 @@ load.tumour.mutations.table <- function(tumourMutationsFile)
     mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'))
 }
 
-# Load the mutations table from file and filter.
-
-load.mutations.table <- function(mutationsFile, tumourMutationsTable, tapasSetting,
-                                 cosmic_threshold = 0, max_DP = 1500, min_ref_DP = 5,
-                                 individual_MQSB_threshold = 0.01,
-                                 n_alt_alleles_threshold = 3, minor_alt_allele_threshold = 2)
-{
-    mutationTableRDSFile <- str_c(tapasSetting, '.rds')
-
-    if (file.exists(mutationTableRDSFile))
-    {
-        # When run in a pipeline, this will never exist.
-        # In development, it might and can save some time to use it.
-        warning("Read mutations table from previously saved ", mutationTableRDSFile)
-        return(readRDS(mutationTableRDSFile))
-    }
-
-    message("Reading in table from ", mutationsFile)
-
-    mutationTable <- read_tsv(mutationsFile, col_types = 'ciccicdddddccildc')
-
-    # Remove soft-masked repeats, identified by lowercase.
-    # Add columns of derived values and combined identifiers.
-    mutationTable <- mutationTable %>%
-        filter(!(str_detect(REF, '[acgt]') | str_detect(ALT, '[acgt]'))) %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
-        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
-        mutate(UNIQUE_ID = str_c(UNIQUE_POS, POOL_BARCODE, sep='_')) %>%
-        mutate(AF = (ALT_F + ALT_R) / DP) %>%
-        mutate(COSMIC = COSMIC_MUTATIONS > cosmic_threshold) %>%
-        mutate(SNP = `1KG_AF` > 0) %>%
-        mutate(ON_TARGET = UNIQUE_POS %in% tumourMutationsTable$UNIQUE_POS)
-
-
-    # save on.target pre-filtering
-    mutationTable.prefilter <- mutationTable %>%
-        filter(ON_TARGET & nchar(ALT) == 1 & nchar(REF) == 1)
-
-    saveRDS(mutationTable.prefilter, file = str_c(tapasSetting, ".on_target.prefilter.rds"))
-
-    # Apply filters to blacklist loci
-    mutationTable <- mutationTable %>%
-        filter(DP < max_DP & !SNP & REF_R + REF_F >= min_ref_DP & (ON_TARGET | !COSMIC))
-
-    mutationTable <- blacklist.MQSB(mutationTable, individual_MQSB_threshold)
-    mutationTable <- blacklist.multiallelic(mutationTable, n_alt_alleles_threshold, minor_alt_allele_threshold)
-
-    saveRDS(mutationTable, mutationTableRDSFile)
-
-    mutationTable
-}
 
 # Read the layout file and extract unique pool id and barcode pairs.
 
@@ -399,10 +259,7 @@ main <- function(scriptArgs)
 
     layoutTable <- load.layout.file(scriptArgs$LAYOUT_FILE)
 
-    mutationTable <- load.mutations.table(scriptArgs$MUTATIONS_FILE, tumourMutationTable, scriptArgs$TAPAS_SETTING)
-
-    on_target <- filter.for.ontarget(mutationTable)
-    on_target <- annotate_with_locus_error_rate(on_target, layoutTable, is.blood_spot = scriptArgs$BLOODSPOT, on_target = TRUE)
+    mutationTable <- readRDS(scriptArgs$MUTATIONS_TABLE_FILE)
 
     saveRDS(on_target, str_c(scriptArgs$TAPAS_SETTING, '.on_target.rds'))
     write_tsv(on_target, str_c(scriptArgs$TAPAS_SETTING, '.on_target.tsv'))
