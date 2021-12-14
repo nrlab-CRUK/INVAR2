@@ -22,8 +22,12 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--bloodspot"), action="store_true", default=FALSE,
                     dest="BLOODSPOT", help="Indicate this is blood spot data."),
-        make_option(c("--cosmic"), action="store_true", default=FALSE,
-                    dest="COSMIC", help="Keep Cosmic scores."))
+        make_option(c("--control-proportion"), type="double", metavar="num",
+                    dest="CONTROL_PROPORTION", help="Blacklist loci that have signal in >30% of the nonptspec samples",
+                    default=0.1),
+        make_option(c("--max-background-af"), type="double", metavar="num",
+                    dest="MAX_BACKGROUND_AF", help="Filter loci with a background AF in controls greater than this value",
+                    default=0.01))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options] <mutation file>") %>%
         parse_args(positional_arguments = TRUE)
@@ -51,8 +55,9 @@ richTestOptions <- function()
     list(
         MUTATIONS_TABLE_FILE = 'my_tables/mutation_table.filtered.rds',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
-        BLOODSPOT = FALSE,
-        COSMIC = TRUE
+        CONTROL_PROPORTION = 0.1,
+        MAX_BACKGROUND_AF = 0.01,
+        BLOODSPOT = FALSE
     )
 }
 
@@ -88,9 +93,9 @@ addDerivedColumns <- function(mutationTable)
 createErrorRateTable <- function(mutationTable,
                                  layoutTable,
                                  on_target,
-                                 proportion_of_controls = 0.1,
-                                 max_background_mean_AF = 0.01,
-                                 is.blood_spot = FALSE)
+                                 proportion_of_controls,
+                                 max_background_mean_AF,
+                                 is.blood_spot)
 {
     if (is.blood_spot)
     {
@@ -130,12 +135,12 @@ groupAndSummarizeForErrorRate <- function(mt)
 
 # Filter for rows that are off target, optionally also those that have COSMIC values.
 
-filter.off_target <- function(mutationTable, use_cosmic)
+filter.off_target <- function(mutationTable, withCosmic)
 {
     mutationTable.off_target <- mutationTable %>%
         filter(!ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
 
-    if (!use_cosmic)
+    if (!withCosmic)
     {
         mutationTable.off_target <- mutationTable.off_target %>%
             filter(!COSMIC)
@@ -238,7 +243,10 @@ main <- function(scriptArgs)
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addDerivedColumns()
 
-    errorRateTable <- createErrorRateTable(mutationTable, layoutTable, FALSE, is.blood_spot = scriptArgs$BLOODSPOT)
+    errorRateTable <- createErrorRateTable(mutationTable, layoutTable, FALSE,
+                                           proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
+                                           max_background_mean_AF = scriptArgs$MAX_BACKGROUND_AF,
+                                           is.blood_spot = scriptArgs$BLOODSPOT)
 
     saveRDSandTSV(errorRateTable, 'locus_error_rates.off_target.rds')
 

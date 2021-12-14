@@ -55,7 +55,10 @@ process offTargetErrorRate
 
         Rscript --vanilla "!{projectDir}/R/invar34/offTargetErrorRate.R" \
             --mutations="!{mutationRDSFile}" \
-            --layout="!{layoutFile}"
+            --layout="!{layoutFile}" \
+            --control-proportion=!{params.proportion_of_controls} \
+            --max-background-af=!{params.max_background_mean_AF} \
+            !{params.is_bloodspot ? "--bloodspot" : ""}
         """
 }
 
