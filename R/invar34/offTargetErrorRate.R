@@ -76,8 +76,7 @@ addDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
         mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
-        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
-        mutate(UNIQUE_ID = str_c(UNIQUE_POS, POOL_BARCODE, sep='_'))
+        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
 }
 
 ##
@@ -112,16 +111,7 @@ createErrorRateTable <- function(mutationTable,
 
     errorRateTable %>%
         mutate(PROPORTION = N_SAMPLES_WITH_SIGNAL / N_SAMPLES,
-               LOCUS_NOISE.PASS = PROPORTION < proportion_of_controls & BACKGROUND_AF < max_background_mean_AF,
-               HAS_AF = BACKGROUND_AF > 0,
-               LOCUS_NOISE.FAIL = !LOCUS_NOISE.PASS)
-}
-
-saveErrorRateTable <- function(errorRateTable, file)
-{
-    errorRateTable %>%
-        select(-any_of(c('PROPORTION', 'LOCUS_NOISE.PASS', 'HAS_AF', 'LOCUS_NOISE.FAIL'))) %>%
-        saveRDSandTSV(file)
+               LOCUS_NOISE.PASS = PROPORTION < proportion_of_controls & BACKGROUND_AF < max_background_mean_AF)
 }
 
 # Common function. Takes in a mutation table.
@@ -248,16 +238,16 @@ main <- function(scriptArgs)
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addDerivedColumns()
 
-    errorRateTable <- createErrorRateTable(mutationTable, layoutTable, FALSE, scriptArgs$BLOODSPOT)
+    errorRateTable <- createErrorRateTable(mutationTable, layoutTable, FALSE, is.blood_spot = scriptArgs$BLOODSPOT)
 
-    saveErrorRateTable(errorRateTable, 'locus_error_rates.off_target.rds')
+    saveRDSandTSV(errorRateTable, 'locus_error_rates.off_target.rds')
 
-    #mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, errorRateTable)
-    doMain(TRUE, mutationTable, layoutTable, errorRateTable)
-    doMain(FALSE, mutationTable, layoutTable, errorRateTable)
+    mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, errorRateTable)
+    #doMain(TRUE, mutationTable, layoutTable, errorRateTable)
+    #doMain(FALSE, mutationTable, layoutTable, errorRateTable)
 }
 
 # Launch it.
 
-#invisible(main(parseOptions()))
-invisible(main(richTestOptions()))
+invisible(main(parseOptions()))
+#invisible(main(richTestOptions()))

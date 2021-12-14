@@ -35,19 +35,19 @@ process createMutationsTable
 
 process offTargetErrorRate
 {
-    memory '8g'
-    cpus 1
+    memory '2g'
+    cpus 2
     time '1h'
 
-    publishDir 'invar34', mode: 'link'
+    publishDir 'off_target', mode: 'link'
 
     input:
-        each path(mutationRDSFile)
-        each path(layoutFile)
-        val cosmic
+        path mutationRDSFile
+        path layoutFile
 
     output:
         path '*.rds'
+        path '*.tsv', optional: true
 
     shell:
         """
@@ -55,8 +55,7 @@ process offTargetErrorRate
 
         Rscript --vanilla "!{projectDir}/R/invar34/offTargetErrorRate.R" \
             --mutations="!{mutationRDSFile}" \
-            --layout="!{layoutFile}" \
-            !{cosmic ? "--cosmic" : ""}
+            --layout="!{layoutFile}"
         """
 }
 
@@ -72,6 +71,6 @@ workflow invar3
 
         createMutationsTable(mutation_channel, tumour_mutations_channel, layout_channel)
 
-        offTargetErrorRate(createMutationsTable.out.filteredMutationFile, layout_channel, channel.of(true, false))
+        offTargetErrorRate(createMutationsTable.out.filteredMutationFile, layout_channel)
 
 }
