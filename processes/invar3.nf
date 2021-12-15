@@ -4,7 +4,7 @@ process createMutationsTable
     cpus 1
     time '1h'
 
-    publishDir 'invar34', mode: 'link'
+    publishDir 'mutations', mode: 'link'
 
     input:
         path mutationFile

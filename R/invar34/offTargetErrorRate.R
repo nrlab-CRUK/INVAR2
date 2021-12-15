@@ -53,7 +53,7 @@ parseOptions <- function()
 richTestOptions <- function()
 {
     list(
-        MUTATIONS_TABLE_FILE = 'my_tables/mutation_table.filtered.rds',
+        MUTATIONS_TABLE_FILE = 'mutations/mutation_table.filtered.rds',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         CONTROL_PROPORTION = 0.1,
         MAX_BACKGROUND_AF = 0.01,
@@ -68,13 +68,11 @@ richTestOptions <- function()
 
 # Read the layout file and extract unique pool id and barcode pairs.
 
-load.layout.file <- function(layoutFile)
+loadLayoutFile <- function(layoutFile)
 {
     suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
-    filter(case_or_control == "case") %>%
-    mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
-    select(POOL_BARCODE) %>%
-    distinct(POOL_BARCODE)
+        rename_with(str_to_upper) %>%
+        mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(BARCODE, '-', '_'), sep = '_'))
 }
 
 addDerivedColumns <- function(mutationTable)
@@ -92,7 +90,6 @@ addDerivedColumns <- function(mutationTable)
 # Locus error rate = overall background error rate per locus, aggregated across control samples
 createErrorRateTable <- function(mutationTable,
                                  layoutTable,
-                                 on_target,
                                  proportion_of_controls,
                                  max_background_mean_AF,
                                  is.blood_spot)
@@ -103,8 +100,11 @@ createErrorRateTable <- function(mutationTable,
         max_background_mean_AF <- 1
     }
 
+    layoutTable.cases <- layoutTable %>%
+        filter(CASE_OR_CONTROL == 'case')
+
     errorRateTable <- mutationTable %>%
-        filter(POOL_BARCODE %in% layoutTable$POOL_BARCODE) %>%
+        filter(POOL_BARCODE %in% layoutTable.cases$POOL_BARCODE) %>%
         mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, POOL_BARCODE, NA)) %>%
         group_by(UNIQUE_POS, TRINUCLEOTIDE) %>%
         summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
@@ -122,9 +122,9 @@ createErrorRateTable <- function(mutationTable,
 # Common function. Takes in a mutation table.
 # Adds MUT_SUM, DP_SUM, BACKGROUND_AF columns on rows grouped by
 # POOL, BARCODE, REF, ALT, TRINUCLEOTIDE
-groupAndSummarizeForErrorRate <- function(mt)
+groupAndSummarizeForErrorRate <- function(mutationTable)
 {
-    mt %>%
+    mutationTable %>%
         group_by(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
         summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
                   DP_SUM = sum(DP),
@@ -135,7 +135,7 @@ groupAndSummarizeForErrorRate <- function(mt)
 
 # Filter for rows that are off target, optionally also those that have COSMIC values.
 
-filter.off_target <- function(mutationTable, withCosmic)
+filterForOffTarget <- function(mutationTable, withCosmic)
 {
     mutationTable.off_target <- mutationTable %>%
         filter(!ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
@@ -151,7 +151,7 @@ filter.off_target <- function(mutationTable, withCosmic)
 
 
 # Add locus error rate and both strand information
-add.locus_noise_pass <- function(mutationTable, errorRateTable)
+addLocusNoisePass <- function(mutationTable, errorRateTable)
 {
     passed.loci <- errorRateTable %>%
         filter(LOCUS_NOISE.PASS) %>%
@@ -182,15 +182,6 @@ saveRDSandTSV <- function(t, file)
     t
 }
 
-cleanAndSaveRDSandTSV <- function(t, file)
-{
-    t %>%
-        removeDerivedColums() %>%
-        saveRDSandTSV(file)
-
-    t
-}
-
 ##
 # Part of main, where this code is run with and without cosmic.
 #
@@ -200,35 +191,58 @@ doMain <- function(withCosmic, mutationTable, layoutTable, errorRateTable)
     cosmicFilePart = ifelse(withCosmic, 'cosmic', 'no_cosmic')
 
     mutationTable.off_target <- mutationTable %>%
-        filter.off_target(withCosmic) %>%
-        add.locus_noise_pass(errorRateTable)
+        filterForOffTarget(withCosmic) %>%
+        addLocusNoisePass(errorRateTable)
 
-    mutationTable.off_target %>%
-        groupAndSummarizeForErrorRate() %>%
-        cleanAndSaveRDSandTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.all.rds'))
+    all <- mutationTable.off_target %>%
+        groupAndSummarizeForErrorRate()
+
+    all %>%
+        removeDerivedColums() %>%
+        write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.all.tsv'))
 
     ## Calculate error rate with different settings and save
 
     # locus noise pass
 
-    mutationTable.off_target %>%
+    locusNoisePass <- mutationTable.off_target %>%
         filter(LOCUS_NOISE.PASS) %>%
-        groupAndSummarizeForErrorRate() %>%
-        cleanAndSaveRDSandTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoisepass.rds'))
+        groupAndSummarizeForErrorRate()
+
+    locusNoisePass %>%
+        removeDerivedColums() %>%
+        write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoisepass.tsv'))
 
     # both strands
 
-    mutationTable.off_target %>%
+    bothStrands <- mutationTable.off_target %>%
         filter(BOTH_STRANDS) %>%
-        groupAndSummarizeForErrorRate() %>%
-        cleanAndSaveRDSandTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.bothstrands.rds'))
+        groupAndSummarizeForErrorRate()
+
+    bothStrands %>%
+        removeDerivedColums() %>%
+        write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.bothstrands.tsv'))
 
     # locus noise AND both strands
 
-    mutationTable.off_target %>%
+    bothFilters <- mutationTable.off_target %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
-        groupAndSummarizeForErrorRate() %>%
-        cleanAndSaveRDSandTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoisepass_bothstrands.rds'))
+        groupAndSummarizeForErrorRate()
+
+    bothFilters %>%
+        removeDerivedColums() %>%
+        write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoisepass_bothstrands.tsv'))
+
+    # Save these as a combined RDS file in a list.
+
+    allErrorRates = list(
+        NO_FILTER = all,
+        LOCUS_NOISE_PASS = locusNoisePass,
+        BOTH_STRANDS = bothStrands,
+        LOCUS_NOISE_PASS.BOTH_STRANDS = bothFilters
+    )
+
+    saveRDS(allErrorRates, str_c('mutation_table.error_rates.', cosmicFilePart, '.rds'))
 }
 
 ##
@@ -237,25 +251,32 @@ doMain <- function(withCosmic, mutationTable, layoutTable, errorRateTable)
 
 main <- function(scriptArgs)
 {
-    layoutTable <- load.layout.file(scriptArgs$LAYOUT_FILE)
+    layoutTable <-
+        loadLayoutFile(scriptArgs$LAYOUT_FILE) %>%
+        filter(CASE_OR_CONTROL == "case")
 
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addDerivedColumns()
 
-    errorRateTable <- createErrorRateTable(mutationTable, layoutTable, FALSE,
+    errorRateTable <- createErrorRateTable(mutationTable, layoutTable,
                                            proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
                                            max_background_mean_AF = scriptArgs$MAX_BACKGROUND_AF,
                                            is.blood_spot = scriptArgs$BLOODSPOT)
 
     saveRDSandTSV(errorRateTable, 'locus_error_rates.off_target.rds')
 
-    mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, errorRateTable)
-    #doMain(TRUE, mutationTable, layoutTable, errorRateTable)
-    #doMain(FALSE, mutationTable, layoutTable, errorRateTable)
+    #mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, errorRateTable)
+    doMain(TRUE, mutationTable, layoutTable, errorRateTable)
+    doMain(FALSE, mutationTable, layoutTable, errorRateTable)
 }
 
 # Launch it.
 
-invisible(main(parseOptions()))
-#invisible(main(richTestOptions()))
+if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789') {
+    # Rich's machine
+    setwd('/home/data/INVAR')
+    invisible(main(richTestOptions()))
+} else {
+    invisible(main(parseOptions()))
+}

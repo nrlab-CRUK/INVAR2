@@ -210,7 +210,7 @@ process combineCSV
     cpus 1
     time '1h'
 
-    publishDir 'mutations', mode: 'link'
+    publishDir 'unprocessed_mutations', mode: 'link'
 
     input:
         path(csvFiles)

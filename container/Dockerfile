@@ -68,7 +68,7 @@ RUN cd ${INSTALL_DIR}; \
 
 # R packages
 RUN /usr/bin/R --vanilla -e \
-    "install.packages(pkgs = c('optparse', 'tidyverse'), repos = c('https://cran.ma.imperial.ac.uk/', 'https://www.stats.bris.ac.uk/R/'))"
+    "install.packages(pkgs = c('optparse', 'stringi', 'tidyverse'), repos = c('https://cran.ma.imperial.ac.uk/', 'https://www.stats.bris.ac.uk/R/'))"
 
 ## Clean up
 RUN cd / && rm -rf ${BUILD_DIR}

@@ -280,5 +280,10 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-invisible(main(parseOptions()))
-#invisible(main(richTestOptions()))
+if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789') {
+    # Rich's machine
+    setwd('/home/data/INVAR')
+    invisible(main(richTestOptions()))
+} else {
+    invisible(main(parseOptions()))
+}
