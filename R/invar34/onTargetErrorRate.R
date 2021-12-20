@@ -148,11 +148,10 @@ createErrorRateTable <- function(mutationTable,
 ##
 # From TAPAS_functions.R "combine_classes_in_rds"
 #
-# Splits mutations such that a REF of 'C' or 'G' are both treated as 'C'
-# ('A' and 'T' are both treated as 'T').
-# Those that are changed (A and G) have their trinucleotide reverse complemented.
+# Complement the MUTATION and TRINUCLEOTIDE columns for reference alleles
+# 'A' and 'G'. 'T' and 'C' remain unchanged.
 #
-combineComplementaryMutations <- function(mutationTable)
+convertComplementaryMutations <- function(mutationTable)
 {
     complement <- function(sequence)
     {
@@ -164,18 +163,75 @@ combineComplementaryMutations <- function(mutationTable)
         stringi::stri_reverse(complement(sequence))
     }
 
-    unchanged <- mutationTable %>%
-        filter(REF == 'C' | REF == 'T')
+    complementary <- function(base)
+    {
+        base == 'A' | base == 'G'
+    }
 
-    complemented <- mutationTable %>%
-        filter(REF == 'A' | REF == 'G') %>%
-        mutate(REF = ifelse(REF == 'A', 'T', REF)) %>%
-        mutate(REF = ifelse(REF == 'G', 'C', REF)) %>%
-        mutate(TRINUCLEOTIDE = reverseComplement(TRINUCLEOTIDE),
-               MUTATION = complement(MUTATION))
+    mutationTable %>%
+        mutate(TRINUCLEOTIDE = ifelse(complementary(REF), reverseComplement(TRINUCLEOTIDE), TRINUCLEOTIDE),
+               MUTATION = ifelse(complementary(REF), complement(MUTATION), MUTATION))
+}
 
-    unchanged %>%
-        add_row(complemented)
+
+##
+# From TAPAS_functions.R, a subpart of "parse"
+#
+# Classify mutations as being patient specific or not. Adds the TUMOUR_AF
+# value from the tumour mutations table.
+#
+classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, layoutTable,
+                                          skipPatientFromBackground = NULL)
+{
+    # Patient specific is an inner join with the tumour mutation table by unique patient position.
+    # Inner join combined the semi join with the addition of the TUMOUR_AF column done in two
+    # steps in the original.
+
+    tumourMutationTable.specific <- tumourMutationTable %>%
+        select(UNIQUE_PATIENT_POS, TUMOUR_AF)
+
+    patientSpecific <- mutationTable %>%
+        inner_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS')
+
+    if (!is.null(skipPatientFromBackground))
+    {
+        patientSpecific <- patientSpecific %>%
+            filter(!str_detect(skip_patient_from_background))
+    }
+
+    # Non-patient specific is basically the rows that do not match a patient specific record.
+    # The TUMOUR_AF value comes from a unique position in the tumour mutations table.
+
+    tumourMutationTable.nonspecific <- tumourMutationTable %>%
+        filter(!duplicated(UNIQUE_POS)) %>%
+        select(UNIQUE_POS, TUMOUR_AF)
+
+    nonPatientSpecific <- mutationTable %>%
+        anti_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS') %>%
+        inner_join(tumourMutationTable.nonspecific, by = 'UNIQUE_POS')
+
+    controlSamples <- layoutTable %>%
+        filter(str_detect(CASE_OR_CONTROL, "control"))
+
+    # ensure only loci that are interrogated in ptspec are looked for in the nonptspec
+
+    patientSpecific <- patientSpecific %>%
+        filter(UNIQUE_POS %in% nonPatientSpecific$UNIQUE_POS) %>%
+        mutate(PATIENT_SPECIFIC = TRUE)
+
+    nonPatientSpecific.cases <- nonPatientSpecific %>%
+        filter(!POOL_BARCODE %in% controlSamples$POOL_BARCODE) %>%
+        filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS) %>%
+        mutate(PATIENT_SPECIFIC = FALSE)
+
+    nonPatientSpecific.controls <- nonPatientSpecific %>%
+        filter(POOL_BARCODE %in% controlSamples$POOL_BARCODE) %>%
+        filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS) %>%
+        mutate(PATIENT_SPECIFIC = FALSE)
+
+    # Combine these three to provide a final mutation table with TUMOUR_AF values.
+
+    bind_rows(patientSpecific, nonPatientSpecific.cases, nonPatientSpecific.controls)
 }
 
 
@@ -218,41 +274,20 @@ calculateBackgroundError <- function(errorRatesList, layoutTable, exclude_PPC = 
         group_by(TRINUCLEOTIDE) %>%
         summarize(DP = sum(DP_SUM), .groups="drop")
 
-    grandTotalDP <- sum(backgroundError$DP_SUM)
-
-    ## THISI IS WHERE WE ARE.
-    backgroundError2 <- allErrorRates %>%
-        filter(ALT != '.') %>%
+    totalDP.byType <- backgroundError %>%
         group_by(TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
-        summarize(GROUP_DP = sum(DP_SUM)) %>%
+        summarize(GROUP_DP = sum(DP_SUM), .groups="drop")
+
+    backgroundError2 <- backgroundError %>%
+        filter(ALT != '.') %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
-        summarize(MUT_SUM_TOTAL = sum(MUT_SUM),
-                  BACKGROUND_AF = MUT_SUM / GROUP_DP,
-                  .groups="drop") %>%
-        select(MUT_SUM_TOTAL, GROUP_DP, BACKGROUND_AF)
+        inner_join(totalDP.byType, by = c('TRINUCLEOTIDE', 'CASE_OR_CONTROL', 'ERROR_RATE_TYPE'))
+        summarize(GROUP_DP = GROUP_DP,
+                  MUT_SUM_TOTAL = sum(MUT_SUM),
+                  BACKGROUND_AF = MUT_SUM_TOTAL / GROUP_DP,
+                  .groups="drop")
 
-    background_error2 <- plyr::ddply(background_error, c("TRINUCLEOTIDE", "case_or_control", "data"), function(x){
-        DP = sum(x$total_DP)
-
-        plyr::ddply(filter(x, ALT != "."), c("TRINUCLEOTIDE", "case_or_control", "data", "REF", "ALT"), function(x){
-            mut_sum_total = x$mut_sum
-            background_AF = (x$mut_sum) / DP
-            data.frame(mut_sum_total, DP, background_AF)
-        })
-    })
-
-    # count the number of missing classes
-    print(
-        plyr::ddply(background_error2, c("case_or_control", "data"), function(x){
-            data.frame(contexts_represented = length(unique(paste(x$TRINUCLEOTIDE, "_", x$ALT))))
-        }))
-
-    # workaround to avoid mut_sum breaking the function :(
-    if("mut_sum" %in% colnames(background_error2) == TRUE){
-        background_error2 <- dplyr::select(background_error2, -mut_sum, -total_DP)
-    }
-
-    return(background_error2)
+    backgroundError2
 }
 
 
@@ -261,7 +296,7 @@ calculateBackgroundError <- function(errorRatesList, layoutTable, exclude_PPC = 
 #
 
 processTables <- function(mutationTable, tumourMutationTable, layoutTable, errorRatesList,
-                          skip_patient_from_background = NULL)
+                          skipPatientFromBackground = NULL)
 {
     # This bit from "annotate_with_SLX_table", plus the additional column
 
@@ -276,55 +311,19 @@ processTables <- function(mutationTable, tumourMutationTable, layoutTable, error
 
     # Remainder from "parse"
 
-    tumourMutationTable.specific <- tumourMutationTable %>%
-        select(UNIQUE_PATIENT_POS, TUMOUR_AF)
+    # Add patient specific indicator and the TUMOUR_AF value from the tumour
+    # mutations table.
+    # Also convert to complementary strand for A and G reference alleles.
 
-    patientSpecific <- mutationTable %>%
-        inner_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS')
-
-    if (!is.null(skip_patient_from_background))
-    {
-        patientSpecific <- patientSpecific %>%
-            filter(!str_detect(skip_patient_from_background))
-    }
-
-    tumourMutationTable.nonspecific <- tumourMutationTable %>%
-        select(UNIQUE_POS, TUMOUR_AF)
-
-    nonPatientSpecific <- mutationTable %>%
-        anti_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS')
-        inner_join(tumourMutationTable.nonspecific, by = 'UNIQUE_POS')
-
-    controlSamples <- layoutTable %>%
-        filter(CASE_OR_CONTROL == "control")
-
-    # ensure only loci that are interrogated in ptspec are looked for in the nonptspec
-
-    patientSpecific <- patientSpecific %>%
-        filter(UNIQUE_POS %in% nonPatientSpecific$UNIQUE_POS) %>%
-        mutate(PATIENT_SPECIFIC = TRUE)
-
-    nonPatientSpecific.cases <- nonPatientSpecific %>%
-        filter(!POOL_BARCODE %in% controlSamples$POOL_BARCODE) %>%
-        filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS) %>%
-        mutate(PATIENT_SPECIFIC = FALSE)
-
-    nonPatientSpecific.controls <- nonPatientSpecific %>%
-        filter(POOL_BARCODE %in% controlSamples$POOL_BARCODE) %>%
-        filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS) %>%
-        mutate(PATIENT_SPECIFIC = FALSE)
-
-    # Combine these three to provide a final mutation table
-
-    mutationTable.combined <-
-        bind_rows(patientSpecific, nonPatientSpecific.cases, nonPatientSpecific.controls) %>%
-        combineComplementaryMutations()
+    mutationTable.withPatient <- mutationTable %>%
+        classifyForPatientSpecificity(tumourMutationTable, layoutTable, skipPatientFromBackground) %>%
+        convertComplementaryMutations()
 
     # Calculate error rates.
 
-    calculateBackgroundError(errorRatesList, layoutTable)
+    # backgroundErrorRates <-calculateBackgroundError(errorRatesList, layoutTable)
 
-    patientSpecific
+    mutationTable.withPatient
 }
 
 
