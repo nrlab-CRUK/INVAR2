@@ -151,6 +151,9 @@ createErrorRateTable <- function(mutationTable,
 # Complement the MUTATION and TRINUCLEOTIDE columns for reference alleles
 # 'A' and 'G'. 'T' and 'C' remain unchanged.
 #
+# This function is primarily for the mutation table, but it is ok to use
+# it for the background error table too.
+#
 convertComplementaryMutations <- function(mutationTable)
 {
     complement <- function(sequence)
@@ -239,10 +242,10 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
 # From TAPAS_functions.R "calculate.background_error"
 # PPC = control sample naming in NR lab
 #
-calculateBackgroundError <- function(errorRatesList, layoutTable, exclude_PPC = FALSE)
+calculateBackgroundError <- function(errorRatesList, layoutTable, excludePPC = FALSE)
 {
     # If the locus noise dataframe is completely clean - this means you have either a) set the locus noise threshold too low or b) not run enough control samples
-    if (sum(errorRatesList$LOCUS_NOISE_PASS$MUT_SUM) == 0)
+    if (sum(errorRatesList$LOCUS_NOISE$MUT_SUM) == 0)
     {
         stop(str_c("LOCUS NOISE mutant sum is zero.",
                    "This is likely due to insufficient controls being run.",
@@ -257,7 +260,7 @@ calculateBackgroundError <- function(errorRatesList, layoutTable, exclude_PPC = 
         mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
         left_join(thinLayoutTable, by = 'POOL_BARCODE')
 
-    if (exclude_PPC)
+    if (excludePPC)
     {
         allErrorRates <- allErrorRates %>%
             filter(!str_detect(SAMPLE_NAME, "PPC"))
@@ -270,26 +273,110 @@ calculateBackgroundError <- function(errorRatesList, layoutTable, exclude_PPC = 
                   BACKGROUND_AF = MUT_SUM / DP_SUM,
                   .groups="drop")
 
-    trinucleotideDepth <- backgroundError %>%
-        group_by(TRINUCLEOTIDE) %>%
-        summarize(DP = sum(DP_SUM), .groups="drop")
-
-    totalDP.byType <- backgroundError %>%
+    trinucleotideDepth <- allErrorRates %>%
         group_by(TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
-        summarize(GROUP_DP = sum(DP_SUM), .groups="drop")
+        summarize(TRINUCLEOTIDE_DEPTH = sum(DP_SUM), .groups="drop")
 
     backgroundError2 <- backgroundError %>%
         filter(ALT != '.') %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
-        inner_join(totalDP.byType, by = c('TRINUCLEOTIDE', 'CASE_OR_CONTROL', 'ERROR_RATE_TYPE'))
-        summarize(GROUP_DP = GROUP_DP,
-                  MUT_SUM_TOTAL = sum(MUT_SUM),
-                  BACKGROUND_AF = MUT_SUM_TOTAL / GROUP_DP,
-                  .groups="drop")
+        inner_join(trinucleotideDepth, by = c('TRINUCLEOTIDE', 'CASE_OR_CONTROL', 'ERROR_RATE_TYPE')) %>%
+        summarize(MUT_SUM_TOTAL = sum(MUT_SUM),
+                  BACKGROUND_AF = MUT_SUM_TOTAL / TRINUCLEOTIDE_DEPTH,
+                  TRINUCLEOTIDE_DEPTH = TRINUCLEOTIDE_DEPTH,
+                  .groups="drop") %>%
+        arrange(REF, ALT, CASE_OR_CONTROL, ERROR_RATE_TYPE)
 
-    backgroundError2
+    missingClasses <- missingErrorClasses(backgroundError2, trinucleotideDepth)
+
+    rbind(backgroundError2, missingClasses)
 }
 
+
+##
+# From TAPAS_functions.R "add.missing_error_classes"
+#
+missingErrorClasses <- function(backgroundErrorTable, trinucleotideDepthTable)
+{
+    threeColumnJoin <- c('TRINUCLEOTIDE', 'CASE_OR_CONTROL', 'ERROR_RATE_TYPE')
+    fiveColumnJoin <- c('REF', 'ALT', threeColumnJoin)
+
+    uniqueClasses <- backgroundErrorTable %>%
+        distinct(REF, ALT, TRINUCLEOTIDE)
+
+    types = backgroundErrorTable %>%
+        group_by(CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
+        summarise(.groups = 'drop')
+
+    allClasses <- uniqueClasses %>%
+        crossing(types)
+
+    presentClasses <- backgroundErrorTable %>%
+        distinct(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE)
+
+    missingClasses <- allClasses %>%
+        anti_join(presentClasses, by = fiveColumnJoin) %>%
+        mutate(MUT_SUM_TOTAL = 0, BACKGROUND_AF = 0.0) %>%
+        left_join(trinucleotideDepthTable, by = threeColumnJoin)
+
+    missingClasses
+}
+
+##
+# From TAPAS_functions.R "combine_classes"
+#
+# Complement the REF, ALT and TRINUCLEOTIDE columns for reference alleles
+# 'A' and 'G'. 'T' and 'C' remain unchanged.
+#
+convertComplementaryBackgroundError <- function(backgroundErrorTable)
+{
+    complement <- function(sequence)
+    {
+        chartr('ATCG', 'TAGC', sequence)
+    }
+
+    reverseComplement <- function(sequence)
+    {
+        stringi::stri_reverse(complement(sequence))
+    }
+
+    collapse <- function(sequence)
+    {
+        chartr('ATCG', 'TTCC', sequence)
+    }
+
+    complementary <- function(base)
+    {
+        base == 'A' | base == 'G'
+    }
+
+    backgroundErrorTable %>%
+        mutate(TRINUCLEOTIDE = ifelse(complementary(REF), reverseComplement(TRINUCLEOTIDE), TRINUCLEOTIDE),
+               REF = collapse(REF),
+               ALT = collapse(ALT))
+}
+
+
+
+##
+# From TAPAS_functions.R "combine_classes"
+#
+# "combine complementary classes and trinucleotide contexts i.e. A>T etc."
+# In effect, reverse the strand and change 'A' to 'T' and 'G' to 'C'.
+# C & T are not changed.
+#
+errorTableComplementaryClasses <- function(backgroundErrorTable)
+{
+    complement <- backgroundErrorTable %>%
+        convertComplementaryBackgroundError() %>%
+        group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
+        summarise(MUT_SUM_TOTAL = sum(MUT_SUM_TOTAL),
+                  TRINUCLEOTIDE_DEPTH = sum(TRINUCLEOTIDE_DEPTH),
+                  BACKGROUND_AF = MUT_SUM_TOTAL / TRINUCLEOTIDE_DEPTH,
+                  .groups = "drop")
+
+    complement
+}
 
 ##
 # Referred functions are from TAPAS_functions.R
@@ -321,7 +408,11 @@ processTables <- function(mutationTable, tumourMutationTable, layoutTable, error
 
     # Calculate error rates.
 
-    # backgroundErrorRates <-calculateBackgroundError(errorRatesList, layoutTable)
+    backgroundErrorTable <-errorRatesList %>%
+        calculateBackgroundError(layoutTable) %>%
+        errorTableComplementaryClasses(backgroundErrorTable)
+
+    saveRDS(backgroundErrorTable, 'backgroundErrorTable.rds')
 
     mutationTable.withPatient
 }
@@ -379,9 +470,7 @@ main <- function(scriptArgs)
             mutate(ERROR_RATE_TYPE = str_to_lower(v))
     }
 
-    mutationTable.combined <- processTables(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
-
-    mutationTable.combined
+    processTables(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
 }
 
 # Launch it.
