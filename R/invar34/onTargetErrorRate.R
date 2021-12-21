@@ -26,17 +26,9 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--error-rates"), type="character", metavar="file",
                     dest="ERROR_RATES_FILE", help="The error rates RDS file saved by offTargetErrorRate.R",
-                    default=defaultMarker),
-        make_option(c("--bloodspot"), action="store_true", default=FALSE,
-                    dest="BLOODSPOT", help="Indicate this is blood spot data."),
-        make_option(c("--control-proportion"), type="double", metavar="num",
-                    dest="CONTROL_PROPORTION", help="Blacklist loci that have signal in >30% of the nonptspec samples",
-                    default=0.1),
-        make_option(c("--max-background-af"), type="double", metavar="num",
-                    dest="MAX_BACKGROUND_AF", help="Filter loci with a background AF in controls greater than this value",
-                    default=0.01))
+                    default=defaultMarker))
 
-    opts <- OptionParser(option_list=options_list, usage="%prog [options] <mutation file>") %>%
+    opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
 
     missingRequired <- which(opts$options == defaultMarker)
@@ -63,10 +55,7 @@ richTestOptions <- function()
         MUTATIONS_TABLE_FILE = 'mutations/mutation_table.filtered.rds',
         TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
-        ERROR_RATES_FILE = 'off_target/mutation_table.error_rates.no_cosmic.rds',
-        CONTROL_PROPORTION = 0.1,
-        MAX_BACKGROUND_AF = 0.01,
-        BLOODSPOT = FALSE
+        ERROR_RATES_FILE = 'off_target/mutation_table.error_rates.no_cosmic.rds'
     )
 }
 
@@ -84,11 +73,11 @@ loadTumourMutationsTable <- function(tumourMutationsFile)
         select(-contains('uniq')) %>%
         rename_with(str_to_upper) %>%
         rename(CHROM = CHR) %>%
-        mutate(MUTATION = str_c(REF, ALT, sep='/'),
+        mutate(MUTATION_CLASS = str_c(REF, ALT, sep='/'),
                UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION, sep='_'),
+               UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION_CLASS, sep='_'),
                UNIQUE_PATIENT_POS = str_c(PATIENT, UNIQUE_POS, sep='_')) %>%
-        select(PATIENT, REF, ALT, TUMOUR_AF, MUTATION, UNIQUE_POS, UNIQUE_ALT, UNIQUE_PATIENT_POS)
+        select(PATIENT, REF, ALT, TUMOUR_AF, MUTATION_CLASS, UNIQUE_POS, UNIQUE_ALT, UNIQUE_PATIENT_POS)
 }
 
 # Read the layout file and extract unique pool id and barcode pairs.
@@ -105,54 +94,17 @@ loadLayoutFile <- function(layoutFile)
 addDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        mutate(MUTATION = str_c(REF, ALT, sep='/'),
-               UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION, sep='_'),
+        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
+               UNIQUE_ALT = str_c(UNIQUE_POS, str_c(REF, ALT, sep='/'), sep='_'),
                POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
 }
 
-##
-# From TAPAS_functions.R, originally "annotate_with_locus_error_rate"
-#
-# Originally just annotate, this method creates the errorRateTable and returns.
-#
-# Locus error rate = overall background error rate per locus, aggregated across control samples
-createErrorRateTable <- function(mutationTable,
-                                 layoutTable,
-                                 proportion_of_controls,
-                                 max_background_mean_AF,
-                                 is.blood_spot)
-{
-    if (is.blood_spot)
-    {
-        message("sWGS/blood spot mutationTable, do not set a max_background_mean_AF value as it is not appropriate in the low unique depth setting")
-        max_background_mean_AF <- 1
-    }
-
-    errorRateTable <- mutationTable %>%
-        filter(POOL_BARCODE %in% layoutTable.cases$POOL_BARCODE) %>%
-        mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, POOL_BARCODE, NA)) %>%
-        group_by(UNIQUE_POS, TRINUCLEOTIDE) %>%
-        summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
-                  DP_SUM = sum(DP),
-                  BACKGROUND_AF = MUT_SUM / DP_SUM,
-                  N_SAMPLES = n_distinct(POOL_BARCODE),
-                  N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
-                  .groups = 'drop')
-
-    errorRateTable %>%
-        mutate(PROPORTION = N_SAMPLES_WITH_SIGNAL / N_SAMPLES,
-               LOCUS_NOISE.PASS = PROPORTION < proportion_of_controls & BACKGROUND_AF < max_background_mean_AF)
-}
 
 ##
 # From TAPAS_functions.R "combine_classes_in_rds"
 #
-# Complement the MUTATION and TRINUCLEOTIDE columns for reference alleles
+# Complement the MUTATION_CLASS and TRINUCLEOTIDE columns for reference alleles
 # 'A' and 'G'. 'T' and 'C' remain unchanged.
-#
-# This function is primarily for the mutation table, but it is ok to use
-# it for the background error table too.
 #
 convertComplementaryMutations <- function(mutationTable)
 {
@@ -179,7 +131,7 @@ convertComplementaryMutations <- function(mutationTable)
 
     reverse <- reverse %>%
         mutate(TRINUCLEOTIDE = reverseComplement(TRINUCLEOTIDE),
-               MUTATION = complement(MUTATION))
+               MUTATION_CLASS = complement(MUTATION_CLASS))
 
     add_row(forward, reverse) %>%
         arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE)
@@ -196,11 +148,11 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
                                           skipPatientFromBackground = NULL)
 {
     # Patient specific is an inner join with the tumour mutation table by unique patient position.
-    # Inner join combined the semi join with the addition of the TUMOUR_AF column done in two
-    # steps in the original.
+    # Inner join combined the semi join with the addition of the TUMOUR_AF and MUTATION_CLASS
+    # columns done in two steps in the original.
 
     tumourMutationTable.specific <- tumourMutationTable %>%
-        select(UNIQUE_PATIENT_POS, TUMOUR_AF, MUTATION, UNIQUE_ALT)
+        select(UNIQUE_PATIENT_POS, TUMOUR_AF, MUTATION_CLASS)
 
     patientSpecific <- mutationTable %>%
         inner_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS')
@@ -212,11 +164,12 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
     }
 
     # Non-patient specific is basically the rows that do not match a patient specific record.
-    # The TUMOUR_AF value comes from a unique position in the tumour mutations table.
+    # The TUMOUR_AF and MUTATION_CLASS values come from a unique position in the tumour
+    # mutations table.
 
     tumourMutationTable.nonspecific <- tumourMutationTable %>%
         filter(!duplicated(UNIQUE_POS)) %>%
-        select(UNIQUE_POS, TUMOUR_AF, MUTATION, UNIQUE_ALT)
+        select(UNIQUE_POS, TUMOUR_AF, MUTATION_CLASS)
 
     nonPatientSpecific <- mutationTable %>%
         anti_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS') %>%
@@ -298,7 +251,8 @@ calculateBackgroundError <- function(errorRatesList, layoutTable, excludePPC = F
 
     missingClasses <- missingErrorClasses(backgroundError2, trinucleotideDepth)
 
-    rbind(backgroundError2, missingClasses)
+    rbind(backgroundError2, missingClasses) %>%
+        arrange(REF, ALT, CASE_OR_CONTROL, ERROR_RATE_TYPE)
 }
 
 
@@ -395,7 +349,7 @@ errorTableComplementaryClasses <- function(backgroundErrorTable)
 # Referred functions are from TAPAS_functions.R
 #
 
-processTables <- function(mutationTable, tumourMutationTable, layoutTable, errorRatesList,
+addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, layoutTable, errorRatesList,
                           skipPatientFromBackground = NULL)
 {
     # This bit from "annotate_with_SLX_table", plus the additional column
@@ -410,8 +364,7 @@ processTables <- function(mutationTable, tumourMutationTable, layoutTable, error
     # (in classifyForPatientSpecificity).
 
     mutationTable <- mutationTable %>%
-        filter(AF == 0 | UNIQUE_ALT %in% tumourMutationTable$UNIQUE_ALT) %>%
-        select(-MUTATION, -UNIQUE_ALT)
+        filter(AF == 0 | UNIQUE_ALT %in% tumourMutationTable$UNIQUE_ALT)
 
     # Remainder from "parse"
 
@@ -425,24 +378,22 @@ processTables <- function(mutationTable, tumourMutationTable, layoutTable, error
 
     # Calculate background error rates.
 
-    backgroundErrorTable <-errorRatesList %>%
+    backgroundErrorTable <- errorRatesList %>%
         calculateBackgroundError(layoutTable) %>%
         errorTableComplementaryClasses()
 
-    backgroundErrorTable <- backgroundErrorTable %>%
-        mutate(MUTATION = str_c(REF, ALT, sep = '/'))
-
-    backgroundErrorTable <- backgroundErrorTable %>%
+    backgroundErrorTable.forJoin <- backgroundErrorTable %>%
+        mutate(MUTATION_CLASS = str_c(REF, ALT, sep = '/')) %>%
         rename(BACKGROUND_MUT_SUM = MUT_SUM_TOTAL,
                BACKGROUND_DP = TRINUCLEOTIDE_DEPTH) %>%
         filter(CASE_OR_CONTROL == 'case' & ERROR_RATE_TYPE == 'locus_noise.both_reads') %>%
-        select(TRINUCLEOTIDE, MUTATION, starts_with('BACKGROUND_'))
+        select(TRINUCLEOTIDE, MUTATION_CLASS, starts_with('BACKGROUND_'))
 
     # Add background columns to mutation table.
 
     mutationTable.withPatientAndBackground <- mutationTable.withPatient %>%
-        inner_join(backgroundErrorTable, by = c('TRINUCLEOTIDE', 'MUTATION')) %>%
-        mutate(MUT_SUM = ALT_F + ALT_R, .after = 'MUTATION')
+        inner_join(backgroundErrorTable.forJoin, by = c('TRINUCLEOTIDE', 'MUTATION_CLASS')) %>%
+        mutate(MUT_SUM = ALT_F + ALT_R, .after = 'PATIENT_SPECIFIC')
 
     mutationTable.withPatientAndBackground
 }
@@ -464,15 +415,6 @@ saveRDSandTSV <- function(t, file)
     {
         write_tsv(t, tsv)
     }
-
-    t
-}
-
-cleanAndSaveRDSandTSV <- function(t, file)
-{
-    t %>%
-        removeDerivedColums() %>%
-        saveRDSandTSV(file)
 
     t
 }
@@ -501,9 +443,11 @@ main <- function(scriptArgs)
     }
 
     mutationTable.withPatientAndBackground <-
-        processTables(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
+        addPatientAndBackgroundColumns(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
 
-    cleanAndSaveRDSandTSV(mutationTable.withPatientAndBackground, 'mutationTable.withPatientAndBackground.rds')
+    mutationTable.withPatientAndBackground %>%
+        removeDerivedColums() %>%
+        saveRDSandTSV('mutationTable_withPatientAndBackground.rds')
 }
 
 # Launch it.
