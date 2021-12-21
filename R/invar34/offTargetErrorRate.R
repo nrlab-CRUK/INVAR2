@@ -85,14 +85,15 @@ addDerivedColumns <- function(mutationTable)
 ##
 # From TAPAS_functions.R, originally "annotate_with_locus_error_rate"
 #
-# Originally just annotate, this method creates the errorRateTable and returns.
+# Originally just annotate, this method creates the lociErrorRateTable and returns.
 #
 # Locus error rate = overall background error rate per locus, aggregated across control samples
-createErrorRateTable <- function(mutationTable,
-                                 layoutTable,
-                                 proportion_of_controls,
-                                 max_background_mean_AF,
-                                 is.blood_spot)
+#
+createLociErrorRateTable <- function(mutationTable,
+                                     layoutTable,
+                                     proportion_of_controls,
+                                     max_background_mean_AF,
+                                     is.blood_spot)
 {
     if (is.blood_spot)
     {
@@ -167,31 +168,17 @@ removeDerivedColums <- function(mutationTable)
         select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE')))
 }
 
-saveRDSandTSV <- function(t, file)
-{
-    saveRDS(t, file)
-
-    tsv <- str_replace(file, "\\.rds$", ".tsv")
-
-    if (tsv != file)
-    {
-        write_tsv(t, tsv)
-    }
-
-    t
-}
-
 ##
 # Part of main, where this code is run with and without cosmic.
 #
 
-doMain <- function(withCosmic, mutationTable, layoutTable, errorRateTable)
+doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
 {
     cosmicFilePart = ifelse(withCosmic, 'cosmic', 'no_cosmic')
 
     mutationTable.off_target <- mutationTable %>%
         filterForOffTarget(withCosmic) %>%
-        addLocusNoisePass(errorRateTable)
+        addLocusNoisePass(lociErrorRateTable)
 
     oneRead <- mutationTable.off_target %>%
         groupAndSummarizeForErrorRate()
@@ -265,16 +252,30 @@ main <- function(scriptArgs)
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addDerivedColumns()
 
-    errorRateTable <- createErrorRateTable(mutationTable, layoutTable,
-                                           proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
-                                           max_background_mean_AF = scriptArgs$MAX_BACKGROUND_AF,
-                                           is.blood_spot = scriptArgs$BLOODSPOT)
+    # Doesn't matter about the COSMIC setting for the loci error rate table (no difference),
+    # but the other filtering is necessary.
 
-    saveRDSandTSV(errorRateTable, 'locus_error_rates.off_target.rds')
+    lociErrorRateTable <- mutationTable %>%
+        filterForOffTarget(FALSE) %>%
+        createLociErrorRateTable(layoutTable,
+                                 proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
+                                 max_background_mean_AF = scriptArgs$MAX_BACKGROUND_AF,
+                                 is.blood_spot = scriptArgs$BLOODSPOT)
 
-    #mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, errorRateTable)
-    doMain(TRUE, mutationTable, layoutTable, errorRateTable)
-    doMain(FALSE, mutationTable, layoutTable, errorRateTable)
+    saveRDS(lociErrorRateTable, 'locus_error_rates.off_target.rds')
+
+    # To make it as similar as possible to the old pipeline output when saved.
+    # Aids comparison.
+
+    lociErrorRateTable %>%
+        select(UNIQUE_POS, TRINUCLEOTIDE, BACKGROUND_AF, MUT_SUM, DP_SUM, N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
+        write_tsv('locus_error_rates.off_target.tsv')
+
+    # Calculate the error rates with filters and with or without COSMIC.
+
+    #mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, lociErrorRateTable)
+    doMain(TRUE, mutationTable, layoutTable, lociErrorRateTable)
+    doMain(FALSE, mutationTable, layoutTable, lociErrorRateTable)
 }
 
 # Launch it.
