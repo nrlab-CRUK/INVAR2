@@ -28,7 +28,7 @@ process createMutationsTable
             --mqsb-threshold=!{params.individual_MQSB_threshold} \
             --max-dp=!{params.max_DP} \
             --min-ref-dp=!{params.min_ref_DP} \
-            --alt-allele-threshold=!{params.n_alt_alleles_threshold} \
+            --alt-alleles-threshold=!{params.n_alt_alleles_threshold} \
             --minor-alt-allele-threshold=!{params.minor_alt_allele_threshold}
         """
 }
