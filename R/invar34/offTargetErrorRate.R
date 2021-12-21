@@ -78,8 +78,8 @@ loadLayoutFile <- function(layoutFile)
 addDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':')) %>%
-        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
+        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
+               POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
 }
 
 ##
@@ -154,8 +154,7 @@ filterForOffTarget <- function(mutationTable, withCosmic)
 addLocusNoisePass <- function(mutationTable, errorRateTable)
 {
     passed.loci <- errorRateTable %>%
-        filter(LOCUS_NOISE.PASS) %>%
-        select(UNIQUE_POS)
+        filter(LOCUS_NOISE.PASS)
 
     mutationTable %>%
         mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% passed.loci$UNIQUE_POS,
@@ -165,7 +164,7 @@ addLocusNoisePass <- function(mutationTable, errorRateTable)
 removeDerivedColums <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE', 'UNIQUE_ID')))
+        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE')))
 }
 
 saveRDSandTSV <- function(t, file)
@@ -194,12 +193,8 @@ doMain <- function(withCosmic, mutationTable, layoutTable, errorRateTable)
         filterForOffTarget(withCosmic) %>%
         addLocusNoisePass(errorRateTable)
 
-    all <- mutationTable.off_target %>%
+    oneRead <- mutationTable.off_target %>%
         groupAndSummarizeForErrorRate()
-
-    all %>%
-        removeDerivedColums() %>%
-        write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.oneread.tsv'))
 
     ## Calculate error rate with different settings and save
 
@@ -209,19 +204,11 @@ doMain <- function(withCosmic, mutationTable, layoutTable, errorRateTable)
         filter(LOCUS_NOISE.PASS) %>%
         groupAndSummarizeForErrorRate()
 
-    locusNoisePass %>%
-        removeDerivedColums() %>%
-        write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise.tsv'))
-
     # both strands
 
     bothStrands <- mutationTable.off_target %>%
         filter(BOTH_STRANDS) %>%
         groupAndSummarizeForErrorRate()
-
-    bothStrands %>%
-        removeDerivedColums() %>%
-        write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.bothreads.tsv'))
 
     # locus noise AND both strands
 
@@ -229,20 +216,39 @@ doMain <- function(withCosmic, mutationTable, layoutTable, errorRateTable)
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
         groupAndSummarizeForErrorRate()
 
-    bothFilters %>%
-        removeDerivedColums() %>%
-        write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise_bothreads.tsv'))
-
     # Save these as a combined RDS file in a list.
 
     allErrorRates = list(
-        ONE_READ = all,
+        ONE_READ = oneRead,
         LOCUS_NOISE = locusNoisePass,
         BOTH_READS = bothStrands,
         LOCUS_NOISE.BOTH_READS = bothFilters
     )
 
     saveRDS(allErrorRates, str_c('mutation_table.error_rates.', cosmicFilePart, '.rds'))
+
+    # Save tables as TSV for reference
+
+    if (TRUE)
+    {
+        oneRead %>%
+            removeDerivedColums() %>%
+            write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.oneread.tsv'))
+
+        locusNoisePass %>%
+            removeDerivedColums() %>%
+            write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise.tsv'))
+
+        bothStrands %>%
+            removeDerivedColums() %>%
+            write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.bothreads.tsv'))
+
+        bothFilters %>%
+            removeDerivedColums() %>%
+            write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise_bothreads.tsv'))
+    }
+
+    allErrorRates
 }
 
 ##
