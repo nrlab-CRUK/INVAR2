@@ -84,11 +84,11 @@ loadTumourMutationsTable <- function(tumourMutationsFile)
         select(-contains('uniq')) %>%
         rename_with(str_to_upper) %>%
         rename(CHROM = CHR) %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               MUTATION = str_c(REF, ALT, sep='/'),
+        mutate(MUTATION = str_c(REF, ALT, sep='/'),
+               UNIQUE_POS = str_c(CHROM, POS, sep=':'),
                UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION, sep='_'),
                UNIQUE_PATIENT_POS = str_c(PATIENT, UNIQUE_POS, sep='_')) %>%
-        select(PATIENT, REF, ALT, TUMOUR_AF, UNIQUE_POS, UNIQUE_ALT, UNIQUE_PATIENT_POS)
+        select(PATIENT, REF, ALT, TUMOUR_AF, MUTATION, UNIQUE_POS, UNIQUE_ALT, UNIQUE_PATIENT_POS)
 }
 
 # Read the layout file and extract unique pool id and barcode pairs.
@@ -105,10 +105,10 @@ loadLayoutFile <- function(layoutFile)
 addDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               POOL_BARCODE = str_c(POOL, BARCODE, sep='_'),
-               MUTATION = str_c(REF, ALT, sep='/'),
-               UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION, sep='_'))
+        mutate(MUTATION = str_c(REF, ALT, sep='/'),
+               UNIQUE_POS = str_c(CHROM, POS, sep=':'),
+               UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION, sep='_'),
+               POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
 }
 
 ##
@@ -171,9 +171,18 @@ convertComplementaryMutations <- function(mutationTable)
         base == 'A' | base == 'G'
     }
 
-    mutationTable %>%
-        mutate(TRINUCLEOTIDE = ifelse(complementary(REF), reverseComplement(TRINUCLEOTIDE), TRINUCLEOTIDE),
-               MUTATION = ifelse(complementary(REF), complement(MUTATION), MUTATION))
+    forward <- mutationTable %>%
+        filter(!complementary(REF))
+
+    reverse <- mutationTable %>%
+        filter(complementary(REF))
+
+    reverse <- reverse %>%
+        mutate(TRINUCLEOTIDE = reverseComplement(TRINUCLEOTIDE),
+               MUTATION = complement(MUTATION))
+
+    add_row(forward, reverse) %>%
+        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE)
 }
 
 
@@ -191,7 +200,7 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
     # steps in the original.
 
     tumourMutationTable.specific <- tumourMutationTable %>%
-        select(UNIQUE_PATIENT_POS, TUMOUR_AF)
+        select(UNIQUE_PATIENT_POS, TUMOUR_AF, MUTATION, UNIQUE_ALT)
 
     patientSpecific <- mutationTable %>%
         inner_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS')
@@ -207,7 +216,7 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
 
     tumourMutationTable.nonspecific <- tumourMutationTable %>%
         filter(!duplicated(UNIQUE_POS)) %>%
-        select(UNIQUE_POS, TUMOUR_AF)
+        select(UNIQUE_POS, TUMOUR_AF, MUTATION, UNIQUE_ALT)
 
     nonPatientSpecific <- mutationTable %>%
         anti_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS') %>%
@@ -340,20 +349,24 @@ convertComplementaryBackgroundError <- function(backgroundErrorTable)
         stringi::stri_reverse(complement(sequence))
     }
 
-    collapse <- function(sequence)
-    {
-        chartr('ATCG', 'TTCC', sequence)
-    }
-
     complementary <- function(base)
     {
         base == 'A' | base == 'G'
     }
 
-    backgroundErrorTable %>%
-        mutate(TRINUCLEOTIDE = ifelse(complementary(REF), reverseComplement(TRINUCLEOTIDE), TRINUCLEOTIDE),
-               REF = collapse(REF),
-               ALT = collapse(ALT))
+    forward <- backgroundErrorTable %>%
+        filter(!complementary(REF))
+
+    reverse <- backgroundErrorTable %>%
+        filter(complementary(REF))
+
+    reverse <- reverse %>%
+        mutate(TRINUCLEOTIDE = reverseComplement(TRINUCLEOTIDE),
+               REF = complement(REF),
+               ALT = complement(ALT))
+
+    add_row(forward, reverse) %>%
+        arrange(REF, ALT, TRINUCLEOTIDE)
 }
 
 
@@ -391,10 +404,14 @@ processTables <- function(mutationTable, tumourMutationTable, layoutTable, error
         left_join(layoutTable, by = 'POOL_BARCODE') %>%
         mutate(UNIQUE_PATIENT_POS = str_c(PATIENT, UNIQUE_POS, sep='_'))
 
-    # This from "ignore_unexpected_variants"
+    # This from "ignore_unexpected_variants". After this point, we want to
+    # remove MUTATION and UNIQUE_ALT from the mutation table as their values
+    # will come from joining with the tumour mutation table
+    # (in classifyForPatientSpecificity).
 
     mutationTable <- mutationTable %>%
-        filter(AF == 0 | UNIQUE_ALT %in% tumourMutationTable$UNIQUE_ALT)
+        filter(AF == 0 | UNIQUE_ALT %in% tumourMutationTable$UNIQUE_ALT) %>%
+        select(-MUTATION, -UNIQUE_ALT)
 
     # Remainder from "parse"
 
@@ -406,22 +423,35 @@ processTables <- function(mutationTable, tumourMutationTable, layoutTable, error
         classifyForPatientSpecificity(tumourMutationTable, layoutTable, skipPatientFromBackground) %>%
         convertComplementaryMutations()
 
-    # Calculate error rates.
+    # Calculate background error rates.
 
     backgroundErrorTable <-errorRatesList %>%
         calculateBackgroundError(layoutTable) %>%
-        errorTableComplementaryClasses(backgroundErrorTable)
+        errorTableComplementaryClasses()
 
-    saveRDS(backgroundErrorTable, 'backgroundErrorTable.rds')
+    backgroundErrorTable <- backgroundErrorTable %>%
+        mutate(MUTATION = str_c(REF, ALT, sep = '/'))
 
-    mutationTable.withPatient
+    backgroundErrorTable <- backgroundErrorTable %>%
+        rename(BACKGROUND_MUT_SUM = MUT_SUM_TOTAL,
+               BACKGROUND_DP = TRINUCLEOTIDE_DEPTH) %>%
+        filter(CASE_OR_CONTROL == 'case' & ERROR_RATE_TYPE == 'locus_noise.both_reads') %>%
+        select(TRINUCLEOTIDE, MUTATION, starts_with('BACKGROUND_'))
+
+    # Add background columns to mutation table.
+
+    mutationTable.withPatientAndBackground <- mutationTable.withPatient %>%
+        inner_join(backgroundErrorTable, by = c('TRINUCLEOTIDE', 'MUTATION')) %>%
+        mutate(MUT_SUM = ALT_F + ALT_R, .after = 'MUTATION')
+
+    mutationTable.withPatientAndBackground
 }
 
 
 removeDerivedColums <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE', 'UNIQUE_ID')))
+        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE', 'UNIQUE_PATIENT_POS', 'UNIQUE_ALT')))
 }
 
 saveRDSandTSV <- function(t, file)
@@ -470,7 +500,10 @@ main <- function(scriptArgs)
             mutate(ERROR_RATE_TYPE = str_to_lower(v))
     }
 
-    processTables(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
+    mutationTable.withPatientAndBackground <-
+        processTables(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
+
+    cleanAndSaveRDSandTSV(mutationTable.withPatientAndBackground, 'mutationTable.withPatientAndBackground.rds')
 }
 
 # Launch it.
