@@ -7,9 +7,9 @@ ARG BUILD_DIR=/var/tmp/invar_software_build
 
 ARG BEDTOOLS=2.27.1
 ARG PICARD=2.10.2
-ARG HTSLIB=1.9
-ARG SAMTOOLS=1.9
-ARG BCFTOOLS=1.6
+ARG HTSLIB=1.14
+ARG SAMTOOLS=1.14
+ARG BCFTOOLS=1.14
 
 ARG TAROPTS="--no-same-owner --no-same-permissions"
 
@@ -52,7 +52,7 @@ RUN cd ${BUILD_DIR}; \
     wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS}/bcftools-${BCFTOOLS}.tar.bz2 && \
     tar ${TAROPTS} -jxf bcftools-${BCFTOOLS}.tar.bz2
 RUN cd ${BUILD_DIR}/bcftools-${BCFTOOLS}; \
-    ./configure --prefix="${INSTALL_DIR}" && \
+    ./configure --prefix="${INSTALL_DIR}" --with-htslib=system && \
     make && \
     make install
 
