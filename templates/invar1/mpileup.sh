@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-set -o pipefail
+set -euo pipefail
 
 samtools mpileup -x -d !{params.MAX_DP} -q !{params.MAPQ} -Q !{params.BASEQ} !{dedupFlags} \
     -g -l !{sloppedBedFile} \

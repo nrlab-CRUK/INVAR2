@@ -1,5 +1,7 @@
 #!/bin/bash -l
 
+set -euo pipefail
+
 # Cat files together taking the header from the first file and skipping the
 # header in all subsequent files.
 

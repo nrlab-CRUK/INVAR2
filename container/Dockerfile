@@ -28,12 +28,13 @@ RUN alternatives --set python /usr/bin/python2
 RUN mkdir -p ${INSTALL_DIR} ${BUILD_DIR}
 
 # htslib
-# RUN cd ${BUILD_DIR}; \
-#     wget https://github.com/samtools/htslib/releases/download/${HTSLIB}/htslib-${HTSLIB}.tar.bz2 && \
-#     tar ${TAROPTS} -jxf htslib-${HTSLIB}.tar.bz2
-# RUN cd ${BUILD_DIR}/htslib-${HTSLIB}; \
-#     ./configure --prefix="${INSTALL_DIR}" && \
-#     make install
+RUN cd ${BUILD_DIR}; \
+    wget https://github.com/samtools/htslib/releases/download/${HTSLIB}/htslib-${HTSLIB}.tar.bz2 && \
+    tar ${TAROPTS} -jxf htslib-${HTSLIB}.tar.bz2
+RUN cd ${BUILD_DIR}/htslib-${HTSLIB}; \
+    ./configure --prefix="${INSTALL_DIR}" && \
+    make && \
+    make install
 
 # Can add "--with-htslib=system" to use a shared htslib in samtools & bcftools, if the same version.
 
@@ -42,7 +43,7 @@ RUN cd ${BUILD_DIR}; \
     wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS}/samtools-${SAMTOOLS}.tar.bz2 && \
     tar ${TAROPTS} -jxf samtools-${SAMTOOLS}.tar.bz2
 RUN cd ${BUILD_DIR}/samtools-${SAMTOOLS}; \
-    ./configure --prefix="${INSTALL_DIR}" && \
+    ./configure --prefix="${INSTALL_DIR}" --with-htslib=system && \
     make && \
     make install
 

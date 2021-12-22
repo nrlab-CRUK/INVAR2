@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-set -o pipefail
+set -euo pipefail
 
 ## split multiallelic sites into biallelic records
 
