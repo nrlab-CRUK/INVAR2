@@ -113,11 +113,11 @@ createLociErrorRateTable <- function(mutationTable,
                   BACKGROUND_AF = MUT_SUM / DP_SUM,
                   N_SAMPLES = n_distinct(POOL_BARCODE),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
-                  .groups = 'drop')
+                  .groups = 'drop') %>%
+        mutate(LOCUS_NOISE.PASS = (N_SAMPLES_WITH_SIGNAL / N_SAMPLES) < proportion_of_controls &
+                                  BACKGROUND_AF < max_background_mean_AF)
 
-    errorRateTable %>%
-        mutate(PROPORTION = N_SAMPLES_WITH_SIGNAL / N_SAMPLES,
-               LOCUS_NOISE.PASS = PROPORTION < proportion_of_controls & BACKGROUND_AF < max_background_mean_AF)
+    errorRateTable
 }
 
 # Common function. Takes in a mutation table.

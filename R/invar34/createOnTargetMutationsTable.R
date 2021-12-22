@@ -1,3 +1,14 @@
+##
+# This script is essentially the "parse" function from TAPAS_functions.R
+# plus the functions it (parse) uses.
+# It's quite big enough as a script before going into all the processing
+# that the function "TAPAS4" invokes after calling parse.
+#
+# Loads the mutations table and filters for on target mutations: those
+# indicated in the patient file. Adds background error rates per mutation
+# and labels each mutation as specific to a patient or not.
+##
+
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(parallel))
@@ -151,10 +162,11 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
     # columns done in two steps in the original.
 
     tumourMutationTable.specific <- tumourMutationTable %>%
-        select(UNIQUE_PATIENT_POS, TUMOUR_AF, MUTATION_CLASS)
+        select(UNIQUE_PATIENT_POS, TUMOUR_AF, MUTATION_CLASS, PATIENT)
 
     patientSpecific <- mutationTable %>%
-        inner_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS')
+        inner_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS') %>%
+        rename(PATIENT = PATIENT.x, PATIENT_MUTATION_BELONGS_TO = PATIENT.y)
 
     # Non-patient specific is basically the rows that do not match a patient specific record.
     # The TUMOUR_AF and MUTATION_CLASS values come from a unique position in the tumour
@@ -162,11 +174,12 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
 
     tumourMutationTable.nonspecific <- tumourMutationTable %>%
         filter(!duplicated(UNIQUE_POS)) %>%
-        select(UNIQUE_POS, TUMOUR_AF, MUTATION_CLASS)
+        select(UNIQUE_POS, TUMOUR_AF, MUTATION_CLASS, PATIENT)
 
     nonPatientSpecific <- mutationTable %>%
         anti_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS') %>%
-        inner_join(tumourMutationTable.nonspecific, by = 'UNIQUE_POS')
+        inner_join(tumourMutationTable.nonspecific, by = 'UNIQUE_POS') %>%
+        rename(PATIENT = PATIENT.x, PATIENT_MUTATION_BELONGS_TO = PATIENT.y)
 
     controlSamples <- layoutTable %>%
         filter(str_detect(CASE_OR_CONTROL, "control"))
@@ -377,8 +390,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
     # Add background columns to mutation table.
 
     mutationTable.withPatientAndBackground <- mutationTable.withPatient %>%
-        inner_join(backgroundErrorTable.forJoin, by = c('TRINUCLEOTIDE', 'MUTATION_CLASS')) %>%
-        mutate(MUT_SUM = ALT_F + ALT_R, .after = 'PATIENT_SPECIFIC')
+        inner_join(backgroundErrorTable.forJoin, by = c('TRINUCLEOTIDE', 'MUTATION_CLASS'))
 
     mutationTable.withPatientAndBackground
 }
@@ -393,7 +405,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
 removeDerivedColums <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE', 'UNIQUE_PATIENT_POS', 'UNIQUE_ALT')))
+        select(-any_of(c('MUT_SUM', 'UNIQUE_POS', 'POOL_BARCODE', 'UNIQUE_PATIENT_POS', 'UNIQUE_ALT')))
 }
 
 # Writes the TSV file but, before saving, converts any logical columns to
@@ -456,7 +468,7 @@ main <- function(scriptArgs)
 
     mutationTable.withPatientAndBackground %>%
         removeDerivedColums() %>%
-        saveRDSandTSV('mutationTable_withPatientAndBackground.rds')
+        saveRDSandTSV('mutation_table.on_target.rds')
 }
 
 # Launch it.

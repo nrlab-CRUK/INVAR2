@@ -77,7 +77,7 @@ process createOnTargetMutationsTable
         path errorRatesFile
 
     output:
-        path 'mutationTable_withPatientAndBackground.rds', emit: "onTargetMutationsFile"
+        path 'mutation_table.on_target.rds', emit: "onTargetMutationsFile"
         path '*.tsv', optional: true
 
     shell:
@@ -103,7 +103,7 @@ workflow invar3
         createMutationsTable(mutationsChannel, tumourMutationsChannel, layoutChannel)
 
         offTargetErrorRates(createMutationsTable.out.filteredMutationsFile, layoutChannel)
-        
+
         createOnTargetMutationsTable(
             createMutationsTable.out.filteredMutationsFile,
             tumourMutationsChannel,

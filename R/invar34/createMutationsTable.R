@@ -37,7 +37,7 @@ parseOptions <- function()
         make_option(c("--min-ref-dp"), type="integer", metavar="int",
                     dest="MIN_REF_DP", help="Min DP is set by mpileups as 5, here we require at least 5 ref reads at a locus, set to 0 for sWGS",
                     default=5),
-        make_option(c("--alt-alleles-threashold"), type="integer", metavar="int",
+        make_option(c("--alt-alleles-threshold"), type="integer", metavar="int",
                     dest="ALT_ALLELES_THRESHOLD", help="Blacklist loci with >= N separate alternate alleles",
                     default=3),
         make_option(c("--minor-alt-allele-threshold"), type="integer", metavar="int",
