@@ -162,6 +162,8 @@ addLocusNoisePass <- function(mutationTable, errorRateTable)
                BOTH_STRANDS = (ALT_R > 0 & ALT_F > 0) | AF == 0)
 }
 
+# Remove columns from the mutation table that can be derived from
+# other columns, typically before saving.
 removeDerivedColums <- function(mutationTable)
 {
     mutationTable %>%

@@ -1,9 +1,9 @@
-# suppressPackageStartupMessages(library(Biostrings))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(tidyr))
 
 
 ##
@@ -144,8 +144,7 @@ convertComplementaryMutations <- function(mutationTable)
 # Classify mutations as being patient specific or not. Adds the TUMOUR_AF
 # value from the tumour mutations table.
 #
-classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, layoutTable,
-                                          skipPatientFromBackground = NULL)
+classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, layoutTable)
 {
     # Patient specific is an inner join with the tumour mutation table by unique patient position.
     # Inner join combined the semi join with the addition of the TUMOUR_AF and MUTATION_CLASS
@@ -156,12 +155,6 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
 
     patientSpecific <- mutationTable %>%
         inner_join(tumourMutationTable.specific, by = 'UNIQUE_PATIENT_POS')
-
-    if (!is.null(skipPatientFromBackground))
-    {
-        patientSpecific <- patientSpecific %>%
-            filter(!str_detect(skip_patient_from_background))
-    }
 
     # Non-patient specific is basically the rows that do not match a patient specific record.
     # The TUMOUR_AF and MUTATION_CLASS values come from a unique position in the tumour
@@ -202,9 +195,8 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
 
 ##
 # From TAPAS_functions.R "calculate.background_error"
-# PPC = control sample naming in NR lab
 #
-calculateBackgroundError <- function(errorRatesList, layoutTable, excludePPC = FALSE)
+calculateBackgroundError <- function(errorRatesList, layoutTable)
 {
     # If the locus noise dataframe is completely clean - this means you have either a) set the locus noise threshold too low or b) not run enough control samples
     if (sum(errorRatesList$LOCUS_NOISE$MUT_SUM) == 0)
@@ -221,12 +213,6 @@ calculateBackgroundError <- function(errorRatesList, layoutTable, excludePPC = F
     allErrorRates <- bind_rows(errorRatesList) %>%
         mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
         left_join(thinLayoutTable, by = 'POOL_BARCODE')
-
-    if (excludePPC)
-    {
-        allErrorRates <- allErrorRates %>%
-            filter(!str_detect(SAMPLE_NAME, "PPC"))
-    }
 
     backgroundError <- allErrorRates %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
@@ -349,8 +335,7 @@ errorTableComplementaryClasses <- function(backgroundErrorTable)
 # Referred functions are from TAPAS_functions.R
 #
 
-addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, layoutTable, errorRatesList,
-                          skipPatientFromBackground = NULL)
+addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
 {
     # This bit from "annotate_with_SLX_table", plus the additional column
 
@@ -373,7 +358,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
     # Also convert to complementary strand for A and G reference alleles.
 
     mutationTable.withPatient <- mutationTable %>%
-        classifyForPatientSpecificity(tumourMutationTable, layoutTable, skipPatientFromBackground) %>%
+        classifyForPatientSpecificity(tumourMutationTable, layoutTable) %>%
         convertComplementaryMutations()
 
     # Calculate background error rates.
@@ -399,12 +384,36 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
 }
 
 
+##
+# Saving functions
+#
+
+# Remove columns from the mutation table that can be derived from
+# other columns, typically before saving.
 removeDerivedColums <- function(mutationTable)
 {
     mutationTable %>%
         select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE', 'UNIQUE_PATIENT_POS', 'UNIQUE_ALT')))
 }
 
+# Writes the TSV file but, before saving, converts any logical columns to
+# simply the characters 'T' or 'F'. Saves having full "TRUE" and "FALSE" values,
+# which are excessive as reading the table back correctly interprets 'T' and 'F'.
+exportTSV <- function(t, file)
+{
+    toChar <- function(x)
+    {
+        ifelse(x, 'T', 'F')
+    }
+
+    t %>%
+        mutate_if(is.logical, toChar) %>%
+        write_tsv(file)
+
+    t
+}
+
+# Save the given table as an RDS file and a TSV
 saveRDSandTSV <- function(t, file)
 {
     saveRDS(t, file)
@@ -413,7 +422,7 @@ saveRDSandTSV <- function(t, file)
 
     if (tsv != file)
     {
-        write_tsv(t, tsv)
+        exportTSV(t, tsv)
     }
 
     t

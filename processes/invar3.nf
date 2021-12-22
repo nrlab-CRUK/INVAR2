@@ -7,20 +7,20 @@ process createMutationsTable
     publishDir 'mutations', mode: 'link'
 
     input:
-        path mutationFile
+        path mutationsFile
         path tumourMutationsFile
         path layoutFile
 
     output:
-        path 'mutation_table.all.rds', emit: "allMutationFile"
-        path 'mutation_table.filtered.rds', emit: "filteredMutationFile"
+        path 'mutation_table.all.rds', emit: "allMutationsFile", optional: true
+        path 'mutation_table.filtered.rds', emit: "filteredMutationsFile"
 
     shell:
         tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"
 
         """
         Rscript --vanilla "!{projectDir}/R/invar34/createMutationsTable.R" \
-            --mutations="!{mutationFile}" \
+            --mutations="!{mutationsFile}" \
             --tapas="!{tapasSetting}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
@@ -33,7 +33,7 @@ process createMutationsTable
         """
 }
 
-process offTargetErrorRate
+process offTargetErrorRates
 {
     memory '2g'
     cpus 2
@@ -42,19 +42,19 @@ process offTargetErrorRate
     publishDir 'off_target', mode: 'link'
 
     input:
-        path mutationRDSFile
+        path mutationsFile
         path layoutFile
 
     output:
-        path '*.rds'
+        path 'locus_error_rates.off_target.rds', emit: 'locusErrorRates'
+        path 'mutation_table.error_rates.cosmic.rds', emit: "cosmicErrorRates"
+        path 'mutation_table.error_rates.no_cosmic.rds', emit: "noCosmicErrorRates"
         path '*.tsv', optional: true
 
     shell:
         """
-        export INVAR_HOME="!{projectDir}"
-
         Rscript --vanilla "!{projectDir}/R/invar34/offTargetErrorRate.R" \
-            --mutations="!{mutationRDSFile}" \
+            --mutations="!{mutationsFile}" \
             --layout="!{layoutFile}" \
             --control-proportion=!{params.proportion_of_controls} \
             --max-background-af=!{params.max_background_mean_AF} \
@@ -62,18 +62,51 @@ process offTargetErrorRate
         """
 }
 
+process createOnTargetMutationsTable
+{
+    memory '2g'
+    cpus 2
+    time '1h'
+
+    publishDir 'on_target', mode: 'link'
+
+    input:
+        path mutationsFile
+        path tumourMutationsFile
+        path layoutFile
+        path errorRatesFile
+
+    output:
+        path 'mutationTable_withPatientAndBackground.rds', emit: "onTargetMutationsFile"
+        path '*.tsv', optional: true
+
+    shell:
+        """
+        Rscript --vanilla "!{projectDir}/R/invar34/createOnTargetMutationsTable.R" \
+            --mutations="!{mutationsFile}" \
+            --tumour-mutations="!{tumourMutationsFile}" \
+            --layout="!{layoutFile}" \
+            --error-rates="!{errorRatesFile}"
+        """
+}
+
 
 workflow invar3
 {
     take:
-        mutation_channel
+        mutationsChannel
 
     main:
-        tumour_mutations_channel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
-        layout_channel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
+        tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
+        layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
 
-        createMutationsTable(mutation_channel, tumour_mutations_channel, layout_channel)
+        createMutationsTable(mutationsChannel, tumourMutationsChannel, layoutChannel)
 
-        offTargetErrorRate(createMutationsTable.out.filteredMutationFile, layout_channel)
-
+        offTargetErrorRates(createMutationsTable.out.filteredMutationsFile, layoutChannel)
+        
+        createOnTargetMutationsTable(
+            createMutationsTable.out.filteredMutationsFile,
+            tumourMutationsChannel,
+            layoutChannel,
+            offTargetErrorRates.out.noCosmicErrorRates)
 }

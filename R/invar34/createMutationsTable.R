@@ -176,12 +176,32 @@ createMultiallelicBlacklist <- function(mutationTable,
 # Saving functions
 #
 
-removedDerivedColumns <- function(mutationTable)
+# Remove columns from the mutation table that can be derived from
+# other columns, typically before saving.
+removeDerivedColums <- function(mutationTable)
 {
     mutationTable %>%
         select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE')))
 }
 
+# Writes the TSV file but, before saving, converts any logical columns to
+# simply the characters 'T' or 'F'. Saves having full "TRUE" and "FALSE" values,
+# which are excessive as reading the table back correctly interprets 'T' and 'F'.
+exportTSV <- function(t, file)
+{
+    toChar <- function(x)
+    {
+        ifelse(x, 'T', 'F')
+    }
+
+    t %>%
+        mutate_if(is.logical, toChar) %>%
+        write_tsv(file)
+
+    t
+}
+
+# Save the given table as an RDS file and a TSV
 saveRDSandTSV <- function(t, file)
 {
     saveRDS(t, file)
@@ -190,7 +210,7 @@ saveRDSandTSV <- function(t, file)
 
     if (tsv != file)
     {
-        write_tsv(t, tsv)
+        exportTSV(t, tsv)
     }
 
     t
@@ -232,16 +252,16 @@ main <- function(scriptArgs)
         filter(!UNIQUE_POS %in% multiallelicBlacklist$UNIQUE_POS)
 
     #mutationTable.all %>%
-    #    removedDerivedColumns() %>%
+    #    removeDerivedColums() %>%
     #    saveRDSandTSV('mutation_table.all.rds')
 
     mutationTable.biallelic %>%
-        removedDerivedColumns() %>%
+        removeDerivedColums() %>%
         saveRDSandTSV("mutation_table.filtered.rds")
 
     if (nrow(multiallelicBlacklist) > 0)
     {
-        write_tsv(multiallelicBlacklist, 'multiallelic_blacklist.tsv')
+        exportTSV(multiallelicBlacklist, 'multiallelic_blacklist.tsv')
     }
 }
 
