@@ -1,3 +1,11 @@
+// tapasSetting is a closure that can be used inside more than one process that
+// gives the full string for the TAPAS setting.
+
+tapasSetting =
+{
+    return "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"
+}
+
 process createMutationsTable
 {
     memory '8g'
@@ -16,14 +24,13 @@ process createMutationsTable
         path 'mutation_table.filtered.rds', emit: "filteredMutationsFile"
 
     shell:
-        tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"
 
         """
         Rscript --vanilla "!{projectDir}/R/invar34/createMutationsTable.R" \
             --mutations="!{mutationsFile}" \
-            --tapas="!{tapasSetting}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
+            --tapas="!{tapasSetting}" \
             --cosmic-threshold=!{params.cosmic_threshold} \
             --mqsb-threshold=!{params.individual_MQSB_threshold} \
             --max-dp=!{params.max_DP} \
@@ -53,7 +60,7 @@ process offTargetErrorRates
 
     shell:
         """
-        Rscript --vanilla "!{projectDir}/R/invar34/offTargetErrorRate.R" \
+        Rscript --vanilla "!{projectDir}/R/invar34/offTargetErrorRates.R" \
             --mutations="!{mutationsFile}" \
             --layout="!{layoutFile}" \
             --control-proportion=!{params.proportion_of_controls} \
@@ -90,6 +97,37 @@ process createOnTargetMutationsTable
         """
 }
 
+process TAPAS4
+{
+    memory '2g'
+    cpus 2
+    time '1h'
+
+    publishDir 'on_target', mode: 'link'
+
+    input:
+        path mutationsFile
+        path tumourMutationsFile
+        path layoutFile
+
+    output:
+        path 'locus_error_rates.on_target.rds', emit: 'locusErrorRates'
+        path '*.tsv', optional: true
+        path '*.pdf', optional: true
+
+    shell:
+        """
+        Rscript --vanilla "!{projectDir}/R/invar34/tapas4.R" \
+            --mutations="!{mutationsFile}" \
+            --tumour-mutations="!{tumourMutationsFile}" \
+            --layout="!{layoutFile}" \
+            --study="!{params.STUDY_ID}" \
+            --tapas="!{tapasSetting}" \
+            --control-proportion=!{params.proportion_of_controls} \
+            --max-background-af=!{params.max_background_mean_AF} \
+            !{params.is_bloodspot ? "--bloodspot" : ""}
+        """
+}
 
 workflow invar3
 {
@@ -109,4 +147,9 @@ workflow invar3
             tumourMutationsChannel,
             layoutChannel,
             offTargetErrorRates.out.noCosmicErrorRates)
+
+        TAPAS4(createOnTargetMutationsTable.out.onTargetMutationsFile,
+               tumourMutationsChannel,
+               layoutChannel)
+
 }

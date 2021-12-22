@@ -275,9 +275,9 @@ main <- function(scriptArgs)
 
     # Calculate the error rates with filters and with or without COSMIC.
 
-    #mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, lociErrorRateTable)
-    doMain(TRUE, mutationTable, layoutTable, lociErrorRateTable)
-    doMain(FALSE, mutationTable, layoutTable, lociErrorRateTable)
+    mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, lociErrorRateTable)
+    #doMain(TRUE, mutationTable, layoutTable, lociErrorRateTable)
+    #doMain(FALSE, mutationTable, layoutTable, lociErrorRateTable)
 }
 
 # Launch it.

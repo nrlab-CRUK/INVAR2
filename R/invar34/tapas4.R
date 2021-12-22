@@ -164,7 +164,7 @@ createLociErrorRatePlot <- function(errorRateTable, study, tapasSetting)
     locusNoiseFailPercentage <- signif(locusNoiseFail$F[1] * 100, digits = 3)
 
     plot <- errorRateTable %>%
-        ggplot2::ggplot(aes(x = BACKGROUND_AF, fill = LOCUS_NOISE.PASS)) +
+        ggplot(aes(x = BACKGROUND_AF, fill = LOCUS_NOISE.PASS)) +
         geom_histogram(bins = 100, position = "dodge") +
         scale_colour_discrete(name = "Locus noise pass") +
         scale_x_log10(breaks = c(1e-4, 1e-3, 1e-2, 1e-1)) +
@@ -245,10 +245,12 @@ main <- function(scriptArgs)
                                  max_background_mean_AF = scriptArgs$MAX_BACKGROUND_AF,
                                  is.blood_spot = scriptArgs$BLOODSPOT)
 
+    saveRDSandTSV(lociErrorRateTable, 'locus_error_rates.on_target.rds')
+
     lociErrorRatePlot <- lociErrorRateTable %>%
         createLociErrorRatePlot(study = scriptArgs$STUDY, tapasSetting = scriptArgs$TAPAS_SETTING)
 
-    ggsave(lociErrorRatePlot, filename = 'locus_error_rates.on_target.pdf', width = 11, height = 7)
+    suppressWarnings(ggsave(lociErrorRatePlot, filename = 'locus_error_rates.on_target.pdf', width = 11, height = 7))
 }
 
 # Launch it.
