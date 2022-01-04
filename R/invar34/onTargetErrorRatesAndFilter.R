@@ -17,16 +17,11 @@ parseOptions <- function()
         make_option(c("--study"), type="character", metavar="string",
                     dest="STUDY", help="The study name",
                     default=defaultMarker),
-        make_option(c("--melr"), action="store_true", default=FALSE,
-                    dest="MELR", help="Whether the study is a MELR project"),
         make_option(c("--tapas"), type="character", metavar="string",
                     dest="TAPAS_SETTING", help="The TAPAS setting",
                     default=defaultMarker),
         make_option(c("--mutations"), type="character", metavar="file",
                     dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by createMutationsTable.R",
-                    default=defaultMarker),
-        make_option(c("--tumour-mutations"), type="character", metavar="file",
-                    dest="TUMOUR_MUTATIONS_FILE", help="The source patient mutations file",
                     default=defaultMarker),
         make_option(c("--layout"), type="character", metavar="file",
                     dest="LAYOUT_FILE", help="The sequencing layout file",
@@ -70,11 +65,9 @@ parseOptions <- function()
 richTestOptions <- function()
 {
     list(
-        MUTATIONS_TABLE_FILE = 'on_target/mutation_table.on_target.rds',
-        TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
+        MUTATIONS_TABLE_FILE = 'on_target/mutation_table.on_target.all.rds',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         STUDY = 'PARADIGM',
-        MELR = FALSE,
         TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         CONTROL_PROPORTION = 0.1,
         MAX_BACKGROUND_AF = 0.01,
@@ -314,6 +307,7 @@ main <- function(scriptArgs)
 
     mutationTable.filtered %>%
         removeDerivedColumns() %>%
+        arrange(CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
         saveRDSandTSV('mutation_table.on_target.rds')
 }
 

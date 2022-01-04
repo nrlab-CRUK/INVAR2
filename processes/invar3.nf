@@ -75,8 +75,6 @@ process createOnTargetMutationsTable
     cpus 2
     time '1h'
 
-    publishDir 'on_target', mode: 'link'
-
     input:
         path mutationsFile
         path tumourMutationsFile
@@ -84,7 +82,7 @@ process createOnTargetMutationsTable
         path errorRatesFile
 
     output:
-        path 'mutation_table.on_target.rds', emit: "onTargetMutationsFile"
+        path 'mutation_table.on_target.all.rds', emit: "onTargetMutationsFile"
         path '*.tsv', optional: true
 
     shell:
@@ -97,7 +95,7 @@ process createOnTargetMutationsTable
         """
 }
 
-process TAPAS4
+process onTargetErrorRatesAndFilter
 {
     memory '2g'
     cpus 2
@@ -112,20 +110,22 @@ process TAPAS4
 
     output:
         path 'locus_error_rates.on_target.rds', emit: 'locusErrorRates'
+        path 'mutation_table.on_target.rds', emit: "onTargetMutationsFile"
         path '*.tsv', optional: true
         path '*.pdf', optional: true
 
     shell:
         """
-        Rscript --vanilla "!{projectDir}/R/invar34/tapas4.R" \
+        Rscript --vanilla "!{projectDir}/R/invar34/onTargetErrorRatesAndFilter.R" \
             --mutations="!{mutationsFile}" \
-            --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
             --study="!{params.STUDY_ID}" \
             --tapas="!{tapasSetting}" \
+            --cosmic-threshold=!{params.cosmic_threshold} \
             --control-proportion=!{params.proportion_of_controls} \
             --max-background-af=!{params.max_background_mean_AF} \
-            !{params.is_bloodspot ? "--bloodspot" : ""}
+            !{params.is_bloodspot ? "--bloodspot" : ""} \
+            --af-threshold=0.01
         """
 }
 
@@ -148,8 +148,10 @@ workflow invar3
             layoutChannel,
             offTargetErrorRates.out.noCosmicErrorRates)
 
-        TAPAS4(createOnTargetMutationsTable.out.onTargetMutationsFile,
-               tumourMutationsChannel,
-               layoutChannel)
-
+        onTargetErrorRatesAndFilter(createOnTargetMutationsTable.out.onTargetMutationsFile,
+                                    tumourMutationsChannel,
+                                    layoutChannel)
+    
+    emit:
+        onTargetMutationFile = onTargetErrorRatesAndFilter.out.onTargetMutationsFile
 }
