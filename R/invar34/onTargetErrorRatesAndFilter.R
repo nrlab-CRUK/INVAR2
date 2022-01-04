@@ -307,7 +307,7 @@ main <- function(scriptArgs)
 
     mutationTable.filtered %>%
         removeDerivedColumns() %>%
-        arrange(CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
+        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
         saveRDSandTSV('mutation_table.on_target.rds')
 }
 
