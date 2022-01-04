@@ -17,6 +17,8 @@ parseOptions <- function()
         make_option(c("--study"), type="character", metavar="string",
                     dest="STUDY", help="The study name",
                     default=defaultMarker),
+        make_option(c("--melr"), action="store_true", default=FALSE,
+                    dest="MELR", help="Whether the study is a MELR project"),
         make_option(c("--tapas"), type="character", metavar="string",
                     dest="TAPAS_SETTING", help="The TAPAS setting",
                     default=defaultMarker),
@@ -29,6 +31,9 @@ parseOptions <- function()
         make_option(c("--layout"), type="character", metavar="file",
                     dest="LAYOUT_FILE", help="The sequencing layout file",
                     default=defaultMarker),
+        make_option(c("--cosmic-threshold"), type="integer", metavar="int",
+                    dest="COSMIC_THRESHOLD", help="Loci with >0 entries in COSMIC are considered as COSMIC mutations",
+                    default=0),
         make_option(c("--bloodspot"), action="store_true", default=FALSE,
                     dest="BLOODSPOT", help="Indicate this is blood spot data."),
         make_option(c("--control-proportion"), type="double", metavar="num",
@@ -36,6 +41,9 @@ parseOptions <- function()
                     default=0.1),
         make_option(c("--max-background-af"), type="double", metavar="num",
                     dest="MAX_BACKGROUND_AF", help="Filter loci with a background AF in controls greater than this value",
+                    default=0.01),
+        make_option(c("--af-threshold"), type="double", metavar="num",
+                    dest="AF_THRESHOLD", help="Maximum AF value for acceptable samples",
                     default=0.01))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
@@ -66,10 +74,13 @@ richTestOptions <- function()
         TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         STUDY = 'PARADIGM',
+        MELR = FALSE,
         TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         CONTROL_PROPORTION = 0.1,
         MAX_BACKGROUND_AF = 0.01,
-        BLOODSPOT = FALSE
+        AF_THRESHOLD = 0.01,
+        BLOODSPOT = FALSE,
+        COSMIC_THRESHOLD = 0
     )
 }
 
@@ -181,13 +192,52 @@ createLociErrorRatePlot <- function(errorRateTable, study, tapasSetting)
 }
 
 
+# identify samples with ctDNA >1% so that they are flagged
+# later in the pipeline they are not used as patient-controls because of a
+# potential risk of contamination between pt-spec and non-pt-spec loci
+getContaminatedSamples <- function(mutationTable, afThreshold)
+{
+    AF <- mutationTable %>%
+        mutate(BOTH_STRANDS = ALT_R > 0 & ALT_F > 0 | AF == 0) %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
+        group_by(SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, PATIENT_SPECIFIC) %>%
+        summarise(MUT_SUM = sum(ALT_F + ALT_R),
+                  DEPTH = sum(DP),
+                  AF = MUT_SUM / DEPTH,
+                  .groups = 'drop') %>%
+        rename(PATIENT = PATIENT_MUTATION_BELONGS_TO)
+
+    ## any correlation between sample and it's nonptspec and ptspec AFs?
+
+    patientSpecific = AF %>%
+        filter(PATIENT_SPECIFIC)
+
+    nonPatientSpecific = AF %>%
+        filter(!PATIENT_SPECIFIC)
+
+    test <- inner_join(patientSpecific, nonPatientSpecific, by = c('SAMPLE_NAME'))
+
+    lowSamples <- test %>%
+        filter(AF.x < afThreshold)
+
+    # print(cor.test(lowSamples$AF.x, lowSamples$AF.y))
+
+    doNotUse <- AF %>%
+        filter(PATIENT_SPECIFIC & AF > afThreshold)
+
+    doNotUse %>%
+        distinct(SAMPLE_NAME)
+}
+
+
+
 ##
 # Saving functions
 #
 
 # Remove columns from the mutation table that can be derived from
 # other columns, typically before saving.
-removeDerivedColums <- function(mutationTable)
+removeDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
         select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
@@ -231,8 +281,6 @@ saveRDSandTSV <- function(t, file)
 
 main <- function(scriptArgs)
 {
-    #tumourMutationTable <- loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
-
     layoutTable <- loadLayoutFile(scriptArgs$LAYOUT_FILE)
 
     mutationTable <-
@@ -251,6 +299,22 @@ main <- function(scriptArgs)
         createLociErrorRatePlot(study = scriptArgs$STUDY, tapasSetting = scriptArgs$TAPAS_SETTING)
 
     suppressWarnings(ggsave(lociErrorRatePlot, filename = 'locus_error_rates.on_target.pdf', width = 11, height = 7))
+
+    lociErrorRateNoisePass <- lociErrorRateTable %>%
+        filter(LOCUS_NOISE.PASS)
+
+    mutationTable.filtered <- mutationTable %>%
+        filter(PATIENT_SPECIFIC | COSMIC_MUTATIONS <= scriptArgs$COSMIC_THRESHOLD) %>%
+        mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% lociErrorRateNoisePass$UNIQUE_POS)
+
+    contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$AF_THRESHOLD)
+
+    mutationTable.filtered <- mutationTable.filtered %>%
+        mutate(CONTAMINATION_RISK.PASS = !SAMPLE_NAME %in% contaminatedSamples$SAMPLE_NAME)
+
+    mutationTable.filtered %>%
+        removeDerivedColumns() %>%
+        saveRDSandTSV('mutation_table.on_target.rds')
 }
 
 # Launch it.

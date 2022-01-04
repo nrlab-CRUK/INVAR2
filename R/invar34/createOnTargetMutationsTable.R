@@ -11,7 +11,6 @@
 
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
-suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(tidyr))
@@ -402,7 +401,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
 
 # Remove columns from the mutation table that can be derived from
 # other columns, typically before saving.
-removeDerivedColums <- function(mutationTable)
+removeDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
         select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
@@ -467,8 +466,8 @@ main <- function(scriptArgs)
         addPatientAndBackgroundColumns(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
 
     mutationTable.withPatientAndBackground %>%
-        removeDerivedColums() %>%
-        saveRDSandTSV('mutation_table.on_target.rds')
+        removeDerivedColumns() %>%
+        saveRDSandTSV('mutation_table.on_target.all.rds')
 }
 
 # Launch it.

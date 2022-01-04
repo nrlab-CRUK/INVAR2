@@ -164,7 +164,7 @@ addLocusNoisePass <- function(mutationTable, errorRateTable)
 
 # Remove columns from the mutation table that can be derived from
 # other columns, typically before saving.
-removeDerivedColums <- function(mutationTable)
+removeDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
         select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
@@ -221,19 +221,19 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
     if (TRUE)
     {
         oneRead %>%
-            removeDerivedColums() %>%
+            removeDerivedColumns() %>%
             write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.oneread.tsv'))
 
         locusNoisePass %>%
-            removeDerivedColums() %>%
+            removeDerivedColumns() %>%
             write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise.tsv'))
 
         bothStrands %>%
-            removeDerivedColums() %>%
+            removeDerivedColumns() %>%
             write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.bothreads.tsv'))
 
         bothFilters %>%
-            removeDerivedColums() %>%
+            removeDerivedColumns() %>%
             write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise_bothreads.tsv'))
     }
 

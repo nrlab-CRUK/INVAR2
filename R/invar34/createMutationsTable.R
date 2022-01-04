@@ -178,7 +178,7 @@ createMultiallelicBlacklist <- function(mutationTable,
 
 # Remove columns from the mutation table that can be derived from
 # other columns, typically before saving.
-removeDerivedColums <- function(mutationTable)
+removeDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
         select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
@@ -233,7 +233,7 @@ main <- function(scriptArgs)
 
     # Filter the mutations table to remove rows with MSQB above the threshold
     # (was blacklist.MQSB in TAPAS_functions.R) and the base filters with
-    # thresholds (IVAR3.R).
+    # thresholds (INVAR3.R).
 
     mutationTable.filtered <- mutationTable.all %>%
         filter(MQSB > scriptArgs$MQSB_THRESHOLD &
@@ -252,11 +252,11 @@ main <- function(scriptArgs)
         filter(!UNIQUE_POS %in% multiallelicBlacklist$UNIQUE_POS)
 
     #mutationTable.all %>%
-    #    removeDerivedColums() %>%
+    #    removeDerivedColumns() %>%
     #    saveRDSandTSV('mutation_table.all.rds')
 
     mutationTable.biallelic %>%
-        removeDerivedColums() %>%
+        removeDerivedColumns() %>%
         saveRDSandTSV("mutation_table.filtered.rds")
 
     if (nrow(multiallelicBlacklist) > 0)
