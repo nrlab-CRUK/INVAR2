@@ -167,7 +167,7 @@ addLocusNoisePass <- function(mutationTable, errorRateTable)
 removeDerivedColums <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE')))
+        select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
 }
 
 ##

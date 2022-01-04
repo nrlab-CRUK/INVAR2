@@ -181,7 +181,7 @@ createMultiallelicBlacklist <- function(mutationTable,
 removeDerivedColums <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('UNIQUE_POS', 'POOL_BARCODE')))
+        select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
 }
 
 # Writes the TSV file but, before saving, converts any logical columns to

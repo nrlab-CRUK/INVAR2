@@ -2,13 +2,6 @@
 
 set -euo pipefail
 
-python3 "!{projectDir}/python/invar1/toRegions.py" "!{mutationFile}" | split -l 800 - "regions.txt."
+python3 "!{projectDir}/python/invar1/toRegions.py" "!{mutationFile}" > regions.txt
 
-rm -f "!{tabixFile}"
-
-for regions in regions.txt.*
-do
-    tabix "!{tabixDatabase}" $(cat $regions) >> "!{tabixFile}"
-done
-
-rm regions.txt.*
+tabix -R regions.txt "!{tabixDatabase}" > "!{tabixFile}"
