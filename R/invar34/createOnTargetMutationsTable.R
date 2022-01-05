@@ -211,7 +211,7 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
 calculateBackgroundError <- function(errorRatesList, layoutTable)
 {
     # If the locus noise dataframe is completely clean - this means you have either a) set the locus noise threshold too low or b) not run enough control samples
-    if (sum(errorRatesList$LOCUS_NOISE$MUT_SUM) == 0)
+    if (sum(errorRatesList$LOCUS_NOISE$MUTATION_SUM) == 0)
     {
         stop(str_c("LOCUS NOISE mutant sum is zero.",
                    "This is likely due to insufficient controls being run.",
@@ -228,9 +228,9 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
 
     backgroundError <- allErrorRates %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
-        summarize(MUT_SUM = sum(MUT_SUM),
+        summarize(MUTATION_SUM = sum(MUTATION_SUM),
                   DP_SUM = sum(DP_SUM),
-                  BACKGROUND_AF = MUT_SUM / DP_SUM,
+                  BACKGROUND_AF = MUTATION_SUM / DP_SUM,
                   .groups="drop")
 
     trinucleotideDepth <- allErrorRates %>%
@@ -241,8 +241,8 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
         filter(ALT != '.') %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
         inner_join(trinucleotideDepth, by = c('TRINUCLEOTIDE', 'CASE_OR_CONTROL', 'ERROR_RATE_TYPE')) %>%
-        summarize(MUT_SUM_TOTAL = sum(MUT_SUM),
-                  BACKGROUND_AF = MUT_SUM_TOTAL / TRINUCLEOTIDE_DEPTH,
+        summarize(MUTATION_SUM_TOTAL = sum(MUTATION_SUM),
+                  BACKGROUND_AF = MUTATION_SUM_TOTAL / TRINUCLEOTIDE_DEPTH,
                   TRINUCLEOTIDE_DEPTH = TRINUCLEOTIDE_DEPTH,
                   .groups="drop") %>%
         arrange(REF, ALT, CASE_OR_CONTROL, ERROR_RATE_TYPE)
@@ -277,7 +277,7 @@ missingErrorClasses <- function(backgroundErrorTable, trinucleotideDepthTable)
 
     missingClasses <- allClasses %>%
         anti_join(presentClasses, by = fiveColumnJoin) %>%
-        mutate(MUT_SUM_TOTAL = 0, BACKGROUND_AF = 0.0) %>%
+        mutate(MUTATION_SUM_TOTAL = 0, BACKGROUND_AF = 0.0) %>%
         left_join(trinucleotideDepthTable, by = threeColumnJoin)
 
     missingClasses
@@ -335,9 +335,9 @@ errorTableComplementaryClasses <- function(backgroundErrorTable)
     complement <- backgroundErrorTable %>%
         convertComplementaryBackgroundError() %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
-        summarise(MUT_SUM_TOTAL = sum(MUT_SUM_TOTAL),
+        summarise(MUTATION_SUM_TOTAL = sum(MUTATION_SUM_TOTAL),
                   TRINUCLEOTIDE_DEPTH = sum(TRINUCLEOTIDE_DEPTH),
-                  BACKGROUND_AF = MUT_SUM_TOTAL / TRINUCLEOTIDE_DEPTH,
+                  BACKGROUND_AF = MUTATION_SUM_TOTAL / TRINUCLEOTIDE_DEPTH,
                   .groups = "drop")
 
     complement
@@ -381,7 +381,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
 
     backgroundErrorTable.forJoin <- backgroundErrorTable %>%
         mutate(MUTATION_CLASS = str_c(REF, ALT, sep = '/')) %>%
-        rename(BACKGROUND_MUT_SUM = MUT_SUM_TOTAL,
+        rename(BACKGROUND_MUTATION_SUM = MUTATION_SUM_TOTAL,
                BACKGROUND_DP = TRINUCLEOTIDE_DEPTH) %>%
         filter(CASE_OR_CONTROL == 'case' & ERROR_RATE_TYPE == 'locus_noise.both_reads') %>%
         select(TRINUCLEOTIDE, MUTATION_CLASS, starts_with('BACKGROUND_'))
@@ -404,7 +404,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
 removeDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
+        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
 }
 
 # Writes the TSV file but, before saving, converts any logical columns to
@@ -467,6 +467,7 @@ main <- function(scriptArgs)
 
     mutationTable.withPatientAndBackground %>%
         removeDerivedColumns() %>%
+        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
         saveRDSandTSV('mutation_table.on_target.all.rds')
 }
 

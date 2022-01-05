@@ -34,11 +34,11 @@ parseOptions <- function()
         make_option(c("--control-proportion"), type="double", metavar="num",
                     dest="CONTROL_PROPORTION", help="Blacklist loci that have signal in >30% of the nonptspec samples",
                     default=0.1),
-        make_option(c("--max-background-af"), type="double", metavar="num",
-                    dest="MAX_BACKGROUND_AF", help="Filter loci with a background AF in controls greater than this value",
+        make_option(c("--max-background-allele-frequency"), type="double", metavar="num",
+                    dest="MAX_BACKGROUND_ALLELE_FREQUENCY", help="Filter loci with a background allele frequency in controls greater than this value",
                     default=0.01),
-        make_option(c("--af-threshold"), type="double", metavar="num",
-                    dest="AF_THRESHOLD", help="Maximum AF value for acceptable samples",
+        make_option(c("--allele-frequency-threshold"), type="double", metavar="num",
+                    dest="ALLELE_FREQUENCY_THRESHOLD", help="Maximum allele frequency value for acceptable samples",
                     default=0.01))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
@@ -70,8 +70,8 @@ richTestOptions <- function()
         STUDY = 'PARADIGM',
         TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         CONTROL_PROPORTION = 0.1,
-        MAX_BACKGROUND_AF = 0.01,
-        AF_THRESHOLD = 0.01,
+        MAX_BACKGROUND_ALLELE_FREQUENCY = 0.01,
+        ALLELE_FREQUENCY_THRESHOLD = 0.01,
         BLOODSPOT = FALSE,
         COSMIC_THRESHOLD = 0
     )
@@ -115,7 +115,7 @@ addDerivedColumns <- function(mutationTable)
         mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
                UNIQUE_ALT = str_c(UNIQUE_POS, str_c(REF, ALT, sep='/'), sep='_'),
                POOL_BARCODE = str_c(POOL, BARCODE, sep='_'),
-               MUT_SUM = ALT_F + ALT_R)
+               MUTATION_SUM = ALT_F + ALT_R)
 }
 
 
@@ -132,6 +132,10 @@ createLociErrorRateTable <- function(mutationTable,
                                      max_background_mean_AF,
                                      is.blood_spot)
 {
+    stopifnot(is.numeric(proportion_of_controls))
+    stopifnot(is.numeric(max_background_mean_AF))
+    stopifnot(is.logical(is.blood_spot))
+
     if (is.blood_spot)
     {
         message("sWGS/blood spot mutationTable, do not set a max_background_mean_AF value as it is not appropriate in the low unique depth setting")
@@ -142,9 +146,9 @@ createLociErrorRateTable <- function(mutationTable,
         filter(!PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case') %>%
         mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, POOL_BARCODE, NA)) %>%
         group_by(UNIQUE_POS, MUTATION_CLASS, TRINUCLEOTIDE, PATIENT_MUTATION_BELONGS_TO, COSMIC) %>%
-        summarize(MUT_SUM = sum(ALT_F + ALT_R),
+        summarize(MUTATION_SUM = sum(ALT_F + ALT_R),
                   DP_SUM = sum(DP),
-                  BACKGROUND_AF = MUT_SUM / DP_SUM,
+                  BACKGROUND_AF = MUTATION_SUM / DP_SUM,
                   N_SAMPLES = n_distinct(POOL_BARCODE),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
@@ -190,22 +194,24 @@ createLociErrorRatePlot <- function(errorRateTable, study, tapasSetting)
 # potential risk of contamination between pt-spec and non-pt-spec loci
 getContaminatedSamples <- function(mutationTable, afThreshold)
 {
-    AF <- mutationTable %>%
+    stopifnot(is.numeric(afThreshold))
+
+    alleleFrequencyTable <- mutationTable %>%
         mutate(BOTH_STRANDS = ALT_R > 0 & ALT_F > 0 | AF == 0) %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
         group_by(SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, PATIENT_SPECIFIC) %>%
-        summarise(MUT_SUM = sum(ALT_F + ALT_R),
-                  DEPTH = sum(DP),
-                  AF = MUT_SUM / DEPTH,
+        summarise(MUTATION_SUM = sum(ALT_F + ALT_R),
+                  DP = sum(DP),
+                  AF = MUTATION_SUM / DP,
                   .groups = 'drop') %>%
         rename(PATIENT = PATIENT_MUTATION_BELONGS_TO)
 
     ## any correlation between sample and it's nonptspec and ptspec AFs?
 
-    patientSpecific = AF %>%
+    patientSpecific = alleleFrequencyTable %>%
         filter(PATIENT_SPECIFIC)
 
-    nonPatientSpecific = AF %>%
+    nonPatientSpecific = alleleFrequencyTable %>%
         filter(!PATIENT_SPECIFIC)
 
     test <- inner_join(patientSpecific, nonPatientSpecific, by = c('SAMPLE_NAME'))
@@ -213,9 +219,9 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
     lowSamples <- test %>%
         filter(AF.x < afThreshold)
 
-    # print(cor.test(lowSamples$AF.x, lowSamples$AF.y))
+    print(cor.test(lowSamples$AF.x, lowSamples$AF.y))
 
-    doNotUse <- AF %>%
+    doNotUse <- alleleFrequencyTable %>%
         filter(PATIENT_SPECIFIC & AF > afThreshold)
 
     doNotUse %>%
@@ -233,7 +239,7 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
 removeDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
+        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
 }
 
 # Writes the TSV file but, before saving, converts any logical columns to
@@ -283,7 +289,7 @@ main <- function(scriptArgs)
     lociErrorRateTable <- mutationTable %>%
         createLociErrorRateTable(layoutTable,
                                  proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
-                                 max_background_mean_AF = scriptArgs$MAX_BACKGROUND_AF,
+                                 max_background_mean_AF = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY,
                                  is.blood_spot = scriptArgs$BLOODSPOT)
 
     saveRDSandTSV(lociErrorRateTable, 'locus_error_rates.on_target.rds')
@@ -300,7 +306,7 @@ main <- function(scriptArgs)
         filter(PATIENT_SPECIFIC | COSMIC_MUTATIONS <= scriptArgs$COSMIC_THRESHOLD) %>%
         mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% lociErrorRateNoisePass$UNIQUE_POS)
 
-    contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$AF_THRESHOLD)
+    contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$ALLELE_FREQUENCY_THRESHOLD)
 
     mutationTable.filtered <- mutationTable.filtered %>%
         mutate(CONTAMINATION_RISK.PASS = !SAMPLE_NAME %in% contaminatedSamples$SAMPLE_NAME)
