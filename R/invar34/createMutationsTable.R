@@ -172,7 +172,8 @@ main <- function(scriptArgs)
     # thresholds (INVAR3.R).
 
     mutationTable.filtered <- mutationTable.all %>%
-        filter(MQSB > scriptArgs$MQSB_THRESHOLD &
+        filter(!is.na(MQSB) &
+               MQSB > scriptArgs$MQSB_THRESHOLD &
                DP < scriptArgs$MAX_DEPTH &
                !SNP &
                REF_R + REF_F >= scriptArgs$MIN_REF_DEPTH &

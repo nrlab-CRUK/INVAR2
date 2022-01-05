@@ -1,7 +1,7 @@
 include { logException } from '../functions/debugging'
 
 
-process patientListToBed
+process slopPatientInfo
 {
     executor 'local'
     memory '256m'
@@ -10,38 +10,15 @@ process patientListToBed
 
     input:
         path csvFile
-
-    output:
-        path bedFile
-
-    shell:
-        bedFile = "${csvFile.baseName}.bed"
-
-        """
-        Rscript --vanilla "!{projectDir}/R/invar1/patientListCsvToBed.R" \
-            "!{csvFile}" "!{bedFile}"
-        """
-}
-
-
-process slopBedFile
-{
-    executor 'local'
-    memory '32m'
-    cpus 1
-    time '5m'
-
-    input:
-        path bedFile
         path genomeFile
 
     output:
         path filteredBedFile, emit: "sloppedBed"
 
     shell:
-        filteredBedFile = "${bedFile.baseName}.slopped.filtered.bed"
+        filteredBedFile = "${csvFile.baseName}.slopped.filtered.bed"
 
-        template "invar1/slopbed.sh"
+        template "invar1/slop_patient_info.sh"
 }
 
 
@@ -214,13 +191,12 @@ workflow invar1
         cosmic_channel = channel.fromPath(params.COSMIC_DB, checkIfExists: true)
         cosmic_index_channel = channel.fromPath("${params.COSMIC_DB}.tbi")
 
-        patientListToBed(patient_list_channel)
-        slopBedFile(patientListToBed.out, genome_channel)
+        slopPatientInfo(patient_list_channel, genome_channel)
 
         bamList = file(params.INPUT_FILES, checkIfExists: true).readLines()
         bam_channel = channel.fromList(bamList).map { f -> file(f, checkIfExists: true) }
 
-        mpileup(slopBedFile.out, fasta_channel, bam_channel) | biallelic
+        mpileup(slopPatientInfo.out, fasta_channel, bam_channel) | biallelic
 
         mutation_channel = biallelic.out.filter { pool, bc, f -> f.countLines() > 1 }
 
