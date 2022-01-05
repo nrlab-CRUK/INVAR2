@@ -1,75 +1,23 @@
-FROM    centos:8
+FROM debian:bullseye-slim
 
-LABEL   maintainer="Richard Bowers<richard.bowers@cruk.cam.ac.uk>"
+RUN apt-get update && \
+    apt-get install -y git curl procps && \
+    apt-get clean
 
-ARG INSTALL_DIR=/usr/local
-ARG BUILD_DIR=/var/tmp/invar_software_build
+ARG CONDA_VERSION=py39_4.10.3
 
-ARG BEDTOOLS=2.27.1
-ARG PICARD=2.10.2
-ARG HTSLIB=1.14
-ARG SAMTOOLS=1.14
-ARG BCFTOOLS=1.14
+RUN curl https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh -o miniconda3.sh && \
+    mkdir -p /opt && \
+    sh miniconda3.sh -b -p /opt/conda && \
+    rm miniconda3.sh
 
-ARG TAROPTS="--no-same-owner --no-same-permissions"
+COPY invar2.yml .
+RUN /opt/conda/bin/conda env create -f invar2.yml
 
-ENV JAVA_HOME=/usr/lib/jvm/jre-11
-ENV PATH=$JAVA_HOME/bin:$PATH
+COPY invar2_bcftools.yml .
+RUN /opt/conda/bin/conda env create -f invar2_bcftools.yml
 
-RUN dnf install -y dnf-plugins-core epel-release
-RUN dnf config-manager --set-enabled powertools
-RUN dnf makecache && dnf update -y
-RUN dnf install -y \
-	bzip2 bzip2-devel gcc-c++ git java-11-openjdk-headless \
-	libcurl-devel libxml2-devel make ncurses-devel openssl-devel \
-	python2 python3 R-core R-devel unzip wget xz-devel zlib-devel
+RUN /opt/conda/bin/conda clean -a
 
-RUN alternatives --set python /usr/bin/python2
-RUN mkdir -p ${INSTALL_DIR} ${BUILD_DIR}
+ENV PATH /opt/conda/envs/invar2/bin:/opt/conda/envs/invar2_bcftools/bin:$PATH
 
-# htslib
-RUN cd ${BUILD_DIR}; \
-    wget https://github.com/samtools/htslib/releases/download/${HTSLIB}/htslib-${HTSLIB}.tar.bz2 && \
-    tar ${TAROPTS} -jxf htslib-${HTSLIB}.tar.bz2
-RUN cd ${BUILD_DIR}/htslib-${HTSLIB}; \
-    ./configure --prefix="${INSTALL_DIR}" && \
-    make && \
-    make install
-
-# Can add "--with-htslib=system" to use a shared htslib in samtools & bcftools, if the same version.
-
-# samtools
-RUN cd ${BUILD_DIR}; \
-    wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS}/samtools-${SAMTOOLS}.tar.bz2 && \
-    tar ${TAROPTS} -jxf samtools-${SAMTOOLS}.tar.bz2
-RUN cd ${BUILD_DIR}/samtools-${SAMTOOLS}; \
-    ./configure --prefix="${INSTALL_DIR}" --with-htslib=system && \
-    make && \
-    make install
-
-# bcftools
-RUN cd ${BUILD_DIR}; \
-    wget https://github.com/samtools/bcftools/releases/download/${BCFTOOLS}/bcftools-${BCFTOOLS}.tar.bz2 && \
-    tar ${TAROPTS} -jxf bcftools-${BCFTOOLS}.tar.bz2
-RUN cd ${BUILD_DIR}/bcftools-${BCFTOOLS}; \
-    ./configure --prefix="${INSTALL_DIR}" --with-htslib=system && \
-    make && \
-    make install
-
-# bedtools2
-RUN cd ${BUILD_DIR}; \
-    wget https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLS}/bedtools-${BEDTOOLS}.tar.gz && \
-    tar ${TAROPTS} -xzf ${BUILD_DIR}/bedtools-${BEDTOOLS}.tar.gz
-RUN cd ${BUILD_DIR}/bedtools2; \
-    make install prefix="" DESTDIR="${INSTALL_DIR}"
-
-# Picard
-RUN cd ${INSTALL_DIR}; \
-    wget -O picard-${PICARD}.jar https://github.com/broadinstitute/picard/releases/download/${PICARD}/picard.jar
-
-# R packages
-RUN /usr/bin/R --vanilla -e \
-    "install.packages(pkgs = c('optparse', 'stringi', 'tidyverse'), repos = c('https://cran.ma.imperial.ac.uk/', 'https://www.stats.bris.ac.uk/R/'))"
-
-## Clean up
-RUN cd / && rm -rf ${BUILD_DIR}
