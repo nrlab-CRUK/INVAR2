@@ -1,0 +1,13 @@
+name: invar2
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bioconda::bedtools=2.30.0
+  - bioconda::samtools=1.14
+#  - bioconda::bcftools=1.14
+  - bioconda::pysam=0.17.0
+  - conda-forge::r-base=4.1.2
+  - conda-forge::r-tidyverse=1.3.1
+  - conda-forge::r-optparse=1.7.1

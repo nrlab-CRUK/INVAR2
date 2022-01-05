@@ -1,0 +1,7 @@
+name: invar2_bcftools
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bioconda::bcftools=1.14
