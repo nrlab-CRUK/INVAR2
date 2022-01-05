@@ -42,7 +42,7 @@ process createMutationsTable
 
 process offTargetErrorRates
 {
-    memory '2g'
+    memory '4g'
     cpus 2
     time '1h'
 
@@ -71,8 +71,8 @@ process offTargetErrorRates
 
 process createOnTargetMutationsTable
 {
-    memory '2g'
-    cpus 2
+    memory '4g'
+    cpus 1
     time '1h'
 
     input:
@@ -97,8 +97,8 @@ process createOnTargetMutationsTable
 
 process onTargetErrorRatesAndFilter
 {
-    memory '2g'
-    cpus 2
+    memory '4g'
+    cpus 1
     time '1h'
 
     publishDir 'on_target', mode: 'link'

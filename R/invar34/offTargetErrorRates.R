@@ -4,6 +4,8 @@ suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 
+source(str_c(Sys.getenv('INVAR_HOME'), '/R/invar34/common.R'))
+
 
 ##
 # Parse options from the command line.
@@ -61,26 +63,6 @@ richTestOptions <- function()
     )
 }
 
-
-##
-# Loading functions.
-#
-
-# Read the layout file and extract unique pool id and barcode pairs.
-
-loadLayoutFile <- function(layoutFile)
-{
-    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
-        rename_with(str_to_upper) %>%
-        mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(BARCODE, '-', '_'), sep = '_'))
-}
-
-addDerivedColumns <- function(mutationTable)
-{
-    mutationTable %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
-}
 
 ##
 # From TAPAS_functions.R, originally "annotate_with_locus_error_rate"
@@ -168,13 +150,6 @@ addLocusNoisePass <- function(mutationTable, errorRateTable)
                BOTH_STRANDS = (ALT_R > 0 & ALT_F > 0) | AF == 0)
 }
 
-# Remove columns from the mutation table that can be derived from
-# other columns, typically before saving.
-removeDerivedColumns <- function(mutationTable)
-{
-    mutationTable %>%
-        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
-}
 
 ##
 # Part of main, where this code is run with and without cosmic.
@@ -229,20 +204,20 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
     if (TRUE)
     {
         oneRead %>%
-            removeDerivedColumns() %>%
-            write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.oneread.tsv'))
+            removeMutationTableDerivedColumns() %>%
+            exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.oneread.tsv'))
 
         locusNoisePass %>%
-            removeDerivedColumns() %>%
-            write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise.tsv'))
+            removeMutationTableDerivedColumns() %>%
+            exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise.tsv'))
 
         bothStrands %>%
-            removeDerivedColumns() %>%
-            write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.bothreads.tsv'))
+            removeMutationTableDerivedColumns() %>%
+            exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.bothreads.tsv'))
 
         bothFilters %>%
-            removeDerivedColumns() %>%
-            write_tsv(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise_bothreads.tsv'))
+            removeMutationTableDerivedColumns() %>%
+            exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise_bothreads.tsv'))
     }
 
     allErrorRates
@@ -255,12 +230,12 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
 main <- function(scriptArgs)
 {
     layoutTable <-
-        loadLayoutFile(scriptArgs$LAYOUT_FILE) %>%
+        loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
         filter(CASE_OR_CONTROL == "case")
 
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
-        addDerivedColumns()
+        addMutationTableDerivedColumns()
 
     # Doesn't matter about the COSMIC setting for the loci error rate table (no difference),
     # but the other filtering is necessary.
@@ -279,7 +254,7 @@ main <- function(scriptArgs)
 
     lociErrorRateTable %>%
         select(UNIQUE_POS, TRINUCLEOTIDE, BACKGROUND_AF, MUTATION_SUM, DP_SUM, N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
-        write_tsv('locus_error_rates.off_target.tsv')
+        exportTSV('locus_error_rates.off_target.tsv')
 
     # Calculate the error rates with filters and with or without COSMIC.
 

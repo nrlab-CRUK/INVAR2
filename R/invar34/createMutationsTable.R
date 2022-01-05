@@ -3,6 +3,8 @@ suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 
+source(str_c(Sys.getenv('INVAR_HOME'), '/R/invar34/common.R'))
+
 
 ##
 # Parse options from the command line.
@@ -86,28 +88,6 @@ richTestOptions <- function()
 # Loading functions.
 #
 
-# Load the patient specific tumour mutations file
-
-loadTumourMutationsTable <- function(tumourMutationsFile)
-{
-    read_csv(tumourMutationsFile, col_types = 'ciccd', show_col_types = FALSE) %>%
-    select(-contains('uniq'), -any_of('mut')) %>%
-    rename_with(str_to_upper) %>%
-    rename(CHROM = CHR) %>%
-    mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'))
-}
-
-# Read the layout file and extract unique pool id and barcode pairs.
-# For this script, that column is all that is needed.
-
-loadLayoutFile <- function(layoutFile)
-{
-    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
-        filter(case_or_control == "case") %>%
-        mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(barcode, '-', '_'), sep = '_')) %>%
-        distinct(POOL_BARCODE)
-}
-
 # Load the mutations table from file.
 
 loadMutationsTable <- function(mutationsFile, tumourMutationsTable, tapasSetting, cosmicThreshold)
@@ -118,18 +98,11 @@ loadMutationsTable <- function(mutationsFile, tumourMutationsTable, tapasSetting
     # Add columns of derived values and combined identifiers.
     read_tsv(mutationsFile, col_types = 'ciccicdddddccildc') %>%
         filter(!(str_detect(REF, '[acgt]') | str_detect(ALT, '[acgt]'))) %>%
-        addDerivedColumns() %>%
+        addMutationTableDerivedColumns() %>%
         mutate(AF = (ALT_F + ALT_R) / DP,
                COSMIC = COSMIC_MUTATIONS > cosmicThreshold,
                SNP = `1KG_AF` > 0,
                ON_TARGET = UNIQUE_POS %in% tumourMutationsTable$UNIQUE_POS)
-}
-
-addDerivedColumns <- function(mutationTable)
-{
-    mutationTable %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
 }
 
 ##
@@ -172,49 +145,6 @@ createMultiallelicBlacklist <- function(mutationTable,
                MIN >= minor_alt_alleles_threshold)
 }
 
-##
-# Saving functions
-#
-
-# Remove columns from the mutation table that can be derived from
-# other columns, typically before saving.
-removeDerivedColumns <- function(mutationTable)
-{
-    mutationTable %>%
-        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
-}
-
-# Writes the TSV file but, before saving, converts any logical columns to
-# simply the characters 'T' or 'F'. Saves having full "TRUE" and "FALSE" values,
-# which are excessive as reading the table back correctly interprets 'T' and 'F'.
-exportTSV <- function(t, file)
-{
-    toChar <- function(x)
-    {
-        ifelse(x, 'T', 'F')
-    }
-
-    t %>%
-        mutate_if(is.logical, toChar) %>%
-        write_tsv(file)
-
-    t
-}
-
-# Save the given table as an RDS file and a TSV
-saveRDSandTSV <- function(t, file)
-{
-    saveRDS(t, file)
-
-    tsv <- str_replace(file, "\\.rds$", ".tsv")
-
-    if (tsv != file)
-    {
-        exportTSV(t, tsv)
-    }
-
-    t
-}
 
 ##
 # The main script, wrapped as a function.
@@ -222,9 +152,15 @@ saveRDSandTSV <- function(t, file)
 
 main <- function(scriptArgs)
 {
-    tumourMutationTable <- loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
+    tumourMutationTable <-
+        loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
 
-    layoutTable <- loadLayoutFile(scriptArgs$LAYOUT_FILE)
+    # Read the layout file and extract unique pool id and barcode pairs.
+    # For this script, that column is all that is needed.
+
+    layoutTable <-
+        loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
+        distinct(POOL_BARCODE)
 
     mutationTable.all <- loadMutationsTable(scriptArgs$MUTATIONS_FILE,
                                             tumourMutationTable,
@@ -252,12 +188,12 @@ main <- function(scriptArgs)
         filter(!UNIQUE_POS %in% multiallelicBlacklist$UNIQUE_POS)
 
     #mutationTable.all %>%
-    #    removeDerivedColumns() %>%
+    #    removeMutationTableDerivedColumns() %>%
     #    arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
     #    saveRDSandTSV('mutation_table.all.rds')
 
     mutationTable.biallelic %>%
-        removeDerivedColumns() %>%
+        removeMutationTableDerivedColumns() %>%
         arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
         saveRDSandTSV("mutation_table.filtered.rds")
 

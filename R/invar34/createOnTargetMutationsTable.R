@@ -15,6 +15,8 @@ suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(tidyr))
 
+source(str_c(Sys.getenv('INVAR_HOME'), '/R/invar34/common.R'))
+
 
 ##
 # Parse options from the command line.
@@ -67,46 +69,6 @@ richTestOptions <- function()
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         ERROR_RATES_FILE = 'off_target/mutation_table.error_rates.no_cosmic.rds'
     )
-}
-
-
-##
-# Loading functions.
-#
-
-
-# Load the patient specific tumour mutations file
-
-loadTumourMutationsTable <- function(tumourMutationsFile)
-{
-    read_csv(tumourMutationsFile, col_types = 'ciccd', show_col_types = FALSE) %>%
-        select(-contains('uniq')) %>%
-        rename_with(str_to_upper) %>%
-        rename(CHROM = CHR) %>%
-        mutate(MUTATION_CLASS = str_c(REF, ALT, sep='/'),
-               UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION_CLASS, sep='_'),
-               UNIQUE_PATIENT_POS = str_c(PATIENT, UNIQUE_POS, sep='_')) %>%
-        select(PATIENT, REF, ALT, TUMOUR_AF, MUTATION_CLASS, UNIQUE_POS, UNIQUE_ALT, UNIQUE_PATIENT_POS)
-}
-
-# Read the layout file and extract unique pool id and barcode pairs.
-# Also only keep the columns this script needs to use.
-
-loadLayoutFile <- function(layoutFile)
-{
-    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
-        rename_with(str_to_upper) %>%
-        mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(BARCODE, '-', '_'), sep = '_')) %>%
-        select(STUDY, SAMPLE_NAME, PATIENT, SAMPLE_TYPE, CASE_OR_CONTROL, INPUT_INTO_LIBRARY_NG, POOL_BARCODE)
-}
-
-addDerivedColumns <- function(mutationTable)
-{
-    mutationTable %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               UNIQUE_ALT = str_c(UNIQUE_POS, str_c(REF, ALT, sep='/'), sep='_'),
-               POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
 }
 
 
@@ -396,63 +358,23 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
 
 
 ##
-# Saving functions
-#
-
-# Remove columns from the mutation table that can be derived from
-# other columns, typically before saving.
-removeDerivedColumns <- function(mutationTable)
-{
-    mutationTable %>%
-        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
-}
-
-# Writes the TSV file but, before saving, converts any logical columns to
-# simply the characters 'T' or 'F'. Saves having full "TRUE" and "FALSE" values,
-# which are excessive as reading the table back correctly interprets 'T' and 'F'.
-exportTSV <- function(t, file)
-{
-    toChar <- function(x)
-    {
-        ifelse(x, 'T', 'F')
-    }
-
-    t %>%
-        mutate_if(is.logical, toChar) %>%
-        write_tsv(file)
-
-    t
-}
-
-# Save the given table as an RDS file and a TSV
-saveRDSandTSV <- function(t, file)
-{
-    saveRDS(t, file)
-
-    tsv <- str_replace(file, "\\.rds$", ".tsv")
-
-    if (tsv != file)
-    {
-        exportTSV(t, tsv)
-    }
-
-    t
-}
-
-##
 # The main script, wrapped as a function.
 #
 
 main <- function(scriptArgs)
 {
-    tumourMutationTable <- loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
+    tumourMutationTable <-
+        loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE) %>%
+        select(PATIENT, REF, ALT, TUMOUR_AF, MUTATION_CLASS, UNIQUE_POS, UNIQUE_ALT, UNIQUE_PATIENT_POS)
 
-    layoutTable <- loadLayoutFile(scriptArgs$LAYOUT_FILE)
+    layoutTable <-
+        loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
+        select(STUDY, SAMPLE_NAME, PATIENT, SAMPLE_TYPE, CASE_OR_CONTROL, INPUT_INTO_LIBRARY_NG, POOL_BARCODE)
 
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         filter(ON_TARGET) %>%
-        addDerivedColumns()
+        addMutationTableDerivedColumns()
 
     errorRatesList <- readRDS(scriptArgs$ERROR_RATES_FILE)
 
@@ -466,7 +388,7 @@ main <- function(scriptArgs)
         addPatientAndBackgroundColumns(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
 
     mutationTable.withPatientAndBackground %>%
-        removeDerivedColumns() %>%
+        removeMutationTableDerivedColumns() %>%
         arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
         saveRDSandTSV('mutation_table.on_target.all.rds')
 }
