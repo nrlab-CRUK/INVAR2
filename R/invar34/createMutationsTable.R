@@ -31,11 +31,11 @@ parseOptions <- function()
         make_option(c("--mqsb-threshold"), type="double", metavar="num",
                     dest="MQSB_THRESHOLD", help="Excludes data points due to poor MQ and SB, but locus is retained",
                     default=0.01),
-        make_option(c("--max-dp"), type="integer", metavar="int",
-                    dest="MAX_DP", help="Omit data points with uncharacteristially high unique DP given the input mass used",
+        make_option(c("--max-depth"), type="integer", metavar="int",
+                    dest="MAX_DEPTH", help="Omit data points with uncharacteristially high unique depth given the input mass used",
                     default=1500),
-        make_option(c("--min-ref-dp"), type="integer", metavar="int",
-                    dest="MIN_REF_DP", help="Min DP is set by mpileups as 5, here we require at least 5 ref reads at a locus, set to 0 for sWGS",
+        make_option(c("--min-ref-depth"), type="integer", metavar="int",
+                    dest="MIN_REF_DEPTH", help="Min depth is set by mpileups as 5, here we require at least 5 ref reads at a locus, set to 0 for sWGS",
                     default=5),
         make_option(c("--alt-alleles-threshold"), type="integer", metavar="int",
                     dest="ALT_ALLELES_THRESHOLD", help="Blacklist loci with >= N separate alternate alleles",
@@ -74,8 +74,8 @@ richTestOptions <- function()
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         COSMIC_THRESHOLD = 0,
         MQSB_THRESHOLD = 0.01,
-        MAX_DP = 2000,
-        MIN_REF_DP = 10,
+        MAX_DEPTH = 2000,
+        MIN_REF_DEPTH = 10,
         ALT_ALLELES_THRESHOLD = 3,
         MINOR_ALT_ALLELES_THRESHOLD = 2
     )
@@ -144,10 +144,10 @@ addDerivedColumns <- function(mutationTable)
 
 createMultiallelicBlacklist <- function(mutationTable,
                                         n_alt_alleles_threshold,
-                                        minor_ALT_ALLELES_THRESHOLD)
+                                        minor_alt_alleles_threshold)
 {
     stopifnot(is.numeric(n_alt_alleles_threshold))
-    stopifnot(is.numeric(minor_ALT_ALLELES_THRESHOLD))
+    stopifnot(is.numeric(minor_alt_alleles_threshold))
 
     # Filter for rows with positive AF and MQSB above threshold.
     # Then determine the number of alt alleles per UNIQUE_POS
@@ -161,15 +161,15 @@ createMultiallelicBlacklist <- function(mutationTable,
     mutationTable %>%
         filter(AF > 0) %>%
         group_by(UNIQUE_POS, ALT) %>%
-        summarise(MUT_SUM = sum(ALT_F + ALT_R), .groups = "drop") %>%
+        summarise(MUTATION_SUM = sum(ALT_F + ALT_R), .groups = "drop") %>%
         group_by(UNIQUE_POS) %>%
         filter(n() > 1) %>%
         summarise(N_ALT_ALLELES = n(),
-                  MIN = min(MUT_SUM),
-                  MAX = max(MUT_SUM),
+                  MIN = min(MUTATION_SUM),
+                  MAX = max(MUTATION_SUM),
                   .groups = "drop") %>%
         filter(N_ALT_ALLELES == n_alt_alleles_threshold &
-               MIN >= minor_ALT_ALLELES_THRESHOLD)
+               MIN >= minor_alt_alleles_threshold)
 }
 
 ##
@@ -181,7 +181,7 @@ createMultiallelicBlacklist <- function(mutationTable,
 removeDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
+        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
 }
 
 # Writes the TSV file but, before saving, converts any logical columns to
@@ -237,26 +237,28 @@ main <- function(scriptArgs)
 
     mutationTable.filtered <- mutationTable.all %>%
         filter(MQSB > scriptArgs$MQSB_THRESHOLD &
-               DP < scriptArgs$MAX_DP &
+               DP < scriptArgs$MAX_DEPTH &
                !SNP &
-               REF_R + REF_F >= scriptArgs$MIN_REF_DP &
+               REF_R + REF_F >= scriptArgs$MIN_REF_DEPTH &
                (ON_TARGET | !COSMIC))
 
     # Filter out positions that are multiallelic.
 
     multiallelicBlacklist <- mutationTable.filtered %>%
         createMultiallelicBlacklist(n_alt_alleles_threshold = scriptArgs$ALT_ALLELES_THRESHOLD,
-                                    minor_ALT_ALLELES_THRESHOLD = scriptArgs$MINOR_ALT_ALLELES_THRESHOLD)
+                                    minor_alt_alleles_threshold = scriptArgs$MINOR_ALT_ALLELES_THRESHOLD)
 
     mutationTable.biallelic <- mutationTable.filtered %>%
         filter(!UNIQUE_POS %in% multiallelicBlacklist$UNIQUE_POS)
 
     #mutationTable.all %>%
     #    removeDerivedColumns() %>%
+    #    arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
     #    saveRDSandTSV('mutation_table.all.rds')
 
     mutationTable.biallelic %>%
         removeDerivedColumns() %>%
+        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
         saveRDSandTSV("mutation_table.filtered.rds")
 
     if (nrow(multiallelicBlacklist) > 0)

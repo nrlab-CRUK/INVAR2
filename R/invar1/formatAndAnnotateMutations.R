@@ -9,17 +9,19 @@ if (length(args) != 5)
     stop("Wrong number of arguments given to formatAndAnnotateMutations.R. Expect five.")
 }
 
-inFile  <- args[1]
-outFile <- args[2]
-minDP   <- as.integer(args[3])
-pool    <- args[4]
-barcode <- args[5]
+inFile   <- args[1]
+outFile  <- args[2]
+minDepth <- as.integer(args[3])
+pool     <- args[4]
+barcode  <- args[5]
+
+# Original R code implies in a comment that the filter should also include
+# "MQSB != '.'" but it is not present in the actual active code.
 
 read_tsv(inFile,
     col_names = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'ADF', 'ADR', 'MQSB'),
     col_types = 'ciccicccc') %>%
-#filter(DP >= minDP & MQSB != '.') %>%
-filter(DP >= minDP) %>%
+filter(DP >= minDepth) %>%
 mutate(REF_F = as.integer(ifelse(ALT == '.', ADF, str_split_fixed(ADF, ',', Inf)[,1])),
        ALT_F = as.integer(ifelse(ALT == '.', 0, str_split_fixed(ADF, ',', Inf)[,2])),
        REF_R = as.integer(ifelse(ALT == '.', ADR, str_split_fixed(ADR, ',', Inf)[,1])),

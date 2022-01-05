@@ -25,8 +25,8 @@ parseOptions <- function()
         make_option(c("--control-proportion"), type="double", metavar="num",
                     dest="CONTROL_PROPORTION", help="Blacklist loci that have signal in >30% of the nonptspec samples",
                     default=0.1),
-        make_option(c("--max-background-af"), type="double", metavar="num",
-                    dest="MAX_BACKGROUND_AF", help="Filter loci with a background AF in controls greater than this value",
+        make_option(c("--max-background-allele-frequency"), type="double", metavar="num",
+                    dest="MAX_BACKGROUND_ALLELE_FREQUENCY", help="Filter loci with a background allele frequency in controls greater than this value",
                     default=0.01))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options] <mutation file>") %>%
@@ -56,7 +56,7 @@ richTestOptions <- function()
         MUTATIONS_TABLE_FILE = 'mutations/mutation_table.filtered.rds',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         CONTROL_PROPORTION = 0.1,
-        MAX_BACKGROUND_AF = 0.01,
+        MAX_BACKGROUND_ALLELE_FREQUENCY = 0.01,
         BLOODSPOT = FALSE
     )
 }
@@ -95,6 +95,10 @@ createLociErrorRateTable <- function(mutationTable,
                                      max_background_mean_AF,
                                      is.blood_spot)
 {
+    stopifnot(is.numeric(proportion_of_controls))
+    stopifnot(is.numeric(max_background_mean_AF))
+    stopifnot(is.logical(is.blood_spot))
+
     if (is.blood_spot)
     {
         message("sWGS/blood spot mutationTable, do not set a max_background_mean_AF value as it is not appropriate in the low unique depth setting")
@@ -108,9 +112,9 @@ createLociErrorRateTable <- function(mutationTable,
         filter(POOL_BARCODE %in% layoutTable.cases$POOL_BARCODE) %>%
         mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, POOL_BARCODE, NA)) %>%
         group_by(UNIQUE_POS, TRINUCLEOTIDE) %>%
-        summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
+        summarize(MUTATION_SUM = sum(ALT_F) + sum(ALT_R),
                   DP_SUM = sum(DP),
-                  BACKGROUND_AF = MUT_SUM / DP_SUM,
+                  BACKGROUND_AF = MUTATION_SUM / DP_SUM,
                   N_SAMPLES = n_distinct(POOL_BARCODE),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
@@ -121,15 +125,15 @@ createLociErrorRateTable <- function(mutationTable,
 }
 
 # Common function. Takes in a mutation table.
-# Adds MUT_SUM, DP_SUM, BACKGROUND_AF columns on rows grouped by
+# Adds MUTATION_SUM, DP_SUM, BACKGROUND_AF columns on rows grouped by
 # POOL, BARCODE, REF, ALT, TRINUCLEOTIDE
 groupAndSummarizeForErrorRate <- function(mutationTable)
 {
     mutationTable %>%
         group_by(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
-        summarize(MUT_SUM = sum(ALT_F) + sum(ALT_R),
+        summarize(MUTATION_SUM = sum(ALT_F) + sum(ALT_R),
                   DP_SUM = sum(DP),
-                  BACKGROUND_AF= (sum(ALT_F) + sum(ALT_R)) / sum(DP),
+                  BACKGROUND_AF = (sum(ALT_F) + sum(ALT_R)) / sum(DP),
                   .groups = 'drop')
 
 }
@@ -138,6 +142,8 @@ groupAndSummarizeForErrorRate <- function(mutationTable)
 
 filterForOffTarget <- function(mutationTable, withCosmic)
 {
+    stopifnot(is.logical(withCosmic))
+
     mutationTable.off_target <- mutationTable %>%
         filter(!ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
 
@@ -167,7 +173,7 @@ addLocusNoisePass <- function(mutationTable, errorRateTable)
 removeDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('MUT_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
+        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
 }
 
 ##
@@ -176,6 +182,8 @@ removeDerivedColumns <- function(mutationTable)
 
 doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
 {
+    stopifnot(is.logical(withCosmic))
+
     cosmicFilePart = ifelse(withCosmic, 'cosmic', 'no_cosmic')
 
     mutationTable.off_target <- mutationTable %>%
@@ -261,7 +269,7 @@ main <- function(scriptArgs)
         filterForOffTarget(FALSE) %>%
         createLociErrorRateTable(layoutTable,
                                  proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
-                                 max_background_mean_AF = scriptArgs$MAX_BACKGROUND_AF,
+                                 max_background_mean_AF = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY,
                                  is.blood_spot = scriptArgs$BLOODSPOT)
 
     saveRDS(lociErrorRateTable, 'locus_error_rates.off_target.rds')
@@ -270,7 +278,7 @@ main <- function(scriptArgs)
     # Aids comparison.
 
     lociErrorRateTable %>%
-        select(UNIQUE_POS, TRINUCLEOTIDE, BACKGROUND_AF, MUT_SUM, DP_SUM, N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
+        select(UNIQUE_POS, TRINUCLEOTIDE, BACKGROUND_AF, MUTATION_SUM, DP_SUM, N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
         write_tsv('locus_error_rates.off_target.tsv')
 
     # Calculate the error rates with filters and with or without COSMIC.

@@ -33,8 +33,8 @@ process createMutationsTable
             --tapas="!{tapasSetting}" \
             --cosmic-threshold=!{params.cosmic_threshold} \
             --mqsb-threshold=!{params.individual_MQSB_threshold} \
-            --max-dp=!{params.max_DP} \
-            --min-ref-dp=!{params.min_ref_DP} \
+            --max-depth=!{params.max_depth} \
+            --min-ref-depth=!{params.min_ref_depth} \
             --alt-alleles-threshold=!{params.n_alt_alleles_threshold} \
             --minor-alt-allele-threshold=!{params.minor_alt_allele_threshold}
         """
@@ -64,7 +64,7 @@ process offTargetErrorRates
             --mutations="!{mutationsFile}" \
             --layout="!{layoutFile}" \
             --control-proportion=!{params.proportion_of_controls} \
-            --max-background-af=!{params.max_background_mean_AF} \
+            --max-background-allele-frequency=!{params.max_background_mean_allele_frequency} \
             !{params.is_bloodspot ? "--bloodspot" : ""}
         """
 }
@@ -123,9 +123,9 @@ process onTargetErrorRatesAndFilter
             --tapas="!{tapasSetting}" \
             --cosmic-threshold=!{params.cosmic_threshold} \
             --control-proportion=!{params.proportion_of_controls} \
-            --max-background-af=!{params.max_background_mean_AF} \
+            --max-background-allele-frequency=!{params.max_background_mean_allele_frequency} \
             !{params.is_bloodspot ? "--bloodspot" : ""} \
-            --af-threshold=0.01
+            --allele-frequency-threshold=!{params.allele_frequency_threshold}
         """
 }
 
@@ -151,7 +151,7 @@ workflow invar3
         onTargetErrorRatesAndFilter(createOnTargetMutationsTable.out.onTargetMutationsFile,
                                     tumourMutationsChannel,
                                     layoutChannel)
-    
+
     emit:
         onTargetMutationFile = onTargetErrorRatesAndFilter.out.onTargetMutationsFile
 }
