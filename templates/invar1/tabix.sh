@@ -2,6 +2,6 @@
 
 set -euo pipefail
 
-python3 "!{projectDir}/python/invar1/toRegions.py" "!{mutationFile}" > regions.txt
+cut -f1,2 "!{mutationFile}" | sed '1d;s/^chr//i' > regions.txt
 
-tabix -R regions.txt "!{tabixDatabase}" > "!{tabixFile}"
+tabix -R regions.txt --separate-regions "!{tabixDatabase}" > "!{tabixFile}"

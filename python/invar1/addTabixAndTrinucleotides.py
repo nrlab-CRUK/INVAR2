@@ -42,19 +42,22 @@ def readTabixFile(file):
     tabixDict = dict()
     with open(file, 'r') as fp:
         reader = csv.reader(fp, delimiter = '\t')
+        key = None
         for row in reader:
-            chr = row[0]
-            pos = int(row[1])
-            key = frozenset([chr, pos])
-            
-            info = { 'CHROM':chr, 'POS':pos, 'REF':row[3], 'ALT':row[4], 'FILTER': row[6] }
-            info['INFO'] = getTabixInfo(row[7])
-            
-            tabixRows = tabixDict.get(key)
-            if not tabixRows:
-                tabixRows = list()
-                tabixDict[key] = tabixRows
-            tabixRows.append(info)
+            if len(row) == 1 and row[0].startswith("#"):
+                (chr, region) = row[0][1:].split(":")
+                pos = int(region.split("-")[0])
+                key = frozenset([chr, pos])
+            else:
+                chr = row[0]
+                pos = int(row[1])
+                info = { 'CHROM':chr, 'POS':pos, 'REF':row[3], 'ALT':row[4], 'FILTER': row[6] }
+                info['INFO'] = getTabixInfo(row[7])
+                tabixRows = tabixDict.get(key)
+                if not tabixRows:
+                    tabixRows = list()
+                    tabixDict[key] = tabixRows
+                tabixRows.append(info)
     return tabixDict
 
 def readFastaFile(file):
@@ -69,7 +72,7 @@ def readFastaFile(file):
                     chr = m.group(2)
                     pos = int(m.group(3)) + 1
                     key = frozenset([chr, pos])
-                    fastaDict[key] = trinuc.rstrip()
+                    fastaDict[key] = trinuc.rstrip().upper()
             else:
                 break
     return fastaDict
@@ -107,22 +110,26 @@ def addCosmicInfo(mutation, tabixInfo):
     
     mutation['COSMIC_MUTATIONS'] = '0' # This is an integer, so default to zero.
     mutation['COSMIC_SNP'] = 'F'       # This is a boolean, so use T or F.
-    
+
     cosmicInfo = tabixInfo.get(key)
     if cosmicInfo is not None:
         for info in cosmicInfo:
             #print(f"COSMIC: {chr}=={info['CHROM']} {pos}=={info['POS']} {mutation['REF']}=={info['REF']} {mutation['ALT']}=={info['ALT']} {info['FILTER']}==PASS", file = sys.stderr)
-            
-            if (info['CHROM'] == chr and
-               info['POS'] == pos and
-               info['REF'] == mutation['REF'] and
-               info['ALT'] == mutation['ALT']):
-                mutation['COSMIC_MUTATIONS'] = info['INFO'].get('CNT', '0')
-                mutation['COSMIC_SNP'] = info['INFO'].get('SNP', 'F')
-                
-                #print(f"Set COSMIC info for {key} to count = {mutation['COSMIC_MUTATIONS']} and snp = {mutation['COSMIC_SNP']}", file = sys.stderr)
-                
-                break
+
+            #print(f"Set COSMIC info for {key} to count = {mutation['COSMIC_MUTATIONS']} and snp = {mutation['COSMIC_SNP']}", file = sys.stderr)
+
+            # TODO
+            # Should we check that the position and alternate allele match?
+            # (the original ann.py does not but it looks like a bug)
+            # This would need to be handled carefully since COSMIC has mutations
+            # such as the following where matching on the position field would
+            # not work.
+            # tabix ../resources/COSMIC/v82/CosmicCodingMuts.vcf.gz 1:12785297-12785297
+            #   1      12785295      COSM5377462    CGG    CAA    .      .       GENE=AADACL3;STRAND=+;CDS=c.176_177GG>AA;AA=p.R59Q;CNT=1
+            #   1      12785295      COSM5377461    CGG    CAA    .      .       GENE=AADACL3_ENST00000359318;STRAND=+;CDS=c.386_387GG>AA;AA=p.R129Q;CNT=1
+
+            mutation['COSMIC_MUTATIONS'] = info['INFO'].get('CNT', '0')
+            mutation['COSMIC_SNP'] = info['INFO'].get('SNP', 'F')
 
     return mutation
 
