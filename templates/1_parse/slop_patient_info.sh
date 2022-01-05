@@ -11,3 +11,6 @@ bedtools slop -i mutationlist.bed -g "!{genomeFile}" -b !{params.SLOP_BP} > slop
 
 # Filter lines that are <= 100bp in range.
 Rscript --vanilla "!{projectDir}/R/1_parse/filterSloppedBed.R" slopped.bed "!{filteredBedFile}"
+
+# Clean up
+rm -f mutationlist.bed slopped.bed

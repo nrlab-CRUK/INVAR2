@@ -8,6 +8,7 @@ nextflow.enable.dsl = 2
 
 include { invar12 } from './processes/1_parse/invar12'
 include { invar34 } from './processes/1_parse/invar34'
+include { sizeAnnotation } from './processes/2_size_annotation/sizeAnnotation'
 
 /*
  * Mini work flow for part one (parsing).
@@ -27,4 +28,6 @@ workflow parse
 workflow
 {
     parse()
+
+    sizeAnnotation()
 }

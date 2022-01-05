@@ -81,10 +81,10 @@ def readFastaFile(file):
 def addSnpInfo(mutation, tabixInfo):
     chr, pos = getPosition(mutation)
     key = frozenset([chr, pos])
-    
+
     zero = '0'
     mutation['1KG_AF'] = zero
-    
+
     snpInfo = tabixInfo.get(key)
     if snpInfo is not None:
         for info in snpInfo:
@@ -97,9 +97,9 @@ def addSnpInfo(mutation, tabixInfo):
                info['FILTER'] == "PASS" and
                info['INFO']['VT'] == "SNP"):
                 mutation['1KG_AF'] = info['INFO'].get('AF', zero)
-                
+
                 #print(f"Set SNP info for {key} to AF = {mutation['1KG_AF']}", file = sys.stderr)
-                
+
                 break
 
     return mutation
@@ -107,7 +107,7 @@ def addSnpInfo(mutation, tabixInfo):
 def addCosmicInfo(mutation, tabixInfo):
     chr, pos = getPosition(mutation)
     key = frozenset([chr, pos])
-    
+
     mutation['COSMIC_MUTATIONS'] = '0' # This is an integer, so default to zero.
     mutation['COSMIC_SNP'] = 'F'       # This is a boolean, so use T or F.
 
@@ -154,18 +154,18 @@ first = True
 
 with open(mutationFile, 'r') as fp1:
     csv = csv.DictReader(fp1, delimiter = '\t')
-    
+
     fp2 = open(annotatedFile, 'w') if annotatedFile else sys.stdout
     try:
         for mutation in csv:
             addCosmicInfo(mutation, cosmicData)
             addSnpInfo(mutation, snpData)
             addTrinucleotideInfo(mutation, trinucleotideData)
-            
+
             if first:
                 print('\t'.join(mutation.keys()), file = fp2)
                 first = False
-    
+
             print('\t'.join(mutation.values()), file = fp2)
     finally:
         if annotatedFile:
