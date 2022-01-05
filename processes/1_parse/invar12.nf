@@ -1,4 +1,4 @@
-include { logException } from '../functions/debugging'
+include { logException } from '../../functions/debugging'
 
 
 process slopPatientInfo
@@ -18,7 +18,7 @@ process slopPatientInfo
     shell:
         filteredBedFile = "${csvFile.baseName}.slopped.filtered.bed"
 
-        template "invar1/slop_patient_info.sh"
+        template "1_parse/slop_patient_info.sh"
 }
 
 
@@ -40,7 +40,7 @@ process mpileup
 
         dedupFlags = params.REMOVE_DUPLICATES ? "-R --ff UNMAP" : ""
 
-        template "invar1/mpileup.sh"
+        template "1_parse/mpileup.sh"
 }
 
 
@@ -87,7 +87,7 @@ process biallelic
 
         mutationFile = "${pool}_${barcode}.BQ_${params.BASEQ}.MQ_${params.MAPQ}.final.tsv"
 
-        template "invar1/biallelic.sh"
+        template "1_parse/biallelic.sh"
 }
 
 
@@ -109,7 +109,7 @@ process tabixSnp
     shell:
         tabixFile = "${pool}_${barcode}_snp.vcf"
 
-        template "invar1/tabix.sh"
+        template "1_parse/tabix.sh"
 }
 
 process tabixCosmic
@@ -130,7 +130,7 @@ process tabixCosmic
     shell:
         tabixFile = "${pool}_${barcode}_cosmic.vcf"
 
-        template "invar1/tabix.sh"
+        template "1_parse/tabix.sh"
 }
 
 process trinucleotide
@@ -149,7 +149,7 @@ process trinucleotide
     shell:
         trinucleotideFile = "${pool}_${barcode}_trinucleotide.fa"
 
-        template "invar1/samtools_faidx.sh"
+        template "1_parse/samtools_faidx.sh"
 }
 
 process annotateMutation
@@ -171,7 +171,7 @@ process annotateMutation
         annotationFile = "${pool}_${barcode}.mutations.tsv"
 
         """
-        python3 "!{projectDir}/python/invar1/addTabixAndTrinucleotides.py" \
+        python3 "!{projectDir}/python/1_parse/addTabixAndTrinucleotides.py" \
             !{mutationFile} \
             !{snp} \
             !{cosmic} \
@@ -180,7 +180,7 @@ process annotateMutation
         """
 }
 
-workflow invar1
+workflow invar12
 {
     main:
         patient_list_channel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)

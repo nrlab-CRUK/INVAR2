@@ -3,7 +3,7 @@ suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 
-source(str_c(Sys.getenv('INVAR_HOME'), '/R/invar34/common.R'))
+source(str_c(Sys.getenv('INVAR_HOME'), '/R/1_parse/common.R'))
 
 
 ##

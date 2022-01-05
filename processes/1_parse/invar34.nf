@@ -26,7 +26,7 @@ process createMutationsTable
     shell:
 
         """
-        Rscript --vanilla "!{projectDir}/R/invar34/createMutationsTable.R" \
+        Rscript --vanilla "!{projectDir}/R/1_parse/createMutationsTable.R" \
             --mutations="!{mutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
@@ -60,7 +60,7 @@ process offTargetErrorRates
 
     shell:
         """
-        Rscript --vanilla "!{projectDir}/R/invar34/offTargetErrorRates.R" \
+        Rscript --vanilla "!{projectDir}/R/1_parse/offTargetErrorRates.R" \
             --mutations="!{mutationsFile}" \
             --layout="!{layoutFile}" \
             --control-proportion=!{params.proportion_of_controls} \
@@ -87,7 +87,7 @@ process createOnTargetMutationsTable
 
     shell:
         """
-        Rscript --vanilla "!{projectDir}/R/invar34/createOnTargetMutationsTable.R" \
+        Rscript --vanilla "!{projectDir}/R/1_parse/createOnTargetMutationsTable.R" \
             --mutations="!{mutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
@@ -116,7 +116,7 @@ process onTargetErrorRatesAndFilter
 
     shell:
         """
-        Rscript --vanilla "!{projectDir}/R/invar34/onTargetErrorRatesAndFilter.R" \
+        Rscript --vanilla "!{projectDir}/R/1_parse/onTargetErrorRatesAndFilter.R" \
             --mutations="!{mutationsFile}" \
             --layout="!{layoutFile}" \
             --study="!{params.STUDY_ID}" \
@@ -129,7 +129,7 @@ process onTargetErrorRatesAndFilter
         """
 }
 
-workflow invar3
+workflow invar34
 {
     take:
         mutationsChannel

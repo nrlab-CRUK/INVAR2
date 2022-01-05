@@ -6,13 +6,25 @@
 
 nextflow.enable.dsl = 2
 
-include { invar1 } from './processes/invar1'
-include { invar3 } from './processes/invar3'
+include { invar12 } from './processes/1_parse/invar12'
+include { invar34 } from './processes/1_parse/invar34'
+
+/*
+ * Mini work flow for part one (parsing).
+ */
+workflow parse
+{
+    main:
+        invar12() | invar34
+
+    emit:
+        invar34.out
+}
 
 /*
  * Main work flow.
  */
 workflow
 {
-    invar1() | invar3
+    parse()
 }
