@@ -10,8 +10,8 @@ Rscript --vanilla "!{projectDir}/R/1_parse/patientListCsvToBed.R" \
 
 # Convert the BED file to the format needed for getFragmentSize.py
 
-cut --output-delimiter ':' --fields '1,3,4,5' \
-    mutationlist.bed > "!{snvListFile}"
+cut --output-delimiter ':' --fields '1,3,4,5' mutationlist.bed \
+    | uniq > "!{snvListFile}"
 
 # Clean up
 
