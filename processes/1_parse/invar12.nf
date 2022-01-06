@@ -18,7 +18,7 @@ process slopPatientInfo
     shell:
         filteredBedFile = "${csvFile.baseName}.slopped.filtered.bed"
 
-        template "1_parse/slop_patient_info.sh"
+        template "1_parse/slopPatientInfo.sh"
 }
 
 

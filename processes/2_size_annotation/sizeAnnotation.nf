@@ -14,7 +14,7 @@ process createSNVList
     shell:
         snvListFile = "snvlist.txt"
 
-        template "2_size_annotation/create_snv_list.sh"
+        template "2_size_annotation/createSNVList.sh"
 }
 
 process getFragmentSize
@@ -35,7 +35,7 @@ process getFragmentSize
     shell:
         insertsFile = "${bamFile.name}.inserts_for_annotation.csv"
 
-        template "2_size_annotation/get_fragment_size.sh"
+        template "2_size_annotation/getFragmentSize.sh"
 }
 
 
