@@ -15,11 +15,17 @@ include { sizeAnnotation } from './processes/2_size_annotation/sizeAnnotation'
  */
 workflow parse
 {
+    take:
+        bamChannel
+        tumourMutationsChannel
+        layoutChannel
+
     main:
-        invar12() | invar34
+        invar12(bamChannel, tumourMutationsChannel)
+        invar34(invar12.out, tumourMutationsChannel, layoutChannel)
 
     emit:
-        invar34.out
+        mutationsFile = invar34.out
 }
 
 /*
@@ -27,7 +33,19 @@ workflow parse
  */
 workflow
 {
-    parse()
+    tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
+    layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
 
-    sizeAnnotation()
+    bamChannel = channel.fromPath(params.INPUT_FILES, checkIfExists: true)
+        .splitCsv(header: true, by: 1, strip: true)
+        .map {
+            row ->
+            bam = file(row.FILE_NAME, checkIfExists: true)
+            index = file("${bam.name}.bai") // The index file may or may not exist.
+            tuple row.POOL, row.BARCODE, bam, index
+        }
+
+    parse(bamChannel, tumourMutationsChannel, layoutChannel)
+
+    sizeAnnotation(bamChannel, parse.out, tumourMutationsChannel)
 }

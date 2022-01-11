@@ -179,8 +179,13 @@ process annotateMutation
 
 workflow invar12
 {
+    take:
+        bamChannel
+        tumourMutationsChannel
+
     main:
-        patient_list_channel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
+        simpleBamChannel = bamChannel.map { pool, barcode, bam, index -> bam }
+
         genome_channel = channel.fromPath(params.HG19_GENOME, checkIfExists: true)
         fasta_channel = channel.fromPath(params.FASTAREF, checkIfExists: true)
         snp_channel = channel.fromPath(params.K1G_DB, checkIfExists: true)
@@ -188,26 +193,22 @@ workflow invar12
         cosmic_channel = channel.fromPath(params.COSMIC_DB, checkIfExists: true)
         cosmic_index_channel = channel.fromPath("${params.COSMIC_DB}.tbi")
 
-        slopPatientInfo(patient_list_channel, genome_channel)
+        slopPatientInfo(tumourMutationsChannel, genome_channel)
 
-        bam_channel = channel.fromPath(params.INPUT_FILES, checkIfExists: true)
-            .splitCsv(header: true, by: 1, strip: true)
-            .map { row -> file(row.FILE_NAME, checkIfExists: true) }
+        mpileup(slopPatientInfo.out, fasta_channel, simpleBamChannel) | biallelic
 
-        mpileup(slopPatientInfo.out, fasta_channel, bam_channel) | biallelic
+        mutationChannel = biallelic.out.filter { pool, bc, f -> f.countLines() > 1 }
 
-        mutation_channel = biallelic.out.filter { pool, bc, f -> f.countLines() > 1 }
+        tabixSnp(snp_channel, snp_index_channel, mutationChannel)
+        tabixCosmic(cosmic_channel, cosmic_index_channel, mutationChannel)
+        trinucleotide(fasta_channel, mutationChannel)
 
-        tabixSnp(snp_channel, snp_index_channel, mutation_channel)
-        tabixCosmic(cosmic_channel, cosmic_index_channel, mutation_channel)
-        trinucleotide(fasta_channel, mutation_channel)
-
-        by_bam_mutation_channel = mutation_channel
+        byBamMutationChannel = mutationChannel
             .join(tabixSnp.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
             .join(tabixCosmic.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
             .join(trinucleotide.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
 
-        mutationFile = annotateMutation(by_bam_mutation_channel)
+        mutationFile = annotateMutation(byBamMutationChannel)
             .collectFile(name: "${params.FINAL_PREFIX}.combined.final.ann.tsv", keepHeader: true, sort: { it.name }, storeDir: "unprocessed_mutations")
 
     emit:

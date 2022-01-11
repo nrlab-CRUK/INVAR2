@@ -133,11 +133,10 @@ workflow invar34
 {
     take:
         mutationsChannel
+        tumourMutationsChannel
+        layoutChannel
 
     main:
-        tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
-        layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
-
         createMutationsTable(mutationsChannel, tumourMutationsChannel, layoutChannel)
 
         offTargetErrorRates(createMutationsTable.out.filteredMutationsFile, layoutChannel)

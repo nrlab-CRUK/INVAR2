@@ -38,22 +38,44 @@ process getFragmentSize
         template "2_size_annotation/getFragmentSize.sh"
 }
 
+process annotateMutationsWithFragmentSize
+{
+    memory '2g'
+    cpus   1
+    time   '4h'
+
+    publishDir 'insert_sizes', mode: 'link'
+
+    input:
+        tuple val(pool), val(barcode), path(fragmentSizesFile)
+        each path(mutationsFile)
+
+    output:
+        tuple val(pool), val(barcode), path(sampleSpecificMutationsFile)
+
+    shell:
+        sampleSpecificMutationsFile = "mutation_table.with_sizes.${pool}_${barcode}.rds"
+
+        """
+        Rscript --vanilla "!{projectDir}/R/2_size_annotation/sizeAnnotation.R" \
+            --mutations="!{mutationsFile}" \
+            --fragment-sizes="!{fragmentSizesFile}" \
+            --pool="!{pool}" --barcode="!{barcode}"
+        """
+}
+
 
 workflow sizeAnnotation
 {
+    take:
+        bamChannel
+        mutationsChannel
+        tumourMutationsChannel
+
     main:
-        patient_list_channel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
+        createSNVList(tumourMutationsChannel)
 
-        bam_channel = channel.fromPath(params.INPUT_FILES, checkIfExists: true)
-            .splitCsv(header: true, by: 1, strip: true)
-            .map {
-                row ->
-                bam = file(row.FILE_NAME, checkIfExists: true)
-                index = file("${bam.name}.bai") // The index file may or may not exist.
-                tuple row.POOL, row.BARCODE, bam, index
-            }
+        getFragmentSize(bamChannel, createSNVList.out)
 
-        createSNVList(patient_list_channel)
-
-        getFragmentSize(bam_channel, createSNVList.out)
+        annotateMutationsWithFragmentSize(getFragmentSize.out, mutationsChannel)
 }

@@ -27,8 +27,8 @@ parseOptions <- function()
         make_option(c("--barcode"), type="character", metavar="string",
                     dest="BARCODE", help="The barcode for the BAM/sizes file",
                     default=defaultMarker),
-        make_option(c("--suppression-setting"), type="double", metavar="number",
-                    dest="SUPPRESSION_SETTING", help="The suppression setting",
+        make_option(c("--outlier-suppression"), type="double", metavar="number",
+                    dest="OUTLIER_SUPPRESSION", help="The outlier suppression setting",
                     default=0.05),
         make_option(c("--sampling-seed"), type="integer", metavar="number",
                     dest="SAMPLING_SEED", help="The seed for random sampling. Only use in testing.",
@@ -62,7 +62,7 @@ richTestOptions <- function()
         FRAGMENT_SIZES_FILE = 'EMMA/output_size/SLX-19721_SXTLI001.inserts_for_annotation.tsv',
         POOL = 'SLX-19721',
         BARCODE = 'SXTLI001',
-        SUPPRESSION_SETTING = 0.05,
+        OUTLIER_SUPPRESSION = 0.05,
         SAMPLING_SEED = 1024
     )
 }
