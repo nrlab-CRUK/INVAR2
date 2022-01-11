@@ -81,11 +81,6 @@ convertComplementaryMutations <- function(fragmentSizesTable)
         chartr('ATCG', 'TAGC', sequence)
     }
 
-    reverseComplement <- function(sequence)
-    {
-        stringi::stri_reverse(complement(sequence))
-    }
-
     complementary <- function(base)
     {
         base == 'A' | base == 'G'
@@ -174,30 +169,25 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos)
     positionSizes
 }
 
-equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, pool, barcode)
+equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
 {
-    thisPoolBarcode = str_c(pool, barcode, sep = '_')
+    # Fix DP count.
 
-    # Filter and fix DP count.
-
-    relevantMutations <- mutationsTable %>%
-        filter(POOL_BARCODE == thisPoolBarcode) %>%
+    mutationsTable <- mutationsTable %>%
         mutate(DP = ALT_F + ALT_R + REF_F + REF_R)
 
-    fragmentSizesTable <- fragmentSizesTable %>%
-        mutate(MUTANT = ALT == SNV_BASE,
-               MUTATION_CLASS = str_c(REF, ALT, sep = '/'),
-               UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
+    # reduce 12 mutation classes to 6
 
-    # reduce 12 mutation classes to 6 and summarise the number of
-    # mutations and all fragments (DP) at a position.
+    fragmentSizesTable <- fragmentSizesTable %>%
+        convertComplementaryMutations()
+
+    # summarise the number of mutations and all fragments (DP) at a position.
 
     fragmentSizesTable.summary <- fragmentSizesTable %>%
-        convertComplementaryMutations() %>%
         group_by(CHROM, POS, MUTATION_CLASS) %>%
         summarise(MUTATION_SUM.SIZE = sum(MUTANT), DP.SIZE = n(), .groups = 'drop')
 
-    test <- relevantMutations %>%
+    test <- mutationsTable %>%
         left_join(fragmentSizesTable.summary, by = c('CHROM', 'POS', 'MUTATION_CLASS')) %>%
         mutate(CORRECT_DEPTH = DP == DP.SIZE & ALT_F + ALT_R == MUTATION_SUM.SIZE,
                UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
@@ -206,14 +196,14 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, pool, barcode
         filter(CORRECT_DEPTH)
 
     ## correct the raw size df - only AF == 0
-    discrepant_DP.zero <- test %>%
+    discrepantDP.zero <- test %>%
         filter(!CORRECT_DEPTH & AF == 0)
 
     # Take the DP.SIZE top sizes at each locus where AF == 0
     # Also mark all of these positions as not being mutants.
     # This is because the mutant reads identified from size info are not subject to BQ and MQ filters
     fragmentSizesTable.discrepant.zero.fixed <- fragmentSizesTable %>%
-        inner_join(select(discrepant_DP.zero, UNIQUE_POS, DP.SIZE), by = "UNIQUE_POS") %>%
+        inner_join(select(discrepantDP.zero, UNIQUE_POS, DP.SIZE), by = "UNIQUE_POS") %>%
         group_by(UNIQUE_POS) %>%
         filter(row_number() <= DP.SIZE) %>%
         ungroup() %>%
@@ -221,11 +211,11 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, pool, barcode
         mutate(MUTANT = FALSE)
 
     ## correct loci with AF > 0
-    discrepant_DP.nonzero <- test %>%
+    discrepantDP.nonzero <- test %>%
         filter(!CORRECT_DEPTH & AF > 0)
 
     fragmentSizesTable.discrepant.nonzero.fixed <- fragmentSizesTable %>%
-        inner_join(select(discrepant_DP.nonzero, UNIQUE_POS, ALT_F, ALT_R, DP), by = "UNIQUE_POS") %>%
+        inner_join(select(discrepantDP.nonzero, UNIQUE_POS, ALT_F, ALT_R, DP), by = "UNIQUE_POS") %>%
         group_by(UNIQUE_POS) %>%
         group_modify(downsampleFragments) %>%
         ungroup() %>%
@@ -237,9 +227,8 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, pool, barcode
         add_row(fragmentSizesTable.discrepant.nonzero.fixed) %>%
         select(UNIQUE_POS, MUTATION_CLASS, SIZE, MUTANT)
 
-    mutationsWithSize <- relevantMutations %>%
-        left_join(fragmentSizesTable.fixed, by = c('UNIQUE_POS', 'MUTATION_CLASS')) %>%
-        filter(!is.na(SIZE))
+    mutationsWithSize <- mutationsTable %>%
+        inner_join(fragmentSizesTable.fixed, by = c('UNIQUE_POS', 'MUTATION_CLASS'))
 
     mutationsWithSize
 }
@@ -253,16 +242,25 @@ main <- function(scriptArgs)
 {
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
+        filter(POOL == scriptArgs$POOL & BARCODE == scriptArgs$BARCODE) %>%
         addMutationTableDerivedColumns()
 
     # Mutation status can be R(ef), A(lt) or . (unknown).
 
     fragmentSizesTable <-
-        read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci')
+        read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci') %>%
+        mutate(MUTANT = ALT == SNV_BASE,
+               MUTATION_CLASS = str_c(REF, ALT, sep = '/'),
+               UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
 
-    equaliseSizeCounts(mutationsTable, fragmentSizesTable,
-                       pool = scriptArgs$POOL,
-                       barcode = scriptArgs$BARCODE)
+    mutationsTable.withSizes <- equaliseSizeCounts(mutationsTable, fragmentSizesTable)
+
+    name <- str_c('combined.polished.size_ann.', scriptArgs$POOL, '_', scriptArgs$BARCODE, ".rds")
+
+    mutationsTable.withSizes %>%
+        removeMutationTableDerivedColumns() %>%
+        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
+        saveRDSandTSV(name)
 }
 
 # Launch it.
