@@ -108,54 +108,67 @@ convertComplementaryMutations <- function(fragmentSizesTable)
 # From TAPAS_functions.R
 #
 
-downsampleFragments <- function(fragmentSizesGroup)
+downsampleFragments <- function(fragmentSizesGroup, uniquePos)
 {
-    print(fragmentSizesGroup)
-
     mpileupTotals <- fragmentSizesGroup %>%
-        summarise(MUTATION_SUM = sum(ALT_F + ALT_R),
-                  DP = sum(DP))
+        summarise(MUTATION_SUM = ALT_F + ALT_R, DP = DP) %>%
+        distinct()
 
+    stopifnot(nrow(mpileupTotals) == 1)
 
-    positionSizes.mutant <- positionSizes %>% filter(MUTANT)
-    positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
+    positionSizes <- fragmentSizesGroup
 
-    if (nrow(positionSizes.mutant) >= mpileupTotals$MUTATION_SUM)
+    if (summarise(positionSizes, sum(MUTANT)) > mpileupTotals$MUTATION_SUM)
     {
         # discrepant mut_sum, going order the sizes by descending number of entries
-        # and set unpaired mutant reads not supported by mpileup to zero mutant status
-        positionSizes.mutant <- positionSizes.mutant %>%
+        # and set unpaired mutant reads not supported by mpileup to not mutant
+        positionSizes.mutant <- positionSizes %>%
+            filter(MUTANT) %>%
             arrange(desc(SIZE)) %>%
-            mutate(MUTANT = MUTANT & row_number() > mpileup.mutationSum)
+            mutate(MUTANT = row_number() <= mpileupTotals$MUTATION_SUM)
+
+        message("Too many mutant position sizes for ", uniquePos, " compared to mpileup.")
+        message(summarise(positionSizes.mutant, n()), " sizes compared to ", mpileupTotals$MUTATION_SUM)
+        message(uniquePos, " set bottom ", summarise(positionSizes.mutant, sum(!MUTANT)), " sizes to be wild type.")
+
+        positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
+
+        positionSizes <- positionSizes.mutant %>% add_row(positionSizes.wildType)
     }
 
-    positionSizes <- positionSizes.mutant %>% add_rows(positionSizes.wildType)
+    nPositionSizes = summarise(positionSizes, N = n())
 
     # in some cases, the number of reads from the size CSV differs from the number of mpileup reads
-    if (nrow(positionSizes) != mpileupTotals$DP)
+    if (nPositionSizes$N != mpileupTotals$DP)
     {
         positionSizes.mutant <- positionSizes %>% filter(MUTANT)
         positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
 
-        if (nrow(positionSizes) > mpileupTotals$DP)
+        if (nPositionSizes$N > mpileupTotals$DP)
         {
+            message("Too many position sizes compared to mpileup depth for ", uniquePos)
+            message(nPositionSizes$N, " sizes compared to ", mpileupTotals$DP)
+
             # python size data has more rows than mpileup data
             # discrepant DP, downsampling wildtypes from the mpileup data
 
             positionSizes.wildType <- positionSizes.wildType %>%
-                slice_sample(n = mpileup.DP - mpileup.mutationSum, replace = FALSE)
+                slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATION_SUM, replace = FALSE)
         }
         else
         {
+            message("Too few position sizes compared to mpileup depth for ", uniquePos)
+            message(nPositionSizes$N, " sizes compared to ", mpileupTotals$DP)
+
             # python size data has FEWER rows than mpileup data
             # discrepant DP, will resample (with replacement) aka stretch mpileup data
             # for wt data (inconsequential as wt reads are not used later in pipeline)")
 
             positionSizes.wildType <- positionSizes.wildType %>%
-                slice_sample(n = mpileup.DP - mpileup.mutationSum, replace = TRUE)
+                slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATION_SUM, replace = TRUE)
         }
 
-        positionSizes <- positionSizes.mutant %>% add_rows(positionSizes.wildType)
+        positionSizes <- positionSizes.mutant %>% add_row(positionSizes.wildType)
     }
 
     positionSizes
@@ -189,15 +202,18 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, pool, barcode
         mutate(CORRECT_DEPTH = DP == DP.SIZE & ALT_F + ALT_R == MUTATION_SUM.SIZE,
                UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
 
+    correct <- test %>%
+        filter(CORRECT_DEPTH)
+
     ## correct the raw size df - only AF == 0
     discrepant_DP.zero <- test %>%
         filter(!CORRECT_DEPTH & AF == 0)
 
-    # Take the DP top sizes at each locus where AF == 0
+    # Take the DP.SIZE top sizes at each locus where AF == 0
     # Also mark all of these positions as not being mutants.
     # This is because the mutant reads identified from size info are not subject to BQ and MQ filters
     fragmentSizesTable.discrepant.zero.fixed <- fragmentSizesTable %>%
-        left_join(select(discrepant_DP.zero, UNIQUE_POS, DP.SIZE), by = "UNIQUE_POS") %>%
+        inner_join(select(discrepant_DP.zero, UNIQUE_POS, DP.SIZE), by = "UNIQUE_POS") %>%
         group_by(UNIQUE_POS) %>%
         filter(row_number() <= DP.SIZE) %>%
         ungroup() %>%
@@ -209,24 +225,23 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, pool, barcode
         filter(!CORRECT_DEPTH & AF > 0)
 
     fragmentSizesTable.discrepant.nonzero.fixed <- fragmentSizesTable %>%
-        left_join(select(discrepant_DP.nonzero, UNIQUE_POS, MUTATION_SUM.SIZE, DP.SIZE), by = "UNIQUE_POS") %>%
+        inner_join(select(discrepant_DP.nonzero, UNIQUE_POS, ALT_F, ALT_R, DP), by = "UNIQUE_POS") %>%
         group_by(UNIQUE_POS) %>%
-        pmap_dfr(downsampleFragments) %>%
+        group_modify(downsampleFragments) %>%
         ungroup() %>%
-        select(-MUTATION_SUM.SIZE, -DP.SIZE)
+        select(-ALT_F, -ALT_R, -DP)
 
+    fragmentSizesTable.fixed <- fragmentSizesTable %>%
+        filter(UNIQUE_POS %in% correct$UNIQUE_POS) %>%
+        add_row(fragmentSizesTable.discrepant.zero.fixed) %>%
+        add_row(fragmentSizesTable.discrepant.nonzero.fixed) %>%
+        select(UNIQUE_POS, MUTATION_CLASS, SIZE, MUTANT)
 
-    print("1st rbind")
-    size_ann.discrepant.fixed <- rbind(size_ann.discrepant.zero.fixed, size_ann.discrepant.nonzero.fixed)
+    mutationsWithSize <- relevantMutations %>%
+        left_join(fragmentSizesTable.fixed, by = c('UNIQUE_POS', 'MUTATION_CLASS')) %>%
+        filter(!is.na(SIZE))
 
-    print("2nd rbind")
-    size_ann.fixed <- rbind(size_ann.discrepant.fixed, size_ann[size_ann$uniq_pos %in% correct$uniq_pos,])
-
-    print("merging corrected size df and original combined df")
-    size_ann.fixed <- size_ann.fixed %>% dplyr::select(-SLX_barcode)
-    combined.size_ann <- inner_join(curr, size_ann.fixed[,3:6], by = c("uniq_pos", "mut_class"))
-
-    return(combined.size_ann)
+    mutationsWithSize
 }
 
 

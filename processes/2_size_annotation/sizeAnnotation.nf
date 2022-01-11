@@ -19,21 +19,21 @@ process createSNVList
 
 process getFragmentSize
 {
-    memory '2g'
+    memory '1g'
     cpus   1
     time   '4h'
 
     publishDir 'insert_sizes', mode: 'link'
 
     input:
-        tuple path(bamFile), path(bamIndex)
+        tuple val(pool), val(barcode), path(bamFile), path(bamIndex)
         each path(snvList)
 
     output:
-        path insertsFile
+        tuple val(pool), val(barcode), path(insertsFile)
 
     shell:
-        insertsFile = "${bamFile.name}.inserts_for_annotation.csv"
+        insertsFile = "${bamFile.name}.inserts_for_annotation.tsv"
 
         template "2_size_annotation/getFragmentSize.sh"
 }
@@ -44,13 +44,13 @@ workflow sizeAnnotation
     main:
         patient_list_channel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
 
-        bamList = file(params.INPUT_FILES, checkIfExists: true).readLines()
-        bam_channel = channel.fromList(bamList)
+        bam_channel = channel.fromPath(params.INPUT_FILES, checkIfExists: true)
+            .splitCsv(header: true, by: 1, strip: true)
             .map {
-                name ->
-                f = file(name, checkIfExists: true)
-                index = file("${name}.bai") // The index file may or may not exist.
-                tuple f, index
+                row ->
+                bam = file(row.FILE_NAME, checkIfExists: true)
+                index = file("${bam.name}.bai") // The index file may or may not exist.
+                tuple row.POOL, row.BARCODE, bam, index
             }
 
         createSNVList(patient_list_channel)

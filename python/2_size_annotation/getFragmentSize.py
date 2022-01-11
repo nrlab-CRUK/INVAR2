@@ -5,31 +5,24 @@ import pysam
 import os
 import sys
 
-def processPileUps(samfile, output_file, chrom, pos, args):
+def processPileUps(samfile, output_file, chrom, pos, ref, alt, args):
     for pileup in samfile.pileup(chrom, pos-1, pos, max_depth=args.max_depth, stepper="nofilter"):
         if pileup.reference_pos == pos-1: # filter for position of interest
 
             if False:
-                print("Processing {} reads covering SNV position {}:{} in {} with SNV as {}".format(
-                      len(pileup.pileups), chrom, pos, args.input_bam, SNV))
+                print("Processing {} reads covering SNV {}:{}:{}:{} in {}".format(
+                      len(pileup.pileups), chrom, pos, ref, alt, args.input_bam))
 
             for read in pileup.pileups:
                 if read.query_position:
                     SNV_base = read.alignment.query_sequence[read.query_position]
-                    mutant_status = "."
+                    size = abs(read.alignment.template_length)
 
-                    if SNV_base == ref:
-                        mutant_status = '0'
-                    elif SNV_base == alt:
-                        mutant_status = '1'
-
-                    output_file.write("{},{},{},{:d}\n".format(SNV_base, SNV.strip(), mutant_status, abs(read.alignment.template_length)))
+                    output_file.write("{}\t{:d}\t{}\t{}\t{}\t{:d}\n".format(chrom, pos, ref, alt, SNV_base, size))
 
 
 # required variables
-parser = argparse.ArgumentParser(description="getFragmentSize.py - "
-    "Extracts reads from a BAM file that cover a specified SNV and "
-    "writes the reference and alternate allele containing reads to separate BAM files.")
+parser = argparse.ArgumentParser()
 
 parser.add_argument("input_bam", help="Input BAM file. Has to be indexed.")
 
@@ -53,6 +46,8 @@ nucleotides = ['A', 'C', 'G', 'T']
 
 with pysam.AlignmentFile(args.input_bam, "rb") as samfile:
     with open(args.output, "w") as output_file:
+    
+        output_file.write('CHROM\tPOS\tREF\tALT\tSNV_BASE\tSIZE\n')
 
         # start loop to pileup at each of the SNV sites based on SNV_list
         # this is to get the ref/alt status, and the fragment length (TLEN)
@@ -67,8 +62,8 @@ with pysam.AlignmentFile(args.input_bam, "rb") as samfile:
                     sys.exit(1)
 
                 # set case
-                SNV_ref = ref.upper()
-                SNV_alt = alt.upper()
+                # ref = ref.upper()
+                # alt = alt.upper()
 
                 # check nucleotide validity
                 if ref not in nucleotides:
@@ -88,7 +83,7 @@ with pysam.AlignmentFile(args.input_bam, "rb") as samfile:
 
                 # get the read
                 try:
-                    processPileUps(samfile, output_file, chrom, pos, args)
+                    processPileUps(samfile, output_file, chrom, pos, ref, alt, args)
                 except ValueError as error:
                     # Can happen when there are contigs not in the index.
                     if not 'invalid contig' in error.args[0]:

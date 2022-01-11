@@ -1,6 +1,3 @@
-include { logException } from '../../functions/debugging'
-
-
 process slopPatientInfo
 {
     executor 'local'
@@ -193,8 +190,9 @@ workflow invar12
 
         slopPatientInfo(patient_list_channel, genome_channel)
 
-        bamList = file(params.INPUT_FILES, checkIfExists: true).readLines()
-        bam_channel = channel.fromList(bamList).map { f -> file(f, checkIfExists: true) }
+        bam_channel = channel.fromPath(params.INPUT_FILES, checkIfExists: true)
+            .splitCsv(header: true, by: 1, strip: true)
+            .map { row -> file(row.FILE_NAME, checkIfExists: true) }
 
         mpileup(slopPatientInfo.out, fasta_channel, bam_channel) | biallelic
 

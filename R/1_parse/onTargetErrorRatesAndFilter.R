@@ -23,7 +23,7 @@ parseOptions <- function()
                     dest="TAPAS_SETTING", help="The TAPAS setting",
                     default=defaultMarker),
         make_option(c("--mutations"), type="character", metavar="file",
-                    dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by createMutationsTable.R",
+                    dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by createOnTargetMutationsTable.R",
                     default=defaultMarker),
         make_option(c("--layout"), type="character", metavar="file",
                     dest="LAYOUT_FILE", help="The sequencing layout file",
