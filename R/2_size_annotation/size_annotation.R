@@ -29,7 +29,10 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--suppression-setting"), type="double", metavar="number",
                     dest="SUPPRESSION_SETTING", help="The suppression setting",
-                    default=0.05))
+                    default=0.05),
+        make_option(c("--sampling-seed"), type="integer", metavar="number",
+                    dest="SAMPLING_SEED", help="The seed for random sampling. Only use in testing.",
+                    default=NA))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -59,9 +62,27 @@ richTestOptions <- function()
         FRAGMENT_SIZES_FILE = 'EMMA/output_size/SLX-19721_SXTLI001.inserts_for_annotation.tsv',
         POOL = 'SLX-19721',
         BARCODE = 'SXTLI001',
-        SUPPRESSION_SETTING = 0.05
+        SUPPRESSION_SETTING = 0.05,
+        SAMPLING_SEED = 1024
     )
 }
+
+
+# Load (locally to Rich) the mutations table from Emma's data into a tibble
+# that can be used as if from the pipeline.
+readOriginalEmmaMutationsTable <- function(scriptArgs)
+{
+    combined_polished.path <- '/home/data/INVAR/EMMA/output_R/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.rds'
+
+    mutationsTable <- as_tibble(readRDS(combined_polished.path)) %>%
+        rename(POOL = SLX,
+               MUTATION_CLASS = mut_class,
+               UNIQUE_POS = uniq_pos) %>%
+        filter(POOL == scriptArgs$POOL & BARCODE == scriptArgs$BARCODE)
+
+    mutationsTable
+}
+
 
 
 ##
@@ -86,24 +107,18 @@ convertComplementaryMutations <- function(fragmentSizesTable)
         base == 'A' | base == 'G'
     }
 
-    forward <- fragmentSizesTable %>%
-        filter(!complementary(REF))
-
-    reverse <- fragmentSizesTable %>%
-        filter(complementary(REF))
-
-    reverse <- reverse %>%
-        mutate(MUTATION_CLASS = complement(MUTATION_CLASS))
-
-    add_row(forward, reverse) %>%
-        arrange(CHROM, POS, REF, ALT)
+    fragmentSizesTable %>%
+        mutate(MUTATION_CLASS = ifelse(complementary(REF), complement(MUTATION_CLASS), MUTATION_CLASS))
 }
 
 ##
 # From TAPAS_functions.R
 #
 
-downsampleFragments <- function(fragmentSizesGroup, uniquePos)
+# Correct the number of fragment sizes to match the number given
+# by mpileup.
+#
+downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = NA)
 {
     mpileupTotals <- fragmentSizesGroup %>%
         summarise(MUTATION_SUM = ALT_F + ALT_R, DP = DP) %>%
@@ -122,9 +137,9 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos)
             arrange(desc(SIZE)) %>%
             mutate(MUTANT = row_number() <= mpileupTotals$MUTATION_SUM)
 
-        message("Too many mutant position sizes for ", uniquePos, " compared to mpileup.")
-        message(summarise(positionSizes.mutant, n()), " sizes compared to ", mpileupTotals$MUTATION_SUM)
-        message(uniquePos, " set bottom ", summarise(positionSizes.mutant, sum(!MUTANT)), " sizes to be wild type.")
+        # message("Too many mutant position sizes for ", uniquePos, " compared to mpileup: ",
+        #         summarise(positionSizes.mutant, n()), " sizes compared to ", mpileupTotals$MUTATION_SUM)
+        # message(uniquePos, " set bottom ", summarise(positionSizes.mutant, sum(!MUTANT)), " sizes to be wild type.")
 
         positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
 
@@ -139,29 +154,30 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos)
         positionSizes.mutant <- positionSizes %>% filter(MUTANT)
         positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
 
-        if (nPositionSizes$N > mpileupTotals$DP)
+        # For exactly reproducible sampling in testing.
+
+        if (!is.na(.samplingSeed))
         {
-            message("Too many position sizes compared to mpileup depth for ", uniquePos)
-            message(nPositionSizes$N, " sizes compared to ", mpileupTotals$DP)
-
-            # python size data has more rows than mpileup data
-            # discrepant DP, downsampling wildtypes from the mpileup data
-
-            positionSizes.wildType <- positionSizes.wildType %>%
-                slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATION_SUM, replace = FALSE)
+            stopifnot(is.numeric(.samplingSeed))
+            set.seed(.samplingSeed)
         }
-        else
-        {
-            message("Too few position sizes compared to mpileup depth for ", uniquePos)
-            message(nPositionSizes$N, " sizes compared to ", mpileupTotals$DP)
 
-            # python size data has FEWER rows than mpileup data
-            # discrepant DP, will resample (with replacement) aka stretch mpileup data
-            # for wt data (inconsequential as wt reads are not used later in pipeline)")
+        # When there are more positions from the python size data than mpileup data
+        # we need to downsample wildtypes from the mpileup data (i.e. give fewer rows).
 
-            positionSizes.wildType <- positionSizes.wildType %>%
-                slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATION_SUM, replace = TRUE)
-        }
+        # When there are fewer positions from the python size data than mpileup data
+        # we need to sample with some duplication (replace) to get the number up.
+        # Or, in original words, will resample (with replacement) aka stretch mpileup data
+        # for wt data (inconsequential as wt reads are not used later in pipeline)
+
+        tooFew = nPositionSizes$N < mpileupTotals$DP
+
+        # message("Too ", ifelse(tooFew, 'few', 'many'),
+        #         " position sizes compared to mpileup depth for ", uniquePos,
+        #         " - ", nPositionSizes$N, " sizes compared to ", mpileupTotals$DP)
+
+        positionSizes.wildType <- positionSizes.wildType %>%
+            slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATION_SUM, replace = tooFew)
 
         positionSizes <- positionSizes.mutant %>% add_row(positionSizes.wildType)
     }
@@ -169,7 +185,7 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos)
     positionSizes
 }
 
-equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
+equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, .samplingSeed = NA)
 {
     # Fix DP count.
 
@@ -189,8 +205,7 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
 
     test <- mutationsTable %>%
         left_join(fragmentSizesTable.summary, by = c('CHROM', 'POS', 'MUTATION_CLASS')) %>%
-        mutate(CORRECT_DEPTH = DP == DP.SIZE & ALT_F + ALT_R == MUTATION_SUM.SIZE,
-               UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
+        mutate(CORRECT_DEPTH = DP == DP.SIZE & ALT_F + ALT_R == MUTATION_SUM.SIZE)
 
     correct <- test %>%
         filter(CORRECT_DEPTH)
@@ -199,15 +214,15 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
     discrepantDP.zero <- test %>%
         filter(!CORRECT_DEPTH & AF == 0)
 
-    # Take the DP.SIZE top sizes at each locus where AF == 0
+    # Take the DP top sizes at each locus where AF == 0
     # Also mark all of these positions as not being mutants.
     # This is because the mutant reads identified from size info are not subject to BQ and MQ filters
     fragmentSizesTable.discrepant.zero.fixed <- fragmentSizesTable %>%
-        inner_join(select(discrepantDP.zero, UNIQUE_POS, DP.SIZE), by = "UNIQUE_POS") %>%
+        inner_join(select(discrepantDP.zero, UNIQUE_POS, DP), by = "UNIQUE_POS") %>%
         group_by(UNIQUE_POS) %>%
-        filter(row_number() <= DP.SIZE) %>%
+        filter(row_number() <= DP) %>%
         ungroup() %>%
-        select(-DP.SIZE) %>%
+        select(-DP) %>%
         mutate(MUTANT = FALSE)
 
     ## correct loci with AF > 0
@@ -217,7 +232,7 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
     fragmentSizesTable.discrepant.nonzero.fixed <- fragmentSizesTable %>%
         inner_join(select(discrepantDP.nonzero, UNIQUE_POS, ALT_F, ALT_R, DP), by = "UNIQUE_POS") %>%
         group_by(UNIQUE_POS) %>%
-        group_modify(downsampleFragments) %>%
+        group_modify(downsampleFragments, .samplingSeed) %>%
         ungroup() %>%
         select(-ALT_F, -ALT_R, -DP)
 
@@ -245,7 +260,7 @@ main <- function(scriptArgs)
         filter(POOL == scriptArgs$POOL & BARCODE == scriptArgs$BARCODE) %>%
         addMutationTableDerivedColumns()
 
-    # Mutation status can be R(ef), A(lt) or . (unknown).
+    # mutationsTable <- readOriginalEmmaMutationsTable(scriptArgs)
 
     fragmentSizesTable <-
         read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci') %>%
@@ -253,14 +268,14 @@ main <- function(scriptArgs)
                MUTATION_CLASS = str_c(REF, ALT, sep = '/'),
                UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
 
-    mutationsTable.withSizes <- equaliseSizeCounts(mutationsTable, fragmentSizesTable)
-
-    name <- str_c('combined.polished.size_ann.', scriptArgs$POOL, '_', scriptArgs$BARCODE, ".rds")
+    mutationsTable.withSizes <-
+        equaliseSizeCounts(mutationsTable, fragmentSizesTable,
+                           .samplingSeed = scriptArgs$SAMPLING_SEED)
 
     mutationsTable.withSizes %>%
         removeMutationTableDerivedColumns() %>%
         arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
-        saveRDSandTSV(name)
+        saveRDSandTSV(str_c('mutation_table.with_sizes.', scriptArgs$POOL, '_', scriptArgs$BARCODE, ".rds"))
 }
 
 # Launch it.

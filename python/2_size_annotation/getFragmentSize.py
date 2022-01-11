@@ -46,7 +46,7 @@ nucleotides = ['A', 'C', 'G', 'T']
 
 with pysam.AlignmentFile(args.input_bam, "rb") as samfile:
     with open(args.output, "w") as output_file:
-    
+
         output_file.write('CHROM\tPOS\tREF\tALT\tSNV_BASE\tSIZE\n')
 
         # start loop to pileup at each of the SNV sites based on SNV_list
