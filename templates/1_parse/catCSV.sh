@@ -7,7 +7,4 @@ set -euo pipefail
 
 head --quiet -n 1 "!{csvFiles[0]}" > "!{combinedFile}"
 
-for F in "!{csvFiles.join(' ')}"
-do
-    tail --quiet -n +2 $F >> "!{combinedFile}"
-done
+tail --quiet -n +2 "!{csvFiles.join('" "')}" >> "!{combinedFile}"

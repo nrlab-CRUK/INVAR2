@@ -156,16 +156,14 @@ process annotateMutation
     cpus 1
     time '1h'
 
-    publishDir 'mutations', mode: 'link'
-
     input:
         tuple val(pool), val(barcode), path(mutationFile), path(snp), path(cosmic), path(trinucleotide)
 
     output:
-        path annotationFile
+        tuple val(pool), val(barcode), path(annotatedFile)
 
     shell:
-        annotationFile = "${pool}_${barcode}.mutations.tsv"
+        annotatedFile = "${pool}_${barcode}.mutations.tsv"
 
         """
         python3 "!{projectDir}/python/1_parse/addTabixAndTrinucleotides.py" \
@@ -173,8 +171,29 @@ process annotateMutation
             !{snp} \
             !{cosmic} \
             !{trinucleotide} \
-            !{annotationFile}
+            !{annotatedFile}
         """
+}
+
+process combineCSV
+{
+    executor 'local'
+    memory '32m'
+    cpus 1
+    time '1h'
+
+    publishDir 'unprocessed_mutations', mode: 'link'
+
+    input:
+        path(csvFiles)
+
+    output:
+        path(combinedFile)
+
+    shell:
+        combinedFile = "${params.FINAL_PREFIX}.combined.final.ann.tsv"
+
+        template "1_parse/catCSV.sh"
 }
 
 workflow invar12
@@ -208,9 +227,12 @@ workflow invar12
             .join(tabixCosmic.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
             .join(trinucleotide.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
 
-        mutationFile = annotateMutation(byBamMutationChannel)
-            .collectFile(name: "${params.FINAL_PREFIX}.combined.final.ann.tsv", keepHeader: true, sort: { it.name }, storeDir: "unprocessed_mutations")
+        allMutationsChannel =
+            annotateMutation(byBamMutationChannel)
+                .collect { pool, barcode, file -> file }
+
+        combineCSV(allMutationsChannel)
 
     emit:
-        mutationFile
+        mutationFile = combineCSV.out
 }
