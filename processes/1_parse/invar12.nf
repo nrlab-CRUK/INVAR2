@@ -235,5 +235,5 @@ workflow invar12
         combineCSV(allMutationsList)
 
     emit:
-        mutationFile = combineCSV.out
+        mutationsFile = combineCSV.out
 }
