@@ -227,11 +227,12 @@ workflow invar12
             .join(tabixCosmic.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
             .join(trinucleotide.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
 
-        allMutationsChannel =
+        allMutationsList =
             annotateMutation(byBamMutationChannel)
-                .collect { pool, barcode, file -> file }
+                .map { pool, barcode, file -> file }
+                .toSortedList( { f1, f2 -> f1.name <=> f2.name } )
 
-        combineCSV(allMutationsChannel)
+        combineCSV(allMutationsList)
 
     emit:
         mutationFile = combineCSV.out
