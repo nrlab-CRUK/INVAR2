@@ -6,27 +6,8 @@
 
 nextflow.enable.dsl = 2
 
-include { invar12 } from './processes/1_parse/invar12'
-include { invar34 } from './processes/1_parse/invar34'
-include { sizeAnnotation } from './processes/2_size_annotation/sizeAnnotation'
-
-/*
- * Mini work flow for part one (parsing).
- */
-workflow parse
-{
-    take:
-        bamChannel
-        tumourMutationsChannel
-        layoutChannel
-
-    main:
-        invar12(bamChannel, tumourMutationsChannel)
-        invar34(invar12.out, tumourMutationsChannel, layoutChannel)
-
-    emit:
-        mutationsFile = invar34.out
-}
+include { parse } from './processes/1_parse'
+include { sizeAnnotation } from './processes/2_size_annotation'
 
 /*
  * Main work flow.
@@ -47,5 +28,5 @@ workflow
 
     parse(bamChannel, tumourMutationsChannel, layoutChannel)
 
-    sizeAnnotation(bamChannel, parse.out, tumourMutationsChannel)
+    sizeAnnotation(bamChannel, parse.out.onTargetMutationsFile, tumourMutationsChannel)
 }
