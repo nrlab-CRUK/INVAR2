@@ -1,3 +1,4 @@
+suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))
@@ -29,22 +30,22 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--cosmic-threshold"), type="integer", metavar="int",
                     dest="COSMIC_THRESHOLD", help="Loci with >0 entries in COSMIC are considered as COSMIC mutations",
-                    default=0),
+                    default=0L),
         make_option(c("--mqsb-threshold"), type="double", metavar="num",
                     dest="MQSB_THRESHOLD", help="Excludes data points due to poor MQ and SB, but locus is retained",
                     default=0.01),
         make_option(c("--max-depth"), type="integer", metavar="int",
                     dest="MAX_DEPTH", help="Omit data points with uncharacteristially high unique depth given the input mass used",
-                    default=1500),
+                    default=1500L),
         make_option(c("--min-ref-depth"), type="integer", metavar="int",
                     dest="MIN_REF_DEPTH", help="Min depth is set by mpileups as 5, here we require at least 5 ref reads at a locus, set to 0 for sWGS",
-                    default=5),
+                    default=5L),
         make_option(c("--alt-alleles-threshold"), type="integer", metavar="int",
                     dest="ALT_ALLELES_THRESHOLD", help="Blacklist loci with >= N separate alternate alleles",
-                    default=3),
+                    default=3L),
         make_option(c("--minor-alt-allele-threshold"), type="integer", metavar="int",
                     dest="MINOR_ALT_ALLELES_THRESHOLD", help="Blacklist multiallelic loci with a mutant read count of >= N in the minor mutant allele",
-                    default=2))
+                    default=2L))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -74,12 +75,12 @@ richTestOptions <- function()
         TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
-        COSMIC_THRESHOLD = 0,
+        COSMIC_THRESHOLD = 0L,
         MQSB_THRESHOLD = 0.01,
-        MAX_DEPTH = 2000,
-        MIN_REF_DEPTH = 10,
-        ALT_ALLELES_THRESHOLD = 3,
-        MINOR_ALT_ALLELES_THRESHOLD = 2
+        MAX_DEPTH = 2000L,
+        MIN_REF_DEPTH = 10L,
+        ALT_ALLELES_THRESHOLD = 3L,
+        MINOR_ALT_ALLELES_THRESHOLD = 2L
     )
 }
 
@@ -92,7 +93,7 @@ richTestOptions <- function()
 
 loadMutationsTable <- function(mutationsFile, tumourMutationsTable, tapasSetting, cosmicThreshold)
 {
-    stopifnot(is.numeric(cosmicThreshold))
+    assert_that(is.number(cosmicThreshold), msg = "cosmicThreshold must be a number.")
 
     # Remove soft-masked repeats, identified by lowercase.
     # Add columns of derived values and combined identifiers.
@@ -119,8 +120,8 @@ createMultiallelicBlacklist <- function(mutationTable,
                                         n_alt_alleles_threshold,
                                         minor_alt_alleles_threshold)
 {
-    stopifnot(is.numeric(n_alt_alleles_threshold))
-    stopifnot(is.numeric(minor_alt_alleles_threshold))
+    assert_that(is.number(n_alt_alleles_threshold), msg = "n_alt_alleles_threshold must be a number")
+    assert_that(is.number(minor_alt_alleles_threshold), msg = "minor_alt_alleles_threshold must be a number")
 
     # Filter for rows with positive AF and MQSB above threshold.
     # Then determine the number of alt alleles per UNIQUE_POS

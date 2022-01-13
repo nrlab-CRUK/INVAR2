@@ -78,4 +78,7 @@ workflow sizeAnnotation
         getFragmentSize(bamChannel, createSNVList.out)
 
         annotateMutationsWithFragmentSize(getFragmentSize.out, mutationsChannel)
+    
+    emit:
+        mutationsFiles = annotateMutationsWithFragmentSize.out
 }

@@ -9,6 +9,7 @@
 # and labels each mutation as specific to a patient or not.
 ##
 
+suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))

@@ -1,3 +1,4 @@
+suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(parallel))
@@ -77,9 +78,9 @@ createLociErrorRateTable <- function(mutationTable,
                                      max_background_mean_AF,
                                      is.blood_spot)
 {
-    stopifnot(is.numeric(proportion_of_controls))
-    stopifnot(is.numeric(max_background_mean_AF))
-    stopifnot(is.logical(is.blood_spot))
+    assert_that(is.number(proportion_of_controls), msg = "proportion_of_controls must be a number.")
+    assert_that(is.number(max_background_mean_AF), msg = "max_background_mean_AF must be a number.")
+    assert_that(is.flag(is.blood_spot), msg = "is.blood_spot must be a logical.")
 
     if (is.blood_spot)
     {
@@ -124,7 +125,7 @@ groupAndSummarizeForErrorRate <- function(mutationTable)
 
 filterForOffTarget <- function(mutationTable, withCosmic)
 {
-    stopifnot(is.logical(withCosmic))
+    assert_that(is.flag(withCosmic), msg = "withCosmic must be a logical.")
 
     mutationTable.off_target <- mutationTable %>%
         filter(!ON_TARGET & !SNP & nchar(ALT) == 1 & nchar(REF) == 1)
@@ -157,7 +158,7 @@ addLocusNoisePass <- function(mutationTable, errorRateTable)
 
 doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
 {
-    stopifnot(is.logical(withCosmic))
+    assert_that(is.flag(withCosmic), msg = "withCosmic must be a logical.")
 
     cosmicFilePart = ifelse(withCosmic, 'cosmic', 'no_cosmic')
 

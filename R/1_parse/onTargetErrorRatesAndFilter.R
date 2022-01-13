@@ -1,3 +1,4 @@
+suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(optparse))
@@ -30,7 +31,7 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--cosmic-threshold"), type="integer", metavar="int",
                     dest="COSMIC_THRESHOLD", help="Loci with >0 entries in COSMIC are considered as COSMIC mutations",
-                    default=0),
+                    default=0L),
         make_option(c("--bloodspot"), action="store_true", default=FALSE,
                     dest="BLOODSPOT", help="Indicate this is blood spot data."),
         make_option(c("--control-proportion"), type="double", metavar="num",
@@ -75,7 +76,7 @@ richTestOptions <- function()
         MAX_BACKGROUND_ALLELE_FREQUENCY = 0.01,
         ALLELE_FREQUENCY_THRESHOLD = 0.01,
         BLOODSPOT = FALSE,
-        COSMIC_THRESHOLD = 0
+        COSMIC_THRESHOLD = 0L
     )
 }
 
@@ -93,9 +94,9 @@ createLociErrorRateTable <- function(mutationTable,
                                      max_background_mean_AF,
                                      is.blood_spot)
 {
-    stopifnot(is.numeric(proportion_of_controls))
-    stopifnot(is.numeric(max_background_mean_AF))
-    stopifnot(is.logical(is.blood_spot))
+    assert_that(is.number(proportion_of_controls), msg = "proportion_of_controls must be a number.")
+    assert_that(is.number(max_background_mean_AF), msg = "max_background_mean_AF must be a number.")
+    assert_that(is.flag(is.blood_spot), msg = "is.blood_spot must be a logical.")
 
     if (is.blood_spot)
     {
@@ -155,7 +156,7 @@ createLociErrorRatePlot <- function(errorRateTable, study, tapasSetting)
 # potential risk of contamination between pt-spec and non-pt-spec loci
 getContaminatedSamples <- function(mutationTable, afThreshold)
 {
-    stopifnot(is.numeric(afThreshold))
+    assert_that(is.number(afThreshold), msg = "afThreshold must be a number.")
 
     alleleFrequencyTable <- mutationTable %>%
         mutate(BOTH_STRANDS = ALT_R > 0 & ALT_F > 0 | AF == 0) %>%

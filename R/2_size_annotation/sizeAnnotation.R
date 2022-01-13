@@ -1,3 +1,4 @@
+suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))
@@ -63,7 +64,7 @@ richTestOptions <- function()
         POOL = 'SLX-19721',
         BARCODE = 'SXTLI001',
         OUTLIER_SUPPRESSION = 0.05,
-        SAMPLING_SEED = 1024
+        SAMPLING_SEED = 1024L
     )
 }
 
@@ -120,11 +121,13 @@ convertComplementaryMutations <- function(fragmentSizesTable)
 #
 downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = NA)
 {
+    assert_that(is.na(.samplingSeed) || is.number(.samplingSeed), msg = ".samplingSeed must be a number or NA.")
+
     mpileupTotals <- fragmentSizesGroup %>%
         summarise(MUTATION_SUM = ALT_F + ALT_R, DP = DP) %>%
         distinct()
 
-    stopifnot(nrow(mpileupTotals) == 1)
+    assert_that(nrow(mpileupTotals) == 1, msg = str_c("Have ", nrow(mpileupTotals), " rows for mpileup totals when there must be exactly 1."))
 
     positionSizes <- fragmentSizesGroup
 
@@ -158,7 +161,6 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
 
         if (!is.na(.samplingSeed))
         {
-            stopifnot(is.numeric(.samplingSeed))
             set.seed(.samplingSeed)
         }
 
@@ -187,6 +189,8 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
 
 equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, .samplingSeed = NA)
 {
+    assert_that(is.na(.samplingSeed) || is.number(.samplingSeed), msg = ".samplingSeed must be a number or NA.")
+
     # Fix DP count.
 
     mutationsTable <- mutationsTable %>%
