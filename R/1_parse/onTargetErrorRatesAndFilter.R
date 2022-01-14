@@ -223,7 +223,8 @@ main <- function(scriptArgs)
 
     mutationTable.filtered <- mutationTable %>%
         filter(PATIENT_SPECIFIC | COSMIC_MUTATIONS <= scriptArgs$COSMIC_THRESHOLD) %>%
-        mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% lociErrorRateNoisePass$UNIQUE_POS)
+        mutate(BOTH_STRANDS = ALT_F + ALT_R > 0 | AF == 0,
+               LOCUS_NOISE.PASS = UNIQUE_POS %in% lociErrorRateNoisePass$UNIQUE_POS)
 
     contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$ALLELE_FREQUENCY_THRESHOLD)
 

@@ -1,0 +1,7 @@
+The original source file from Emma's run for the filtered
+output from INVAR3 is
+output_R/PARADIGM.f0.9_s2.BQ_20.MQ_40.Rdata
+
+The file here is created by running this file through
+reorganiseMutationTable.R with no other changes.
+
