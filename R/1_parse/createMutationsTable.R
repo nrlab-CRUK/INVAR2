@@ -153,6 +153,8 @@ createMultiallelicBlacklist <- function(mutationTable,
 
 main <- function(scriptArgs)
 {
+    print(scriptArgs)
+
     tumourMutationTable <-
         loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
 
@@ -168,6 +170,8 @@ main <- function(scriptArgs)
                                             tapasSetting = scriptArgs$TAPAS_SETTING,
                                             cosmicThreshold = scriptArgs$COSMIC_THRESHOLD)
 
+    message("Number of mutations at start = ", nrow(mutationTable.all))
+
     # Filter the mutations table to remove rows with MSQB above the threshold
     # (was blacklist.MQSB in TAPAS_functions.R) and the base filters with
     # thresholds (INVAR3.R).
@@ -180,14 +184,20 @@ main <- function(scriptArgs)
                REF_R + REF_F >= scriptArgs$MIN_REF_DEPTH &
                (ON_TARGET | !COSMIC))
 
+    message("Number of mutations after MQSB filter = ", nrow(mutationTable.filtered))
+
     # Filter out positions that are multiallelic.
 
     multiallelicBlacklist <- mutationTable.filtered %>%
         createMultiallelicBlacklist(n_alt_alleles_threshold = scriptArgs$ALT_ALLELES_THRESHOLD,
                                     minor_alt_alleles_threshold = scriptArgs$MINOR_ALT_ALLELES_THRESHOLD)
 
+    message("Number of multiallelic blacklist positions = ", nrow(multiallelicBlacklist))
+
     mutationTable.biallelic <- mutationTable.filtered %>%
         filter(!UNIQUE_POS %in% multiallelicBlacklist$UNIQUE_POS)
+
+    message("Number of mutations after multiallelic filter = ", nrow(mutationTable.biallelic))
 
     #mutationTable.all %>%
     #    removeMutationTableDerivedColumns() %>%
@@ -207,8 +217,8 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789') {
-    # Rich's machine
+if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
+    # Rich's machine in RStudio
     setwd('/home/data/INVAR')
     invisible(main(richTestOptions()))
 } else {

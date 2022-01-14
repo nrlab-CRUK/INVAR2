@@ -8,29 +8,36 @@ nextflow.enable.dsl = 2
 
 include { createMutationsTable } from './processes/1_parse'
 
+def dumpParams(logger, params)
+{
+    def keys = params.keySet().sort()
+    for (k in keys)
+    {
+        logger.warn "${k} = '${params[k]}'"
+    }
+}
+
 def compareFiles(logger, process, generated, reference)
 {
     generated.withReader
     {
         greader ->
-        
+
         reference.withReader
         {
             rreader ->
-            
-            logger.warn "Compare ${process} output to reference."
-    
+
             def line = 0
-            
+
             while (true)
             {
                 gline = greader.readLine()
                 rline = rreader.readLine()
                 ++line
-            
+
                 if (!gline && !rline)
                 {
-                    logger.warn "${process} files are the same"
+                    logger.warn "${process} files are the same."
                     break
                 }
                 if (!gline && rline)
@@ -63,9 +70,11 @@ def compareFiles(logger, process, generated, reference)
 
 workflow
 {
+    // dumpParams(log, params)
+
     tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
     layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
-    
+
     createMutationsTable(channel.fromPath('testing/createMutationsTable/source/mutation_table.tsv'),
                          tumourMutationsChannel,
                          layoutChannel)
@@ -73,5 +82,4 @@ workflow
     compareFiles(log, 'createMutationsTable',
                  createMutationsTable.out.filteredMutationsTSV.first(),
                  file('testing/createMutationsTable/reference/createMutationsTable.out.tsv', checkIfExists: true))
-    
 }

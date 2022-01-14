@@ -201,7 +201,7 @@ process combineCSV
         path(combinedFile)
 
     shell:
-        combinedFile = "${params.FINAL_PREFIX}.combined.final.ann.tsv"
+        combinedFile = "mutation_table.tsv"
 
         template "1_parse/catCSV.sh"
 }
@@ -222,6 +222,7 @@ process createMutationsTable
     output:
         path 'mutation_table.all.rds', emit: "allMutationsFile", optional: true
         path 'mutation_table.filtered.rds', emit: "filteredMutationsFile"
+        path 'mutation_table.filtered.tsv', emit: "filteredMutationsTSV"
 
     shell:
 
