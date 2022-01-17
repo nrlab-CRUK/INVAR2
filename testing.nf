@@ -75,11 +75,11 @@ workflow
     tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
     layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
 
-    createMutationsTable(channel.fromPath('testing/createMutationsTable/source/mutation_table.tsv'),
+    createMutationsTable(channel.fromPath('testdata/createMutationsTable/source/mutation_table.tsv'),
                          tumourMutationsChannel,
                          layoutChannel)
 
     compareFiles(log, 'createMutationsTable',
                  createMutationsTable.out.filteredMutationsTSV.first(),
-                 file('testing/createMutationsTable/reference/createMutationsTable.out.tsv', checkIfExists: true))
+                 file('testdata/createMutationsTable/reference/createMutationsTable.out.tsv', checkIfExists: true))
 }
