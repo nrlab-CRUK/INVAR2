@@ -285,7 +285,7 @@ process createOnTargetMutationsTable
 
     output:
         path 'mutation_table.on_target.all.rds', emit: "onTargetMutationsFile"
-        path '*.tsv', optional: true
+        path 'mutation_table.on_target.all.tsv', emit: "onTargetMutationsTSV"
 
     shell:
         """

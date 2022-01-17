@@ -54,11 +54,43 @@ message("Reading ", args$SOURCE)
 
 table <- loadingFunctions[[args$EXTENSION]](args$SOURCE)
 
+desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'REF_R', 'ALT_R', 'MQSB',
+                 'POOL', 'BARCODE', 'COSMIC_MUTATIONS', 'COSMIC_SNP', '1KG_AF', 'TRINUCLEOTIDE',
+                 'AF', 'COSMIC', 'SNP', 'ON_TARGET',
+                 'STUDY', 'SAMPLE_NAME', 'PATIENT', 'SAMPLE_TYPE', 'CASE_OR_CONTROL', 'INPUT_INTO_LIBRARY_NG',
+                 'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO', 'PATIENT_SPECIFIC',
+                 'BACKGROUND_MUTATION_SUM', 'BACKGROUND_DP', 'BACKGROUND_AF')
+
 t <- as_tibble(table) %>%
     rename_all(str_to_upper) %>%
     select(-contains('UNIQ'), -any_of(c('FILE_NAME', 'SLX_BARCODE'))) %>%
     rename(`1KG_AF` = X1KG_AF, POOL = SLX) %>%
-    mutate(COSMIC_SNP = as.logical(COSMIC_SNP)) %>%
+    mutate(COSMIC_SNP = as.logical(COSMIC_SNP))
+
+if ('DATA' %in% colnames(t)) {
+    t <- t %>%
+	mutate(PATIENT_SPECIFIC = DATA == 'ptspec') %>%
+	select(-DATA)
+}
+
+if ('BACKGROUND.MUT_SUM' %in% colnames(t)) {
+    t <- t %>%
+        rename(BACKGROUND_MUTATION_SUM = BACKGROUND.MUT_SUM,
+               BACKGROUND_DP = BACKGROUND.DP)
+}
+
+if ('PT_MUTATION_BELONGS_TO' %in% colnames(t)) {
+    t <- t %>%
+        rename(PATIENT_MUTATION_BELONGS_TO = PT_MUTATION_BELONGS_TO)
+}
+
+if ('MUT_CLASS' %in% colnames(t)) {
+    t <- t %>%
+        rename(MUTATION_CLASS = MUT_CLASS)
+}
+
+t <- t %>%
+    select(any_of(desiredOrder)) %>%
     mutate_if(is.logical, toChar) %>%
     mutate_if(is.double, signif, digits = 6) %>%
     arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE)

@@ -6,7 +6,7 @@
 
 nextflow.enable.dsl = 2
 
-include { createMutationsTable; offTargetErrorRates } from '../processes/1_parse'
+include { createMutationsTable; offTargetErrorRates; createOnTargetMutationsTable } from '../processes/1_parse'
 
 def dumpParams(logger, params)
 {
@@ -101,5 +101,20 @@ workflow
             genFile ->
             refFile = file("testdata/offTargetErrorRates/reference/${genFile.name}", checkIfExists: true)
             compareFiles(log, "offTargetErrorRates", genFile, refFile)
+        }
+    
+    // createOnTargetMutationsTable
+    
+    createOnTargetMutationsTable(channel.fromPath('testdata/createOnTargetMutationsTable/source/mutation_table.filtered.rds'),
+                                 tumourMutationsChannel,
+                                 layoutChannel,
+                                 channel.fromPath('testdata/createOnTargetMutationsTable/source/mutation_table.error_rates.no_cosmic.rds'))
+    
+    createOnTargetMutationsTable.out.onTargetMutationsTSV.first()
+        .subscribe onNext:
+        {
+            genFile ->
+            refFile = file("testdata/createOnTargetMutationsTable/reference/${genFile.name}", checkIfExists: true)
+            compareFiles(log, "createOnTargetMutationsTable", genFile, refFile)
         }
 }

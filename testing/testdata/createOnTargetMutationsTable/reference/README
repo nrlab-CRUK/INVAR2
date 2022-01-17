@@ -1,0 +1,7 @@
+This one is a little tricky, as the createOnTargetMutationsTable.R
+script isn't an end point in INVAR4.R. The output is the data frame
+at the end of the parse() method. INVAR4.R was modified to write out
+the data frame at that point to create the reference.
+
+The data frame written out is then passed through reorganiseMutationTable.R
+to rename columns and perform standard sorting.

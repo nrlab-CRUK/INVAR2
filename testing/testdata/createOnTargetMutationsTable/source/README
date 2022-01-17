@@ -1,0 +1,4 @@
+This is a mutation table written by a verified execution
+of createMutationsTable.R and an off target, no cosmic error
+rates table taken from a verified execution of
+offTargetErrorRates.R.
