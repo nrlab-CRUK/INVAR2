@@ -1,0 +1,14 @@
+The original source file from Emma's run for the off target error rate
+output from INVAR3 is
+output_R/locus_error_rates.off_target.Rdata
+
+The file here is created by running this file through
+reorganiseErrorRateTable.R with no other changes.
+
+----------
+
+The two error rate RData files:
+PARADIGM.f0.9_s2.BQ_20.MQ_40.cosmic_FALSE.error_rates.Rdata
+PARADIGM.f0.9_s2.BQ_20.MQ_40.cosmic_TRUE.error_rates.Rdata
+
+are converted with the custom script "fromRData.R" in this directory.

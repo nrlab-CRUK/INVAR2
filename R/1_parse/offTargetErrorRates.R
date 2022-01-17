@@ -4,6 +4,7 @@ suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(tidyr))
 
 source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
 
@@ -101,6 +102,10 @@ createLociErrorRateTable <- function(mutationTable,
                   N_SAMPLES = n_distinct(POOL_BARCODE),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
+        separate(UNIQUE_POS, sep = ':', into = c('CHROM', 'POS')) %>%
+        mutate(POS = as.integer(POS)) %>%
+        select(CHROM, POS, TRINUCLEOTIDE, BACKGROUND_AF, MUTATION_SUM, DP_SUM,
+               N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
         mutate(LOCUS_NOISE.PASS = (N_SAMPLES_WITH_SIGNAL / N_SAMPLES) < proportion_of_controls &
                                   BACKGROUND_AF < max_background_mean_AF)
 
@@ -144,7 +149,8 @@ filterForOffTarget <- function(mutationTable, withCosmic)
 addLocusNoisePass <- function(mutationTable, errorRateTable)
 {
     passed.loci <- errorRateTable %>%
-        filter(LOCUS_NOISE.PASS)
+        filter(LOCUS_NOISE.PASS) %>%
+        mutate(UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
 
     mutationTable %>%
         mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% passed.loci$UNIQUE_POS,
@@ -206,18 +212,22 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
     {
         oneRead %>%
             removeMutationTableDerivedColumns() %>%
+            arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
             exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.oneread.tsv'))
 
         locusNoisePass %>%
             removeMutationTableDerivedColumns() %>%
+            arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
             exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise.tsv'))
 
         bothStrands %>%
             removeMutationTableDerivedColumns() %>%
+            arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
             exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.bothreads.tsv'))
 
         bothFilters %>%
             removeMutationTableDerivedColumns() %>%
+            arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
             exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise_bothreads.tsv'))
     }
 
@@ -254,7 +264,8 @@ main <- function(scriptArgs)
     # Aids comparison.
 
     lociErrorRateTable %>%
-        select(UNIQUE_POS, TRINUCLEOTIDE, BACKGROUND_AF, MUTATION_SUM, DP_SUM, N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
+        select(-LOCUS_NOISE.PASS) %>%
+        arrange(CHROM, POS, TRINUCLEOTIDE) %>%
         exportTSV('locus_error_rates.off_target.tsv')
 
     # Calculate the error rates with filters and with or without COSMIC.
@@ -266,7 +277,7 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789') {
+if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
     # Rich's machine
     setwd('/home/data/INVAR')
     invisible(main(richTestOptions()))

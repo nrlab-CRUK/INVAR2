@@ -255,9 +255,10 @@ process offTargetErrorRates
 
     output:
         path 'locus_error_rates.off_target.rds', emit: 'locusErrorRates'
+        path 'locus_error_rates.off_target.tsv', emit: 'locusErrorRatesTSV'
         path 'mutation_table.error_rates.cosmic.rds', emit: "cosmicErrorRates"
         path 'mutation_table.error_rates.no_cosmic.rds', emit: "noCosmicErrorRates"
-        path '*.tsv', optional: true
+        path 'mutation_table.off_target.*.tsv', emit: "errorRatesTSV"
 
     shell:
         """

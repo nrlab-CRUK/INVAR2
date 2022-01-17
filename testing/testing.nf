@@ -6,7 +6,7 @@
 
 nextflow.enable.dsl = 2
 
-include { createMutationsTable } from '../processes/1_parse'
+include { createMutationsTable; offTargetErrorRates } from '../processes/1_parse'
 
 def dumpParams(logger, params)
 {
@@ -37,36 +37,29 @@ def compareFiles(logger, process, generated, reference)
 
                 if (!gline && !rline)
                 {
-                    logger.warn "${process} files are the same."
+                    logger.warn "${process} ${generated.name}: files are the same."
                     break
                 }
                 if (!gline && rline)
                 {
-                    logger.error "${process}: there are fewer lines in the reference than the generated file."
-                    logger.error "${process} reference ${reference}"
-                    logger.error "${process} generated ${generated.value}"
+                    logger.error "${process} ${generated.name}: there are fewer lines in the reference than the generated file.\n${reference}\n${generated}"
                     break
                 }
                 if (gline && !rline)
                 {
-                    logger.error "${process}: there are more lines in the reference than the generated file."
-                    logger.error "${process} reference ${reference}"
-                    logger.error "${process} generated ${generated.value}"
+                    logger.error "${process} ${generated.name}: there are more lines in the reference than the generated file.\n${reference}\n${generated}"
                     break
                 }
                 if (gline != rline)
                 {
-                    logger.error "${process}: files differ on line ${line}:"
-                    logger.error rline
-                    logger.error gline
-                    logger.error "${process} reference ${reference}"
-                    logger.error "${process} generated ${generated.value}"
+                    logger.error "${process} ${generated.name}: files differ on line ${line}:\n${rline}\n${gline}\n${reference}\n${generated}"
                     break
                 }
             }
         }
     }
 }
+
 
 workflow
 {
@@ -75,11 +68,38 @@ workflow
     tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
     layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
 
+    // createMutationsTable
+
     createMutationsTable(channel.fromPath('testdata/createMutationsTable/source/mutation_table.tsv'),
                          tumourMutationsChannel,
                          layoutChannel)
 
-    compareFiles(log, 'createMutationsTable',
-                 createMutationsTable.out.filteredMutationsTSV.first(),
-                 file('testdata/createMutationsTable/reference/createMutationsTable.out.tsv', checkIfExists: true))
+    createMutationsTable.out.filteredMutationsTSV.first()
+        .subscribe onNext:
+        {
+            genFile ->
+            refFile = file("testdata/createMutationsTable/reference/${genFile.name}", checkIfExists: true)
+            compareFiles(log, "createMutationsTable", genFile, refFile)
+        }
+
+    // offTargetErrorRates
+    
+    offTargetErrorRates(channel.fromPath("testdata/offTargetErrorRates/source/mutation_table.filtered.rds"),
+                        layoutChannel)
+
+    offTargetErrorRates.out.locusErrorRatesTSV.first()
+        .subscribe onNext:
+        {
+            genFile ->
+            refFile = file("testdata/offTargetErrorRates/reference/${genFile.name}", checkIfExists: true)
+            compareFiles(log, "offTargetErrorRates", genFile, refFile)
+        }
+
+    offTargetErrorRates.out.errorRatesTSV.first().flatten()
+        .subscribe onNext:
+        {
+            genFile ->
+            refFile = file("testdata/offTargetErrorRates/reference/${genFile.name}", checkIfExists: true)
+            compareFiles(log, "offTargetErrorRates", genFile, refFile)
+        }
 }
