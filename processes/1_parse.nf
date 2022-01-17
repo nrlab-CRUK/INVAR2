@@ -176,7 +176,7 @@ process annotateMutation
         annotatedFile = "${pool}_${barcode}.mutations.tsv"
 
         """
-        python3 "!{projectDir}/python/1_parse/addTabixAndTrinucleotides.py" \
+        python3 "!{params.projectHome}/python/1_parse/addTabixAndTrinucleotides.py" \
             !{mutationFile} \
             !{snp} \
             !{cosmic} \
@@ -227,7 +227,7 @@ process createMutationsTable
     shell:
 
         """
-        Rscript --vanilla "!{projectDir}/R/1_parse/createMutationsTable.R" \
+        Rscript --vanilla "!{params.projectHome}/R/1_parse/createMutationsTable.R" \
             --mutations="!{mutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
@@ -261,7 +261,7 @@ process offTargetErrorRates
 
     shell:
         """
-        Rscript --vanilla "!{projectDir}/R/1_parse/offTargetErrorRates.R" \
+        Rscript --vanilla "!{params.projectHome}/R/1_parse/offTargetErrorRates.R" \
             --mutations="!{mutationsFile}" \
             --layout="!{layoutFile}" \
             --control-proportion=!{params.proportion_of_controls} \
@@ -288,7 +288,7 @@ process createOnTargetMutationsTable
 
     shell:
         """
-        Rscript --vanilla "!{projectDir}/R/1_parse/createOnTargetMutationsTable.R" \
+        Rscript --vanilla "!{params.projectHome}/R/1_parse/createOnTargetMutationsTable.R" \
             --mutations="!{mutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
@@ -317,7 +317,7 @@ process onTargetErrorRatesAndFilter
 
     shell:
         """
-        Rscript --vanilla "!{projectDir}/R/1_parse/onTargetErrorRatesAndFilter.R" \
+        Rscript --vanilla "!{params.projectHome}/R/1_parse/onTargetErrorRatesAndFilter.R" \
             --mutations="!{mutationsFile}" \
             --layout="!{layoutFile}" \
             --study="!{params.STUDY_ID}" \

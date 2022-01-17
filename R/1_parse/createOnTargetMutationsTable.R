@@ -16,7 +16,7 @@ suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(tidyr))
 
-source(str_c(Sys.getenv('INVAR_HOME'), '/R/1_parse/common.R'))
+source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
 
 
 ##

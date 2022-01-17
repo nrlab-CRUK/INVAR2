@@ -14,7 +14,7 @@ bcftools query \
 
 ## Add columns, headers and filter
 
-Rscript --vanilla "!{projectDir}/R/1_parse/formatAndAnnotateMutations.R" split2.tsv "!{mutationFile}" !{params.MIN_DP} "!{pool}" "!{barcode}"
+Rscript --vanilla "!{params.projectHome}/R/1_parse/formatAndAnnotateMutations.R" split2.tsv "!{mutationFile}" !{params.MIN_DP} "!{pool}" "!{barcode}"
 
 ## Clean up
 

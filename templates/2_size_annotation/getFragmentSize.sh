@@ -13,7 +13,7 @@ then
     samtools index "!{bamFile}" "!{bamIndex}"
 fi
 
-python3 "!{projectDir}/python/2_size_annotation/getFragmentSize.py" \
+python3 "!{params.projectHome}/python/2_size_annotation/getFragmentSize.py" \
         "!{bamFile}" \
         "!{snvList}" \
         "!{insertsFile}"

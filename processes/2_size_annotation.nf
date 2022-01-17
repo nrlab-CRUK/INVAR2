@@ -57,7 +57,7 @@ process annotateMutationsWithFragmentSize
         sampleSpecificMutationsFile = "mutation_table.with_sizes.${pool}_${barcode}.rds"
 
         """
-        Rscript --vanilla "!{projectDir}/R/2_size_annotation/sizeAnnotation.R" \
+        Rscript --vanilla "!{params.projectHome}/R/2_size_annotation/sizeAnnotation.R" \
             --mutations="!{mutationsFile}" \
             --fragment-sizes="!{fragmentSizesFile}" \
             --pool="!{pool}" --barcode="!{barcode}"

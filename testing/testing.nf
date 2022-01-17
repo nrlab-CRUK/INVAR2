@@ -6,7 +6,7 @@
 
 nextflow.enable.dsl = 2
 
-include { createMutationsTable } from './processes/1_parse'
+include { createMutationsTable } from '../processes/1_parse'
 
 def dumpParams(logger, params)
 {

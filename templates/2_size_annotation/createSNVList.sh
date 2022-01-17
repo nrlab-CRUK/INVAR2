@@ -5,7 +5,7 @@ set -euo pipefail
 # Convert patient CSV to mutation list in BED format.
 # (Can reuse the script from part one.)
 
-Rscript --vanilla "!{projectDir}/R/1_parse/patientListCsvToBed.R" \
+Rscript --vanilla "!{params.projectHome}/R/1_parse/patientListCsvToBed.R" \
     "!{csvFile}" mutationlist.bed
 
 # Convert the BED file to the format needed for getFragmentSize.py
