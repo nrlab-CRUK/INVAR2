@@ -40,7 +40,7 @@ parseArgs <- function(args)
     {
         dir = dirname(args[1])
         name = str_c(filenameParts[1:length(filenameParts) - 1], collapse='.')
-        convertedFile = str_c(dir, str_c(name, '.tsv'), sep='/')
+        convertedFile = str_c(dir, str_c(name, '.new.tsv'), sep='/')
     }
 
     list(SOURCE = args[1], EXTENSION = extension, CONVERTED = convertedFile)
@@ -60,8 +60,10 @@ t <- as_tibble(table) %>%
     rename(`1KG_AF` = X1KG_AF, POOL = SLX) %>%
     mutate(COSMIC_SNP = as.logical(COSMIC_SNP)) %>%
     mutate_if(is.logical, toChar) %>%
+    mutate_if(is.double, signif, digits = 6) %>%
     arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE)
 
 message("Writing ", args$CONVERTED)
 
 write_tsv(t, file = args$CONVERTED)
+

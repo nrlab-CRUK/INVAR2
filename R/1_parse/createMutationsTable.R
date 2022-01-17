@@ -97,7 +97,7 @@ loadMutationsTable <- function(mutationsFile, tumourMutationsTable, tapasSetting
 
     # Remove soft-masked repeats, identified by lowercase.
     # Add columns of derived values and combined identifiers.
-    read_tsv(mutationsFile, col_types = 'ciccicdddddccildc') %>%
+    read_tsv(mutationsFile, col_types = 'cicciciiiidccildc') %>%
         filter(!(str_detect(REF, '[acgt]') | str_detect(ALT, '[acgt]'))) %>%
         addMutationTableDerivedColumns() %>%
         mutate(AF = (ALT_F + ALT_R) / DP,

@@ -60,6 +60,7 @@ removeMutationTableDerivedColumns <- function(mutationTable)
 # Writes the TSV file but, before saving, converts any logical columns to
 # simply the characters 'T' or 'F'. Saves having full "TRUE" and "FALSE" values,
 # which are excessive as reading the table back correctly interprets 'T' and 'F'.
+# Also limits floating point numbers to six significant figures.
 exportTSV <- function(t, file)
 {
     toChar <- function(x)
@@ -69,6 +70,7 @@ exportTSV <- function(t, file)
 
     t %>%
         mutate_if(is.logical, toChar) %>%
+        mutate_if(is.double, signif, digits = 6) %>%
         write_tsv(file)
 
     t

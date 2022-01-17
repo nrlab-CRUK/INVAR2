@@ -11,8 +11,10 @@ toChar <- function(l)
 
 TAPAS.tsv_colnames <- c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4','REF_F', 'ALT_F','REF_R', 'ALT_R', 'MQSB', 'POOL', 'BARCODE', 'COSMIC_MUTATIONS', 'COSMIC_SNP', '1KG_AF', 'TRINUCLEOTIDE', 'FILE_NAME')
 
-read_tsv('PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv', col_names = TAPAS.tsv_colnames, col_types='ciccicdddddccildcc') %>%
+# cicciciiiidccildcc
+
+read_tsv('PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv', col_names = TAPAS.tsv_colnames, col_types='cicccccccccccclccc') %>%
 select(-FILE_NAME) %>%
-mutate(COSMIC_SNP = toChar(COSMIC_SNP)) %>%
+mutate_if(is.logical, toChar) %>%
 write_tsv('mutation_table.tsv')
 
