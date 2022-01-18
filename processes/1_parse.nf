@@ -312,9 +312,10 @@ process onTargetErrorRatesAndFilter
 
     output:
         path 'locus_error_rates.on_target.rds', emit: 'locusErrorRates'
+        path 'locus_error_rates.on_target.tsv', emit: 'locusErrorRatesTSV'
+        path 'locus_error_rates.on_target.pdf', optional: true, emit: 'locusErrorRatesPlot'
         path 'mutation_table.on_target.rds', emit: "onTargetMutationsFile"
-        path '*.tsv', optional: true
-        path '*.pdf', optional: true
+        path 'mutation_table.on_target.tsv', emit: "onTargetMutationsTSV"
 
     shell:
         """

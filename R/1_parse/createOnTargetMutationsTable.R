@@ -390,14 +390,13 @@ main <- function(scriptArgs)
 
     mutationTable.withPatientAndBackground %>%
         removeMutationTableDerivedColumns() %>%
-        select(-CASE_OR_CONTROL) %>%
         arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
         saveRDSandTSV('mutation_table.on_target.all.rds')
 }
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789') {
+if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
     # Rich's machine
     setwd('/home/data/INVAR')
     invisible(main(richTestOptions()))

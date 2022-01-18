@@ -4,6 +4,7 @@ suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(tidyr))
 
 source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
 
@@ -114,6 +115,10 @@ createLociErrorRateTable <- function(mutationTable,
                   N_SAMPLES = n_distinct(POOL_BARCODE),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
+        separate(UNIQUE_POS, sep = ':', into = c('CHROM', 'POS'), remove = FALSE) %>%
+        mutate(POS = as.integer(POS)) %>%
+        select(UNIQUE_POS, CHROM, POS, MUTATION_CLASS, TRINUCLEOTIDE, PATIENT_MUTATION_BELONGS_TO, COSMIC,
+               BACKGROUND_AF, MUTATION_SUM, DP_SUM, N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
         mutate(LOCUS_NOISE.PASS = (N_SAMPLES_WITH_SIGNAL / N_SAMPLES) < proportion_of_controls &
                                   BACKGROUND_AF < max_background_mean_AF)
 
@@ -211,7 +216,17 @@ main <- function(scriptArgs)
                                  max_background_mean_AF = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY,
                                  is.blood_spot = scriptArgs$BLOODSPOT)
 
-    saveRDSandTSV(lociErrorRateTable, 'locus_error_rates.on_target.rds')
+    lociErrorRateTable %>%
+        select(-UNIQUE_POS) %>%
+        saveRDS('locus_error_rates.on_target.rds')
+
+    # To make it as similar as possible to the old pipeline output when saved.
+    # Aids comparison.
+
+    lociErrorRateTable %>%
+        select(-UNIQUE_POS, -LOCUS_NOISE.PASS) %>%
+        arrange(CHROM, POS, TRINUCLEOTIDE) %>%
+        exportTSV('locus_error_rates.on_target.tsv')
 
     lociErrorRatePlot <- lociErrorRateTable %>%
         createLociErrorRatePlot(study = scriptArgs$STUDY, tapasSetting = scriptArgs$TAPAS_SETTING)
@@ -223,8 +238,8 @@ main <- function(scriptArgs)
 
     mutationTable.filtered <- mutationTable %>%
         filter(PATIENT_SPECIFIC | COSMIC_MUTATIONS <= scriptArgs$COSMIC_THRESHOLD) %>%
-        mutate(BOTH_STRANDS = ALT_F + ALT_R > 0 | AF == 0,
-               LOCUS_NOISE.PASS = UNIQUE_POS %in% lociErrorRateNoisePass$UNIQUE_POS)
+        mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% lociErrorRateNoisePass$UNIQUE_POS,
+               BOTH_STRANDS = ALT_F + ALT_R > 0 | AF == 0)
 
     contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$ALLELE_FREQUENCY_THRESHOLD)
 
@@ -233,13 +248,14 @@ main <- function(scriptArgs)
 
     mutationTable.filtered %>%
         removeMutationTableDerivedColumns() %>%
+        select(-CASE_OR_CONTROL) %>%
         arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
         saveRDSandTSV('mutation_table.on_target.rds')
 }
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789') {
+if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
     # Rich's machine
     setwd('/home/data/INVAR')
     invisible(main(richTestOptions()))

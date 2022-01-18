@@ -43,6 +43,9 @@ parseArgs <- function(args)
     list(SOURCE = args[1], EXTENSION = extension, CONVERTED = convertedFile)
 }
 
+desiredOrder = c('CHROM', 'POS', 'MUTATION_CLASS', 'TRINUCLEOTIDE', 'PATIENT_MUTATION_BELONGS_TO', 'COSMIC',
+                 'BACKGROUND_AF', 'MUTATION_SUM', 'DP_SUM', 'N_SAMPLES', 'N_SAMPLES_WITH_SIGNAL')
+
 args <- parseArgs(commandArgs(TRUE))
 
 invisible(assert_that(args$EXTENSION %in% names(loadingFunctions), msg = str_c("Unsupported file type: ", args$EXTENSION)))
@@ -55,10 +58,19 @@ t <- as_tibble(table) %>%
     rename_all(str_to_upper) %>%
     rename(MUTATION_SUM = MUT_SUM, DP_SUM = DP) %>%
     separate(UNIQ_POS, sep = ':', into = c('CHROM', 'POS'), remove = TRUE) %>%
-    mutate(POS = as.integer(POS)) %>%
+    mutate(POS = as.integer(POS))
+
+if ('MUT_CLASS' %in% colnames(t)) {
+    t <- t %>%
+        rename(MUTATION_CLASS = MUT_CLASS,
+               PATIENT_MUTATION_BELONGS_TO = PT_MUTATION_BELONGS_TO)
+}
+
+t <- t %>%
+    mutate_if(is.logical, toChar) %>%
     mutate_if(is.double, signif, digits = 6) %>%
     arrange(CHROM, POS, TRINUCLEOTIDE) %>%
-    select(any_of(c('CHROM', 'POS', 'TRINUCLEOTIDE', 'BACKGROUND_AF', 'MUTATION_SUM', 'DP_SUM', 'N_SAMPLES', 'N_SAMPLES_WITH_SIGNAL')))
+    select(any_of(desiredOrder))
 
 message("Writing ", args$CONVERTED)
 

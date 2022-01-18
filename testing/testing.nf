@@ -6,7 +6,8 @@
 
 nextflow.enable.dsl = 2
 
-include { createMutationsTable; offTargetErrorRates; createOnTargetMutationsTable } from '../processes/1_parse'
+include { createMutationsTable; offTargetErrorRates;
+          createOnTargetMutationsTable; onTargetErrorRatesAndFilter } from '../processes/1_parse'
 
 def dumpParams(logger, params)
 {
@@ -37,7 +38,7 @@ def compareFiles(logger, process, generated, reference)
 
                 if (!gline && !rline)
                 {
-                    logger.warn "${process} ${generated.name}: files are the same."
+                    logger.info "${process} ${generated.name}: files are the same."
                     break
                 }
                 if (!gline && rline)
@@ -83,7 +84,7 @@ workflow
         }
 
     // offTargetErrorRates
-    
+
     offTargetErrorRates(channel.fromPath("testdata/offTargetErrorRates/source/mutation_table.filtered.rds"),
                         layoutChannel)
 
@@ -102,19 +103,41 @@ workflow
             refFile = file("testdata/offTargetErrorRates/reference/${genFile.name}", checkIfExists: true)
             compareFiles(log, "offTargetErrorRates", genFile, refFile)
         }
-    
+
     // createOnTargetMutationsTable
-    
+
     createOnTargetMutationsTable(channel.fromPath('testdata/createOnTargetMutationsTable/source/mutation_table.filtered.rds'),
                                  tumourMutationsChannel,
                                  layoutChannel,
                                  channel.fromPath('testdata/createOnTargetMutationsTable/source/mutation_table.error_rates.no_cosmic.rds'))
-    
+
     createOnTargetMutationsTable.out.onTargetMutationsTSV.first()
         .subscribe onNext:
         {
             genFile ->
             refFile = file("testdata/createOnTargetMutationsTable/reference/${genFile.name}", checkIfExists: true)
             compareFiles(log, "createOnTargetMutationsTable", genFile, refFile)
+        }
+
+    // onTargetErrorRatesAndFilter
+
+    onTargetErrorRatesAndFilter(channel.fromPath('testdata/onTargetErrorRatesAndFilter/source/mutation_table.on_target.all.rds'),
+                                tumourMutationsChannel,
+                                layoutChannel)
+
+    onTargetErrorRatesAndFilter.out.locusErrorRatesTSV.first()
+        .subscribe onNext:
+        {
+            genFile ->
+            refFile = file("testdata/onTargetErrorRatesAndFilter/reference/${genFile.name}", checkIfExists: true)
+            compareFiles(log, "onTargetErrorRatesAndFilter", genFile, refFile)
+        }
+
+    onTargetErrorRatesAndFilter.out.onTargetMutationsTSV.first()
+        .subscribe onNext:
+        {
+            genFile ->
+            refFile = file("testdata/onTargetErrorRatesAndFilter/reference/${genFile.name}", checkIfExists: true)
+            compareFiles(log, "onTargetErrorRatesAndFilter", genFile, refFile)
         }
 }
