@@ -51,11 +51,13 @@ process annotateMutationsWithFragmentSize
         each path(mutationsFile)
 
     output:
-        tuple val(pool), val(barcode), path(sampleSpecificMutationsFile)
+        tuple val(pool), val(barcode), path(sampleSpecificMutationsFile), emit: "mutationsFile"
+        path sampleSpecificMutationsTSV, emit: "mutationsTSV"
 
     shell:
         sampleSpecificMutationsFile = "mutation_table.with_sizes.${pool}_${barcode}.rds"
-
+        sampleSpecificMutationsTSV = "mutation_table.with_sizes.${pool}_${barcode}.tsv"
+        
         """
         Rscript --vanilla "!{params.projectHome}/R/2_size_annotation/sizeAnnotation.R" \
             --mutations="!{mutationsFile}" \
@@ -80,5 +82,5 @@ workflow sizeAnnotation
         annotateMutationsWithFragmentSize(getFragmentSize.out, mutationsChannel)
 
     emit:
-        mutationsFiles = annotateMutationsWithFragmentSize.out
+        mutationsFiles = annotateMutationsWithFragmentSize.out.mutationsFile
 }

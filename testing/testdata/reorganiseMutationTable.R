@@ -52,7 +52,10 @@ desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'R
                  'STUDY', 'SAMPLE_NAME', 'PATIENT', 'SAMPLE_TYPE', 'CASE_OR_CONTROL', 'INPUT_INTO_LIBRARY_NG',
                  'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO', 'PATIENT_SPECIFIC',
                  'BACKGROUND_MUTATION_SUM', 'BACKGROUND_DP', 'BACKGROUND_AF',
-                 "LOCUS_NOISE.PASS", "BOTH_STRANDS", "CONTAMINATION_RISK.PASS")
+                 "LOCUS_NOISE.PASS", "BOTH_STRANDS", "CONTAMINATION_RISK.PASS",
+                 "SIZE", "MUTANT")
+
+orderByColumns = c('POOL', 'BARCODE', 'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE')
 
 args <- parseArgs(commandArgs(TRUE))
 
@@ -61,6 +64,8 @@ invisible(assert_that(args$EXTENSION %in% names(loadingFunctions), msg = str_c("
 message("Reading ", args$SOURCE)
 
 table <- loadingFunctions[[args$EXTENSION]](args$SOURCE)
+
+message("Converting table")
 
 t <- as_tibble(table) %>%
     rename_all(str_to_upper) %>%
@@ -95,11 +100,17 @@ if ('SAMPLE_NAME' %in% colnames(t)) {
         mutate(SAMPLE_NAME = str_remove(SAMPLE_NAME, str_c(' (.+)$')))
 }
 
+if ('MUTANT' %in% colnames(t)) {
+    t <- t %>%
+        mutate(MUTANT = as.logical(MUTANT))
+}
+
+# See https://stackoverflow.com/questions/26497751/pass-a-vector-of-variable-names-to-arrange-in-dplyr
 t <- t %>%
     select(any_of(desiredOrder)) %>%
     mutate_if(is.logical, toChar) %>%
     mutate_if(is.double, signif, digits = 6) %>%
-    arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE)
+    arrange_at(vars(any_of(orderByColumns)))
 
 message("Writing ", args$CONVERTED)
 

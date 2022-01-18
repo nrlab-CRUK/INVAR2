@@ -1,0 +1,7 @@
+This is a mutation table written by a verified execution
+of onTargetErrorRatesAndFilter.R.
+
+The inserts file is taken from the original run of the pipeline,
+originally named "SLX-19721_SXTLI001.FS_2.sort.filtered.bam.inserts_for_annotation.csv"
+and converted with the "fromOriginal.R" script in this directory
+to match the format expected in the new pipeline.

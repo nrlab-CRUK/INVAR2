@@ -278,13 +278,13 @@ main <- function(scriptArgs)
 
     mutationsTable.withSizes %>%
         removeMutationTableDerivedColumns() %>%
-        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
+        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE, SIZE) %>%
         saveRDSandTSV(str_c('mutation_table.with_sizes.', scriptArgs$POOL, '_', scriptArgs$BARCODE, ".rds"))
 }
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789') {
+if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
     # Rich's machine
     setwd('/home/data/INVAR')
     invisible(main(richTestOptions()))
