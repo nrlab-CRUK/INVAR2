@@ -57,12 +57,13 @@ process annotateMutationsWithFragmentSize
     shell:
         sampleSpecificMutationsFile = "mutation_table.with_sizes.${pool}_${barcode}.rds"
         sampleSpecificMutationsTSV = "mutation_table.with_sizes.${pool}_${barcode}.tsv"
-        
+
         """
         Rscript --vanilla "!{params.projectHome}/R/2_size_annotation/sizeAnnotation.R" \
             --mutations="!{mutationsFile}" \
             --fragment-sizes="!{fragmentSizesFile}" \
-            --pool="!{pool}" --barcode="!{barcode}"
+            --pool="!{pool}" --barcode="!{barcode}" \
+            !{params.containsKey('sampling_seed') ? "--sampling-seed=${params.sampling_seed}" : ""}
         """
 }
 

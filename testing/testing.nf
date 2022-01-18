@@ -141,15 +141,15 @@ workflow
             refFile = file("testdata/onTargetErrorRatesAndFilter/reference/${genFile.name}", checkIfExists: true)
             compareFiles(log, "onTargetErrorRatesAndFilter", genFile, refFile)
         }
-    
+
     // sizeAnnotation
-    
+
     sizeAnnotationInsertsChannel = channel.of(['SLX-19721', 'SXTLI001']).combine(
         channel.fromPath("testdata/annotateMutationsWithFragmentSize/source/SLX-19721_SXTLI001.inserts.tsv"))
-    
+
     annotateMutationsWithFragmentSize(sizeAnnotationInsertsChannel,
                                       channel.fromPath('testdata/annotateMutationsWithFragmentSize/source/mutation_table.on_target.rds'))
-    
+
     annotateMutationsWithFragmentSize.out.mutationsTSV.first()
         .subscribe onNext:
         {

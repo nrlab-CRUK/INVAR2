@@ -55,7 +55,7 @@ desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'R
                  "LOCUS_NOISE.PASS", "BOTH_STRANDS", "CONTAMINATION_RISK.PASS",
                  "SIZE", "MUTANT")
 
-orderByColumns = c('POOL', 'BARCODE', 'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE')
+orderByColumns = c('POOL', 'BARCODE', 'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
 
 args <- parseArgs(commandArgs(TRUE))
 
