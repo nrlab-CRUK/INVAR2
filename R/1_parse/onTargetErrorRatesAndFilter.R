@@ -164,7 +164,6 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
     assert_that(is.number(afThreshold), msg = "afThreshold must be a number.")
 
     alleleFrequencyTable <- mutationTable %>%
-        mutate(BOTH_STRANDS = ALT_R > 0 & ALT_F > 0 | AF == 0) %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
         group_by(SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, PATIENT_SPECIFIC) %>%
         summarise(MUTATION_SUM = sum(ALT_F + ALT_R),
@@ -239,7 +238,7 @@ main <- function(scriptArgs)
     mutationTable.filtered <- mutationTable %>%
         filter(PATIENT_SPECIFIC | COSMIC_MUTATIONS <= scriptArgs$COSMIC_THRESHOLD) %>%
         mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% lociErrorRateNoisePass$UNIQUE_POS,
-               BOTH_STRANDS = ALT_F + ALT_R > 0 | AF == 0)
+               BOTH_STRANDS = ALT_F > 0 & ALT_R > 0 | AF == 0)
 
     contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$ALLELE_FREQUENCY_THRESHOLD)
 
