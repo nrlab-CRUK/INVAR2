@@ -174,6 +174,7 @@ main <- function(scriptArgs)
         repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION)
 
     mutationsTable %>%
+        removeMutationTableDerivedColumns() %>%
         saveRDSandTSV('mutation_table.repolished.rds')
 
     ## TESTING
