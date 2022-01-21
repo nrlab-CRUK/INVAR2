@@ -1,0 +1,8 @@
+The source information is taken by making a small modification to
+size_annotation.R to save the whole data frame for SLX-19721 barcode
+SXTLI001 rather than the split per sample files it originally outputs.
+
+That is run through reorganiseMutationTable.R to create the final table.
+That script can be tweaked to save the output as an RDS file, which is
+what we actually want rather than the TSV. Or the TSV can be loaded and
+saved as an RDS.

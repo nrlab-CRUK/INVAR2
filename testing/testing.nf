@@ -9,6 +9,7 @@ nextflow.enable.dsl = 2
 include { createMutationsTable; offTargetErrorRates;
           createOnTargetMutationsTable; onTargetErrorRatesAndFilter } from '../processes/1_parse'
 include { annotateMutationsWithFragmentSize  } from '../processes/2_size_annotation'
+include { markOutliers  } from '../processes/3_outlier_suppression'
 
 def dumpParams(logger, params)
 {
@@ -156,5 +157,20 @@ workflow
             genFile ->
             refFile = file("testdata/annotateMutationsWithFragmentSize/reference/combined.polished.size_ann.SLX-19721_SXTLI001.tsv", checkIfExists: true)
             compareFiles(log, "annotateMutationsWithFragmentSize", genFile, refFile)
+        }
+
+    // Outlier suppression
+
+    markOutliersChannel = channel.of(['SLX-19721', 'SXTLI001']).combine(
+        channel.fromPath("testdata/outlierSuppression/source/combined.polished.size_ann.SLX-19721_SXTLI001.rds"))
+
+    markOutliers(markOutliersChannel)
+
+    markOutliers.out.mutationsTSV.first()
+        .subscribe onNext:
+        {
+            genFile ->
+            refFile = file("testdata/outlierSuppression/reference/mutation_table.outliersuppressed.SLX-19721_SXTLI001.tsv", checkIfExists: true)
+            compareFiles(log, "markOutliers", genFile, refFile)
         }
 }

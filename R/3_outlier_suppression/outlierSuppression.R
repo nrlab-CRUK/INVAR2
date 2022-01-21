@@ -26,11 +26,8 @@ parseOptions <- function()
                     dest="BARCODE", help="The barcode for the BAM/sizes file",
                     default=defaultMarker),
         make_option(c("--outlier-suppression"), type="double", metavar="number",
-                    dest="OUTLIER_SUPPRESSION", help="The outlier suppression setting",
-                    default=0.05),
-        make_option(c("--sampling-seed"), type="integer", metavar="number",
-                    dest="SAMPLING_SEED", help="The seed for random sampling. Only use in testing.",
-                    default=NA))
+                    dest="OUTLIER_SUPPRESSION", help="The outlier suppression threshold",
+                    default=0.05))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -57,7 +54,7 @@ richTestOptions <- function()
 {
     list(
         #MUTATIONS_TABLE_FILE = 'on_target/mutation_table.with_sizes.SLX-19721_SXTLI001.rds',
-        MUTATIONS_TABLE_FILE = str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/outlierSuppression/source/EXP3079_PARA_002_EOT.SLX-19721_SXTLI001.1.ptspec.0.05.combined.polished.size.rds'),
+        MUTATIONS_TABLE_FILE = str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/outlierSuppression/source/combined.polished.size_ann.SLX-19721_SXTLI001.new.rds'),
         POOL = 'SLX-19721',
         BARCODE = 'SXTLI001',
         OUTLIER_SUPPRESSION = 0.05,
@@ -75,13 +72,9 @@ richTestOptions <- function()
 #
 
 ## Estimate p using the dervied EM algorithm.
-estimate_p_EM <- function(mutationTable, initial_p = 0.01, iterations = 200)
+# M = MUTANT, R = DP, AF = TUMOUR_AF, e = BACKGROUND_AF
+estimate_p_EM <- function(M, R, AF, e, initial_p = 0.01, iterations = 200)
 {
-    M = mutationTable$MUTANT
-    R = mutationTable$DP
-    AF = mutationTable$TUMOUR_AF
-    e = mutationTable$BACKGROUND_AF
-
     g = AF*(1-e) + (1-AF)*e
     p <- initial_p
     for (i in 1:iterations)
@@ -102,60 +95,56 @@ estimate_p_EM <- function(mutationTable, initial_p = 0.01, iterations = 200)
 # From TAPAS_functions.R
 #
 
+# The original version of this method worked on files limited to a single sample.
+# This version works on all the samples belonging to a pool + barcode pair,
+# performing the sample calculations per grouping of sample and mutation patient.
 
 repolish <- function(mutationTable, outlierSuppressionThreshold)
 {
     assert_that(is.number(outlierSuppressionThreshold), msg = "outlierSuppressionThreshold must be a number")
 
+    groupCols <- c('SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO')
+
     # do not include loci with AF>0.25 or with >10 mutant reads as we are trying to detect MRD.
     # If there are loci with high AF, then there will also be some loci with lower AF (given sufficient loci).
     # If error classes have zero error rate, increase error rate to 1 / BACKGROUND_DP
+    # Original code provided a list of 1 for the 'R' parameter. This corresponds to the
+    # DP column, so set that on a derived table
+    # If there are no mutant reads, AF (p) estimate has to be zero
+    # calculate p-value threshold with a bonferroni correction for the number of loci tested
+
+    estimateP <-function(MUTANT, DP, AF, TUMOUR_AF, BACKGROUND_AF)
+    {
+        max(estimate_p_EM(MUTANT, DP, TUMOUR_AF, BACKGROUND_AF), weighted.mean(AF, TUMOUR_AF))
+    }
 
     mutationTable.forPEstimate <- mutationTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS & AF < 0.25 & MUTATION_SUM < 10 & TUMOUR_AF > 0) %>%
-        mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF == 0, 1 / BACKGROUND_DP, BACKGROUND_AF))
+        mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF == 0, 1 / BACKGROUND_DP, BACKGROUND_AF),
+               DP = 1) %>%
+        group_by_at(all_of(groupCols)) %>%
+        summarise(P_THRESHOLD = outlierSuppressionThreshold / n_distinct(UNIQUE_POS),
+                  P_ESTIMATE = ifelse(!any(MUTANT), 0, estimateP(MUTANT, DP, AF, TUMOUR_AF, BACKGROUND_AF)),
+                  .groups = "drop")
 
-    mutationTable.forPEstimate.nUniquePositions <- mutationTable.forPEstimate %>%
-        summarise(N_UNIQUE_POS = n_distinct(UNIQUE_POS)) %>%
-        as.integer()
-
-    # if no mutant reads, AF estimate has to be zero
-    if (!any(mutationTable.forPEstimate$MUTANT))
-    {
-        p_estimate <- 0
-    }
-    else
-    {
-        # Original provided a list of 1 for the 'R' parameter. This corresponds to the
-        # DP column, so set that on a derived table
-
-        mutationTable.P <- mutationTable.forPEstimate %>%
-            mutate(DP = 1)
-
-        # estimate p for outlier suppression
-        p_estimate <- estimate_p_EM(mutationTable.P)
-        p_estimate <- max(p_estimate, weighted.mean(mutationTable.P$AF, mutationTable.P$TUMOUR_AF))
-    }
-
-    # calculate p-value threshold with a bonferroni correction for the number of loci tested
-    p_threshold <- outlierSuppressionThreshold / mutationTable.forPEstimate.nUniquePositions
-
+    # now take the binom probability of seeing N mutant reads given p (ctDNA estimate in sample)
+    # samples pass the filter if they have p-values greater than that defined here.
+    # (Passing filter means flagging the mutation as NORMAL, i.e. not an outlier.)
 
     binom <- function(x, n, p)
     {
         ifelse(x <= 0, 1, binom.test(x, n, p, alternative = "greater")$p.value)
     }
 
-    # now take the binom probability of seeing N mutant reads given p (ctDNA estimate in sample)
-    # samples pass the filter if they have p-values greater than that defined here.
-    mutationTable <- mutationTable %>%
+    mutationTable.withTest <- mutationTable %>%
+        left_join(mutationTable.forPEstimate, by = groupCols) %>%
         rowwise() %>%
-        mutate(BINOMIAL_PROB = binom(x = MUTATION_SUM, n = DP, p = p_estimate)) %>%
+        mutate(BINOMIAL_PROB = binom(x = MUTATION_SUM, n = DP, p = P_ESTIMATE)) %>%
         ungroup() %>% # Removes the "rowwise" grouping
-        mutate(REPOLISH.PASS = BINOMIAL_PROB > p_threshold) %>%
-        select(-BINOMIAL_PROB)
+        mutate(NORMAL = BINOMIAL_PROB > P_THRESHOLD) %>%
+        select(-P_THRESHOLD, -P_ESTIMATE, -BINOMIAL_PROB)
 
-    mutationTable
+    mutationTable.withTest
 }
 
 
@@ -175,23 +164,8 @@ main <- function(scriptArgs)
 
     mutationsTable %>%
         removeMutationTableDerivedColumns() %>%
-        saveRDSandTSV('mutation_table.repolished.rds')
-
-    ## TESTING
-
-    #aSample <- mutationsTable %>%
-    #    filter(PATIENT_SPECIFIC) %>%
-    #    distinct(SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO) %>%
-    #    slice_head(n = 1)
-
-    # EXP3079_PARA_002_EOT_(PARA_002)
-
-    #mutationsTable2 <- mutationsTable %>%
-    #    filter(PATIENT_SPECIFIC &
-    #           PATIENT_MUTATION_BELONGS_TO == "PARA_002" &
-    #           SAMPLE_NAME == "EXP3079_PARA_002_EOT")
-
-    #repolish(mutationsTable2, scriptArgs$OUTLIER_SUPPRESSION)
+        arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, CHROM, POS, REF, ALT, TRINUCLEOTIDE, SIZE) %>%
+        saveRDSandTSV(str_c('mutation_table.outliersuppressed.', scriptArgs$POOL, '_', scriptArgs$BARCODE, '.rds'))
 }
 
 # Launch it.

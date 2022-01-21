@@ -1,0 +1,4 @@
+This table is created by the new outlierSuppress.R script with careful
+checks that the sample(s) have produced the same numbers as running
+through the original size_annotation.R script for that sample.
+
