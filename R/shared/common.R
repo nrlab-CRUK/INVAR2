@@ -36,10 +36,18 @@ loadLayoutTable <- function(layoutFile)
 
 addMutationTableDerivedColumns <- function(mutationTable)
 {
-    mutationTable %>%
+    mutationTable <- mutationTable %>%
         mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
                UNIQUE_ALT = str_c(UNIQUE_POS, str_c(REF, ALT, sep='/'), sep='_'),
                POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
+
+    if (all(c('PATIENT', 'PATIENT_MUTATION_BELONGS_TO') %in% colnames(mutationTable)))
+    {
+        mutationTable <- mutationTable %>%
+            mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO)
+    }
+
+    mutationTable
 }
 
 
@@ -49,7 +57,7 @@ addMutationTableDerivedColumns <- function(mutationTable)
 removeMutationTableDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE')), -contains('UNIQUE'))
+        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE', 'PATIENT_SPECIFIC')), -contains('UNIQUE'))
 }
 
 ##

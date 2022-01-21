@@ -149,18 +149,15 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
     # ensure only loci that are interrogated in ptspec are looked for in the nonptspec
 
     patientSpecific <- patientSpecific %>%
-        filter(UNIQUE_POS %in% nonPatientSpecific$UNIQUE_POS) %>%
-        mutate(PATIENT_SPECIFIC = TRUE)
+        filter(UNIQUE_POS %in% nonPatientSpecific$UNIQUE_POS)
 
     nonPatientSpecific.cases <- nonPatientSpecific %>%
         filter(!POOL_BARCODE %in% controlSamples$POOL_BARCODE) %>%
-        filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS) %>%
-        mutate(PATIENT_SPECIFIC = FALSE)
+        filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS)
 
     nonPatientSpecific.controls <- nonPatientSpecific %>%
         filter(POOL_BARCODE %in% controlSamples$POOL_BARCODE) %>%
-        filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS) %>%
-        mutate(PATIENT_SPECIFIC = FALSE)
+        filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS)
 
     # Combine these three to provide a final mutation table with TUMOUR_AF values.
 
