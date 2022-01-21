@@ -30,6 +30,7 @@ parseArgs <- function(args)
     assert_that(length(args) >= 1, msg = "Need the name of the mutations table file to convert.")
 
     filenameParts = (basename(args[1]) %>% str_split('\\.'))[[1]]
+    name = str_c(filenameParts[1:length(filenameParts) - 1], collapse='.')
     extension = str_to_lower(tail(filenameParts, 1))
 
     if (length(args) >= 2)
@@ -39,18 +40,17 @@ parseArgs <- function(args)
     else
     {
         dir = dirname(args[1])
-        name = str_c(filenameParts[1:length(filenameParts) - 1], collapse='.')
         convertedFile = str_c(dir, str_c(name, '.new.tsv'), sep='/')
     }
 
-    list(SOURCE = args[1], EXTENSION = extension, CONVERTED = convertedFile)
+    list(SOURCE = args[1], NAME = name, EXTENSION = extension, CONVERTED = convertedFile)
 }
 
 desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'REF_R', 'ALT_R', 'MQSB',
                  'POOL', 'BARCODE', 'COSMIC_MUTATIONS', 'COSMIC_SNP', '1KG_AF', 'TRINUCLEOTIDE',
                  'AF', 'COSMIC', 'SNP', 'ON_TARGET',
                  'STUDY', 'SAMPLE_NAME', 'PATIENT', 'SAMPLE_TYPE', 'CASE_OR_CONTROL', 'INPUT_INTO_LIBRARY_NG',
-                 'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO', 'PATIENT_SPECIFIC',
+                 'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO',
                  'BACKGROUND_MUTATION_SUM', 'BACKGROUND_DP', 'BACKGROUND_AF',
                  "LOCUS_NOISE.PASS", "BOTH_STRANDS", "CONTAMINATION_RISK.PASS",
                  "SIZE", "MUTANT")
@@ -71,6 +71,7 @@ t <- as_tibble(table) %>%
     rename_all(str_to_upper) %>%
     select(-contains('UNIQ'), -any_of(c('FILE_NAME', 'SLX_BARCODE'))) %>%
     rename(`1KG_AF` = X1KG_AF, POOL = SLX) %>%
+    mutate_if(is.factor, as.character) %>%
     mutate(COSMIC_SNP = as.logical(COSMIC_SNP))
 
 if ('DATA' %in% colnames(t)) {

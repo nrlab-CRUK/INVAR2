@@ -156,8 +156,7 @@ main <- function(scriptArgs)
 {
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
-        addMutationTableDerivedColumns() %>%
-        mutate(MUTATION_SUM = ALT_F + ALT_R)
+        addMutationTableDerivedColumns()
 
     mutationsTable <- mutationsTable %>%
         repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION)

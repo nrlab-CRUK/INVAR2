@@ -37,7 +37,8 @@ loadLayoutTable <- function(layoutFile)
 addMutationTableDerivedColumns <- function(mutationTable)
 {
     mutationTable <- mutationTable %>%
-        mutate(UNIQUE_POS = str_c(CHROM, POS, sep=':'),
+        mutate(MUTATION_SUM = ALT_F + ALT_R,
+               UNIQUE_POS = str_c(CHROM, POS, sep=':'),
                UNIQUE_ALT = str_c(UNIQUE_POS, str_c(REF, ALT, sep='/'), sep='_'),
                POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
 
