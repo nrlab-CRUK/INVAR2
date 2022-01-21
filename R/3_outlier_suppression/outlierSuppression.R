@@ -54,7 +54,7 @@ richTestOptions <- function()
 {
     list(
         #MUTATIONS_TABLE_FILE = 'on_target/mutation_table.with_sizes.SLX-19721_SXTLI001.rds',
-        MUTATIONS_TABLE_FILE = str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/outlierSuppression/source/combined.polished.size_ann.SLX-19721_SXTLI001.new.rds'),
+        MUTATIONS_TABLE_FILE = str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/outlierSuppression/source/combined.polished.size_ann.SLX-19721_SXTLI001.rds'),
         POOL = 'SLX-19721',
         BARCODE = 'SXTLI001',
         OUTLIER_SUPPRESSION = 0.05,
