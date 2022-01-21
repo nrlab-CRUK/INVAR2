@@ -11,6 +11,8 @@ include { createMutationsTable; offTargetErrorRates;
 include { annotateMutationsWithFragmentSize  } from '../processes/2_size_annotation'
 include { markOutliers  } from '../processes/3_outlier_suppression'
 
+include { diff as diff1; diff as diff2; diff as diff3; diff as diff4; diff as diff5; diff as diff6 } from './diff'
+
 def dumpParams(logger, params)
 {
     def keys = params.keySet().sort()
@@ -63,6 +65,13 @@ def compareFiles(logger, process, generated, reference)
     }
 }
 
+def mapForDiff(pname, channel)
+{
+    channel.map
+    {
+        tuple pname, it, file("testdata/${pname}/reference/REFERENCE_${it.name}", checkIfExists: true)
+    }
+}
 
 workflow
 {
@@ -77,34 +86,14 @@ workflow
                          tumourMutationsChannel,
                          layoutChannel)
 
-    createMutationsTable.out.filteredMutationsTSV.first()
-        .subscribe onNext:
-        {
-            genFile ->
-            refFile = file("testdata/createMutationsTable/reference/${genFile.name}", checkIfExists: true)
-            compareFiles(log, "createMutationsTable", genFile, refFile)
-        }
+    mapForDiff('createMutationsTable', createMutationsTable.out.filteredMutationsTSV) | diff1
 
     // offTargetErrorRates
 
     offTargetErrorRates(channel.fromPath("testdata/offTargetErrorRates/source/mutation_table.filtered.rds"),
                         layoutChannel)
 
-    offTargetErrorRates.out.locusErrorRatesTSV.first()
-        .subscribe onNext:
-        {
-            genFile ->
-            refFile = file("testdata/offTargetErrorRates/reference/${genFile.name}", checkIfExists: true)
-            compareFiles(log, "offTargetErrorRates", genFile, refFile)
-        }
-
-    offTargetErrorRates.out.errorRatesTSV.first().flatten()
-        .subscribe onNext:
-        {
-            genFile ->
-            refFile = file("testdata/offTargetErrorRates/reference/${genFile.name}", checkIfExists: true)
-            compareFiles(log, "offTargetErrorRates", genFile, refFile)
-        }
+    mapForDiff('offTargetErrorRates', offTargetErrorRates.out.locusErrorRatesTSV.mix(offTargetErrorRates.out.errorRatesTSV)) | diff2
 
     // createOnTargetMutationsTable
 
@@ -113,13 +102,7 @@ workflow
                                  layoutChannel,
                                  channel.fromPath('testdata/createOnTargetMutationsTable/source/mutation_table.error_rates.no_cosmic.rds'))
 
-    createOnTargetMutationsTable.out.onTargetMutationsTSV.first()
-        .subscribe onNext:
-        {
-            genFile ->
-            refFile = file("testdata/createOnTargetMutationsTable/reference/${genFile.name}", checkIfExists: true)
-            compareFiles(log, "createOnTargetMutationsTable", genFile, refFile)
-        }
+    mapForDiff('createOnTargetMutationsTable', createOnTargetMutationsTable.out.onTargetMutationsTSV) | diff3
 
     // onTargetErrorRatesAndFilter
 
@@ -127,21 +110,7 @@ workflow
                                 tumourMutationsChannel,
                                 layoutChannel)
 
-    onTargetErrorRatesAndFilter.out.locusErrorRatesTSV.first()
-        .subscribe onNext:
-        {
-            genFile ->
-            refFile = file("testdata/onTargetErrorRatesAndFilter/reference/${genFile.name}", checkIfExists: true)
-            compareFiles(log, "onTargetErrorRatesAndFilter", genFile, refFile)
-        }
-
-    onTargetErrorRatesAndFilter.out.onTargetMutationsTSV.first()
-        .subscribe onNext:
-        {
-            genFile ->
-            refFile = file("testdata/onTargetErrorRatesAndFilter/reference/${genFile.name}", checkIfExists: true)
-            compareFiles(log, "onTargetErrorRatesAndFilter", genFile, refFile)
-        }
+    mapForDiff('onTargetErrorRatesAndFilter', onTargetErrorRatesAndFilter.out.locusErrorRatesTSV.mix(onTargetErrorRatesAndFilter.out.onTargetMutationsTSV)) | diff4
 
     // sizeAnnotation
 
@@ -151,26 +120,14 @@ workflow
     annotateMutationsWithFragmentSize(sizeAnnotationInsertsChannel,
                                       channel.fromPath('testdata/annotateMutationsWithFragmentSize/source/mutation_table.on_target.rds'))
 
-    annotateMutationsWithFragmentSize.out.mutationsTSV.first()
-        .subscribe onNext:
-        {
-            genFile ->
-            refFile = file("testdata/annotateMutationsWithFragmentSize/reference/combined.polished.size_ann.SLX-19721_SXTLI001.tsv", checkIfExists: true)
-            compareFiles(log, "annotateMutationsWithFragmentSize", genFile, refFile)
-        }
+    mapForDiff('annotateMutationsWithFragmentSize', annotateMutationsWithFragmentSize.out.mutationsTSV) | diff5
 
     // Outlier suppression
 
     markOutliersChannel = channel.of(['SLX-19721', 'SXTLI001']).combine(
-        channel.fromPath("testdata/outlierSuppression/source/combined.polished.size_ann.SLX-19721_SXTLI001.rds"))
+        channel.fromPath("testdata/markOutliers/source/combined.polished.size_ann.SLX-19721_SXTLI001.rds"))
 
     markOutliers(markOutliersChannel)
 
-    markOutliers.out.mutationsTSV.first()
-        .subscribe onNext:
-        {
-            genFile ->
-            refFile = file("testdata/outlierSuppression/reference/mutation_table.outliersuppressed.SLX-19721_SXTLI001.tsv", checkIfExists: true)
-            compareFiles(log, "markOutliers", genFile, refFile)
-        }
+    mapForDiff('markOutliers', markOutliers.out.mutationsTSV) | diff6
 }
