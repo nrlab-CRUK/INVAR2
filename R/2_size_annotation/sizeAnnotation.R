@@ -278,7 +278,7 @@ main <- function(scriptArgs)
 
     mutationsTable.withSizes %>%
         removeMutationTableDerivedColumns() %>%
-        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE, SIZE, MUTANT) %>%
+        arrangeMutationTableForExport() %>%
         saveRDSandTSV(str_c('mutation_table.with_sizes.', scriptArgs$POOL, '_', scriptArgs$BARCODE, ".rds"))
 }
 

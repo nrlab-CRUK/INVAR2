@@ -53,9 +53,10 @@ desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'R
                  'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO',
                  'BACKGROUND_MUTATION_SUM', 'BACKGROUND_DP', 'BACKGROUND_AF',
                  "LOCUS_NOISE.PASS", "BOTH_STRANDS", "CONTAMINATION_RISK.PASS",
-                 "SIZE", "MUTANT")
+                 "SIZE", "MUTANT", "NORMAL")
 
-orderByColumns = c('POOL', 'BARCODE', 'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
+orderByColumns = c('POOL', 'BARCODE', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
+                   'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
 
 args <- parseArgs(commandArgs(TRUE))
 
@@ -73,12 +74,6 @@ t <- as_tibble(table) %>%
     rename(`1KG_AF` = X1KG_AF, POOL = SLX) %>%
     mutate_if(is.factor, as.character) %>%
     mutate(COSMIC_SNP = as.logical(COSMIC_SNP))
-
-if ('DATA' %in% colnames(t)) {
-    t <- t %>%
-    mutate(PATIENT_SPECIFIC = DATA == 'ptspec') %>%
-    select(-DATA)
-}
 
 if ('BACKGROUND.MUT_SUM' %in% colnames(t)) {
     t <- t %>%
@@ -104,6 +99,11 @@ if ('SAMPLE_NAME' %in% colnames(t)) {
 if ('MUTANT' %in% colnames(t)) {
     t <- t %>%
         mutate(MUTANT = as.logical(MUTANT))
+}
+
+if ('PASS' %in% colnames(t)) {
+    t <- t %>%
+        rename(NORMAL = PASS)
 }
 
 # See https://stackoverflow.com/questions/26497751/pass-a-vector-of-variable-names-to-arrange-in-dplyr

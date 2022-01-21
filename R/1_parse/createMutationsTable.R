@@ -206,7 +206,7 @@ main <- function(scriptArgs)
 
     mutationTable.biallelic %>%
         removeMutationTableDerivedColumns() %>%
-        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
+        arrangeMutationTableForExport() %>%
         saveRDSandTSV("mutation_table.filtered.rds")
 
     if (nrow(multiallelicBlacklist) > 0)

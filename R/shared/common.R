@@ -65,6 +65,16 @@ removeMutationTableDerivedColumns <- function(mutationTable)
 # Saving functions.
 #
 
+# Sorts a mutation table before exporting so the files are in a known order.
+# Helps comparison between files.
+arrangeMutationTableForExport <- function(mutationTable)
+{
+    orderByColumns = c('POOL', 'BARCODE', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
+                       'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
+
+    mutationTable %>%
+        arrange_at(vars(any_of(orderByColumns)))
+}
 
 # Writes the TSV file but, before saving, converts any logical columns to
 # simply the characters 'T' or 'F'. Saves having full "TRUE" and "FALSE" values,

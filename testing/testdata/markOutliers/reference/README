@@ -1,4 +1,19 @@
-This table is created by the new outlierSuppress.R script with careful
-checks that the sample(s) have produced the same numbers as running
-through the original size_annotation.R script for that sample.
+Getting a reference needed some hacking. The original size_annotation.R
+code was changed to perform a calculation of every sample in the source file
+(in ../source) and to produce a table for all the samples, instead of the
+sample by sample work. The addition was, after loading the RData object:
+
+owners <- unique(combined.polished.size_ann$pt_mutation_belongs_to)
+
+repolishForOwner <- function(owner) {
+    message('Processing ', owner)
+    curr <- filter(combined.polished.size_ann, pt_mutation_belongs_to == owner)
+    repolish(curr, outlier_suppression_threshold_settings)
+}
+
+all <- lapply(owners, repolishForOwner)
+
+raw <- rbindlist(all)
+
+The resulting RData object saved ("raw") was passed through reorganiseMutationTable.R.
 

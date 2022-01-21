@@ -54,7 +54,7 @@ richTestOptions <- function()
 {
     list(
         #MUTATIONS_TABLE_FILE = 'on_target/mutation_table.with_sizes.SLX-19721_SXTLI001.rds',
-        MUTATIONS_TABLE_FILE = str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/outlierSuppression/source/combined.polished.size_ann.SLX-19721_SXTLI001.rds'),
+        MUTATIONS_TABLE_FILE = str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/markOutliers/source/combined.polished.size_ann.SLX-19721_SXTLI001.rds'),
         POOL = 'SLX-19721',
         BARCODE = 'SXTLI001',
         OUTLIER_SUPPRESSION = 0.05,
@@ -163,7 +163,7 @@ main <- function(scriptArgs)
 
     mutationsTable %>%
         removeMutationTableDerivedColumns() %>%
-        arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, CHROM, POS, REF, ALT, TRINUCLEOTIDE, SIZE) %>%
+        arrangeMutationTableForExport() %>%
         saveRDSandTSV(str_c('mutation_table.outliersuppressed.', scriptArgs$POOL, '_', scriptArgs$BARCODE, '.rds'))
 }
 
