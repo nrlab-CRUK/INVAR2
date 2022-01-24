@@ -3,3 +3,8 @@ PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.rds using the
 reorganiseMutationTable.R table; the error rates
 from locus_error_rates.on_target.Rdata using the
 reorganiseErrorRateTable.R script.
+
+The "parse" function needed a change on lines 371 and 380
+to include the "case_or_control" column in the resulting
+output.
+

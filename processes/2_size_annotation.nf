@@ -23,8 +23,6 @@ process getFragmentSize
     cpus   1
     time   '4h'
 
-    publishDir 'insert_sizes', mode: 'link'
-
     input:
         tuple val(pool), val(barcode), path(bamFile), path(bamIndex)
         each path(snvList)
@@ -43,8 +41,6 @@ process annotateMutationsWithFragmentSize
     memory '2g'
     cpus   1
     time   '4h'
-
-    publishDir 'insert_sizes', mode: 'link'
 
     input:
         tuple val(pool), val(barcode), path(fragmentSizesFile)

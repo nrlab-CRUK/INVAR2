@@ -192,8 +192,6 @@ process combineCSV
     cpus 1
     time '1h'
 
-    publishDir 'unprocessed_mutations', mode: 'link'
-
     input:
         path(csvFiles)
 
@@ -211,8 +209,6 @@ process createMutationsTable
     memory '8g'
     cpus 1
     time '1h'
-
-    publishDir 'mutations', mode: 'link'
 
     input:
         path mutationsFile
@@ -246,8 +242,6 @@ process offTargetErrorRates
     memory '4g'
     cpus 2
     time '1h'
-
-    publishDir 'off_target', mode: 'link'
 
     input:
         path mutationsFile
@@ -302,8 +296,6 @@ process onTargetErrorRatesAndFilter
     memory '4g'
     cpus 1
     time '1h'
-
-    publishDir 'on_target', mode: 'link'
 
     input:
         path mutationsFile
