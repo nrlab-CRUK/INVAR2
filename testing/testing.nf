@@ -9,9 +9,9 @@ nextflow.enable.dsl = 2
 include { createMutationsTable; offTargetErrorRates;
           createOnTargetMutationsTable; onTargetErrorRatesAndFilter } from '../processes/1_parse'
 include { annotateMutationsWithFragmentSize  } from '../processes/2_size_annotation'
-include { markOutliers  } from '../processes/3_outlier_suppression'
+include { markOutliers; sizeCharacterisation } from '../processes/3_outlier_suppression'
 
-include { diff as diff1; diff as diff2; diff as diff3; diff as diff4; diff as diff5; diff as diff6 } from './diff'
+include { diff as diff1; diff as diff2; diff as diff3; diff as diff4; diff as diff5; diff as diff6; diff as diff7 } from './diff'
 
 def dumpParams(logger, params)
 {
@@ -130,4 +130,10 @@ workflow
     markOutliers(markOutliersChannel)
 
     mapForDiff('markOutliers', markOutliers.out.mutationsTSV) | diff6
+
+    // Size characterisation
+
+    sizeCharacterisation(channel.fromPath("testdata/sizeCharacterisation/source/*.rds").collect())
+
+    mapForDiff('sizeCharacterisation', sizeCharacterisation.out.allSizesTSV.mix(sizeCharacterisation.out.summaryTSV)) | diff7
 }
