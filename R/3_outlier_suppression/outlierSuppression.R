@@ -141,7 +141,7 @@ repolish <- function(mutationTable, outlierSuppressionThreshold)
         rowwise() %>%
         mutate(BINOMIAL_PROB = binom(x = MUTATION_SUM, n = DP, p = P_ESTIMATE)) %>%
         ungroup() %>% # Removes the "rowwise" grouping
-        mutate(NORMAL = BINOMIAL_PROB > P_THRESHOLD) %>%
+        mutate(OUTLIER.PASS = BINOMIAL_PROB > P_THRESHOLD) %>%
         select(-P_THRESHOLD, -P_ESTIMATE, -BINOMIAL_PROB)
 
     mutationTable.withTest
@@ -154,14 +154,14 @@ repolish <- function(mutationTable, outlierSuppressionThreshold)
 
 main <- function(scriptArgs)
 {
-    mutationsTable <-
+    mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
 
-    mutationsTable <- mutationsTable %>%
+    mutationTable <- mutationTable %>%
         repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION)
 
-    mutationsTable %>%
+    mutationTable %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
         saveRDSandTSV(str_c('mutation_table.outliersuppressed.', scriptArgs$POOL, '_', scriptArgs$BARCODE, '.rds'))

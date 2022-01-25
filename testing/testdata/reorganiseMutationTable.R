@@ -53,7 +53,7 @@ desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'R
                  'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO',
                  'BACKGROUND_MUTATION_SUM', 'BACKGROUND_DP', 'BACKGROUND_AF',
                  "LOCUS_NOISE.PASS", "BOTH_STRANDS", "CONTAMINATION_RISK.PASS",
-                 "SIZE", "MUTANT", "NORMAL")
+                 "SIZE", "MUTANT", "OUTLIER.PASS")
 
 orderByColumns = c('POOL', 'BARCODE', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
                    'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
@@ -103,7 +103,7 @@ if ('MUTANT' %in% colnames(t)) {
 
 if ('PASS' %in% colnames(t)) {
     t <- t %>%
-        rename(NORMAL = PASS)
+        rename(OUTLIER.PASS = PASS)
 }
 
 # See https://stackoverflow.com/questions/26497751/pass-a-vector-of-variable-names-to-arrange-in-dplyr

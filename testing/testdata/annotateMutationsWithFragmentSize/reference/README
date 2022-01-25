@@ -6,3 +6,4 @@ Also need to set the seed for the random number generator when
 sampling in downsample_fragments from TAPAS_functions.R
 (~ line 621) to make sure the picks are the same. The seed used
 is 1024.
+
