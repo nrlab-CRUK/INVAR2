@@ -1,3 +1,8 @@
 Rdata files taken from output_R/os directory and run through this
 directory's reorganiseMutationTables.R to create the RDS files.
 
+The script combines files from the same pool + barcode pair and
+writes one RDS for the pairing, not a file per input file. This
+gives an input object in the same form as the task will receive
+from the pipeline's own calculations in outlierSuppression.R
+

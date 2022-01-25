@@ -11,7 +11,7 @@ library(tidyverse)
 
 loadTumourMutationsTable <- function(tumourMutationsFile)
 {
-    read_csv(tumourMutationsFile, col_types = 'ciccd', show_col_types = FALSE) %>%
+    read_csv(tumourMutationsFile, col_types = 'ciccd', show_col_types = FALSE, progress = TRUE) %>%
         select(-contains('uniq'), -any_of('mut')) %>%
         rename_with(str_to_upper) %>%
         rename(POOL = SLX_ID) %>%
@@ -63,12 +63,6 @@ processOne <- function(arg, tumourMutationsTable)
 {
     args <- parseOne(arg)
 
-    if (file.exists(args$CONVERTED))
-    {
-        message("Already processed args$SOURCE")
-        return(args$CONVERTED)
-    }
-
     message("Reading ", args$SOURCE)
 
     table <- loadingFunctions[[args$EXTENSION]](args$SOURCE)
@@ -114,19 +108,53 @@ processOne <- function(arg, tumourMutationsTable)
             rename(OUTLIER.PASS = PASS)
     }
 
-    message("Writing ", args$CONVERTED)
-
-    saveRDS(t, file = args$CONVERTED)
-
-    args$CONVERTED
+    t %>%
+        select(any_of(desiredOrder)) %>%
+        arrange_at(vars(any_of(orderByColumns)))
 }
 
-tumourMutationsFile <- '/home/data/INVAR/source_files/combined.SLX_table_with_controls_031220.csv'
-assert_that(file.exists(tumourMutationsFile), msg = str_c(tumourMutationsFile, " doesn't exist."))
+args <- commandArgs(TRUE)
+#args <- c('/home/data/INVAR/source_files/combined.SLX_table_with_controls_031220.csv')
+invisible(assert_that(length(args) == 1, msg = "Expect exactly one argument: the path to the layout file (SLX table)."))
+
+tumourMutationsFile <- args[1]
+invisible(assert_that(file.exists(tumourMutationsFile), msg = str_c(tumourMutationsFile, " doesn't exist.")))
 
 rdataFiles = list.files(pattern = "\\.Rdata$")
-assert_that(length(rdataFiles) > 0, msg = str_c("No Rdata files found in ", getwd()))
+invisible(assert_that(length(rdataFiles) > 0, msg = str_c("No Rdata files found in ", getwd())))
+
+dataFileGrouping <-
+    tibble(FILENAME = rdataFiles) %>%
+    mutate(POOL_BARCODE = str_match(FILENAME, ".*(SLX-\\d+_\\w+)\\..*")[,2])
 
 tumourMutationsTable <- loadTumourMutationsTable(tumourMutationsFile)
 
-mclapply(rdataFiles, processOne, tumourMutationsTable, mc.cores = 4)
+coresToUse <- max(1, detectCores(logical = FALSE) - 1)
+coresToUse <- ifelse(is.na(coresToUse), 1, coresToUse)
+
+message("Processing files using ", coresToUse, " CPUs.")
+
+poolBarcodePairs <- unique(dataFileGrouping$POOL_BARCODE)
+
+for (poolBarcode in poolBarcodePairs) {
+    message("Handling files belonging to ", poolBarcode, ". ", match(poolBarcode, poolBarcodePairs), " of ", length(poolBarcodePairs))
+
+    name <- str_c(poolBarcode, '.os.rds')
+
+    if (file.exists(name))
+    {
+        message(name, " already exists, so skipping.")
+    }
+    else
+    {
+        theseFiles <- dataFileGrouping %>%
+            filter(POOL_BARCODE == poolBarcode)
+
+        theseTables <- mclapply(theseFiles$FILENAME, processOne, tumourMutationsTable, mc.cores = coresToUse)
+
+        combined <- bind_rows(theseTables)
+
+        message("Writing ", name)
+        saveRDS(combined, file = name)
+    }
+}

@@ -75,7 +75,7 @@ calculateSizeCharacteristics <- function(mutationTableFileName)
 
     sizeCharacteristicsTable <- mutationTable %>%
         filter(OUTLIER.PASS & BOTH_STRANDS & LOCUS_NOISE.PASS) %>%
-        group_by(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, SAMPLE_TYPE, CASE_OR_CONTROL, PATIENT_SPECIFIC, SIZE, MUTANT) %>%
+        group_by(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, SAMPLE_TYPE, CASE_OR_CONTROL, PATIENT_SPECIFIC, MUTANT, SIZE) %>%
         summarise(TOTAL = n(), .groups = "drop")
 
     sizeCharacteristicsTable
@@ -91,7 +91,9 @@ main <- function(scriptArgs)
     sizeTables <-
         mclapply(scriptArgs$MUTATIONS_TABLE_FILES, calculateSizeCharacteristics, mc.cores = scriptArgs$THREADS)
 
-    sizeCharacteristicsTable <- bind_rows(sizeTables)
+    sizeCharacteristicsTable <-
+        bind_rows(sizeTables) %>%
+        arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, MUTANT, SIZE)
 
     sizeCharacteristicsSummary <- sizeCharacteristicsTable %>%
         group_by(PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE) %>%
@@ -99,7 +101,8 @@ main <- function(scriptArgs)
         group_by(PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT) %>%
         mutate(TOTAL = sum(COUNT)) %>%
         ungroup() %>%
-        mutate(PROPORTION = COUNT / TOTAL)
+        mutate(PROPORTION = COUNT / TOTAL) %>%
+        arrange(PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE)
 
     sizeCharacteristicsTable %>%
         saveRDSandTSV("size_characterisation.all.rds")

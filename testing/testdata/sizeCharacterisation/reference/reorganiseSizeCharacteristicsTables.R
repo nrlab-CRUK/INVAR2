@@ -33,13 +33,11 @@ parseArg <- function(arg)
 }
 
 desiredOrder = c('POOL', 'BARCODE', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
-                 'SAMPLE_TYPE', 'CASE_OR_CONTROL', 'PATIENT_SPECIFIC', 'SIZE', 'MUTANT', 'TOTAL' )
+                 'SAMPLE_TYPE', 'CASE_OR_CONTROL', 'PATIENT_SPECIFIC', 'MUTANT', 'SIZE', 'TOTAL' )
 
-orderByColumns = c('POOL', 'BARCODE', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO', 'SIZE', 'MUTANT')
+orderByColumns = c('POOL', 'BARCODE', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO', 'MUTANT', 'SIZE')
 
 args <- commandArgs(TRUE)
-args <- c('PARADIGM.f0.9_s2.BQ_20.MQ_40.raw.size_characterisation.rds',
-          'PARADIGM.f0.9_s2.BQ_20.MQ_40.size_characterisation.rds')
 
 invisible(assert_that(length(args) == 2, msg = "Expect exactly two files: the all sizes file and the summary file"))
 
