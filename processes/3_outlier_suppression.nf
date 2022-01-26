@@ -26,7 +26,7 @@ process markOutliers
 process sizeCharacterisation
 {
     memory '4g'
-    cpus   { Math.min(params.MAX_CORES, mutationsFiles.size()) }
+    cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, mutationsFiles.size()) }
     time   '1h'
 
     input:
@@ -49,7 +49,7 @@ process sizeCharacterisation
 process annotateMutationsWithOutlierSuppression
 {
     memory '4g'
-    cpus   { Math.min(params.MAX_CORES, osMutationsFiles.size()) }
+    cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, mutationsFiles.size()) }
     time   '1h'
 
     input:
