@@ -26,7 +26,7 @@ process markOutliers
 process sizeCharacterisation
 {
     memory '4g'
-    cpus   6
+    cpus   { Math.min(params.MAX_CORES, mutationsFiles.size()) }
     time   '1h'
 
     input:
@@ -46,6 +46,29 @@ process sizeCharacterisation
         """
 }
 
+process annotateMutationsWithOutlierSuppression
+{
+    memory '4g'
+    cpus   { Math.min(params.MAX_CORES, osMutationsFiles.size()) }
+    time   '1h'
+
+    input:
+        path mutationsFile 
+        path osMutationsFiles
+
+    output:
+        path 'mutation_table.with_outliers.rds', emit: "mutationsFile"
+        path 'mutation_table.with_outliers.tsv', emit: "mutationsTSV"
+
+    shell:
+        """
+        Rscript --vanilla "!{params.projectHome}/R/3_outlier_suppression/outlierSuppressionAnnotation.R" \
+            --threads=!{task.cpus} \
+            --mutations="!{mutationsFile}" \
+            !{osMutationsFiles}
+        """
+}
+
 
 workflow outlierSuppression
 {
@@ -58,7 +81,9 @@ workflow outlierSuppression
         sizedFiles = markOutliers.out.mutationsFile.map { pool, barcode, mfile -> mfile }.collect()
 
         sizeCharacterisation(sizedFiles)
+        
+        annotateMutationsWithOutlierSuppression(mutationsChannel, sizedFiles)
 
     emit:
-        mutationsFiles = markOutliers.out.mutationsFile
+        mutationsFiles = annotateMutationsWithOutlierSuppression.out.mutationsFile
 }

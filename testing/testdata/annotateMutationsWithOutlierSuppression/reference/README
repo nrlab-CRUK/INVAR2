@@ -1,0 +1,30 @@
+The references here are taken from the original run's files in output_R:
+
+PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.os_0.05.rds
+PARADIGM.f0.9_s2.BQ_20.MQ_40combined.outlier_suppression0.05.rds
+
+The first is saved by the script. The second, which is the cut down table
+of outlier pass before joining with the original table, needs a line uncommented
+in the original script to save.
+
+The full mutation table is processed with reorganiseMutationTable.R. It needs
+the "case_or_control" column added back to make things match.
+
+t <- readRDS('PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.os_0.05.rds')
+layout <- read_csv('../../source_files/combined.SLX_table_with_controls_031220.csv') %>%
+select(SLX_ID, barcode, case_or_control) %>%
+rename(SLX = SLX_ID, BARCODE = barcode)
+t %>% left_join(l2, by = c('SLX', 'BARCODE')) %>%
+saveRDS(t2, file = 'withCaseOrControl.combined.os_0.05.rds')
+
+The smaller table of outlier pass or fail can be converted from the file
+with this:
+
+as_tibble(readRDS('PARADIGM.f0.9_s2.BQ_20.MQ_40combined.outlier_suppression0.05.rds')) %>%
+separate(uniq, into = c('CHROM', 'POS', 'POOL', 'BARCODE'), sep='[:_]') %>%
+mutate(POS = as.integer(POS)) %>%
+rename(OUTLIER.PASS = PASS) %>%
+arrange(POOL, BARCODE, CHROM, POS) %>%
+select(POOL, BARCODE, CHROM, POS, OUTLIER.PASS) %>%
+mutate(OUTLIER.PASS = ifelse(OUTLIER.PASS, 'T', 'F')) %>%
+write_tsv(file = 'REFERENCE_outlierflags.fail.tsv')

@@ -12,7 +12,6 @@ library(tidyverse)
 loadTumourMutationsTable <- function(tumourMutationsFile)
 {
     read_csv(tumourMutationsFile, col_types = 'ciccd', show_col_types = FALSE, progress = TRUE) %>%
-        select(-contains('uniq'), -any_of('mut')) %>%
         rename_with(str_to_upper) %>%
         rename(POOL = SLX_ID) %>%
         select(POOL, BARCODE, CASE_OR_CONTROL)
@@ -129,7 +128,7 @@ dataFileGrouping <-
 
 tumourMutationsTable <- loadTumourMutationsTable(tumourMutationsFile)
 
-coresToUse <- max(1, detectCores(logical = FALSE) - 1)
+coresToUse <- ceiling(detectCores(logical = FALSE) / 2)
 coresToUse <- ifelse(is.na(coresToUse), 1, coresToUse)
 
 message("Processing files using ", coresToUse, " CPUs.")
