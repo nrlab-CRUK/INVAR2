@@ -23,49 +23,6 @@ def dumpParams(logger, params)
     }
 }
 
-def compareFiles(logger, process, generated, reference)
-{
-    generated.withReader
-    {
-        greader ->
-
-        reference.withReader
-        {
-            rreader ->
-
-            def line = 0
-
-            while (true)
-            {
-                gline = greader.readLine()
-                rline = rreader.readLine()
-                ++line
-
-                if (!gline && !rline)
-                {
-                    logger.info "${process} ${generated.name}: files are the same."
-                    break
-                }
-                if (!gline && rline)
-                {
-                    logger.error "${process} ${generated.name}: there are fewer lines in the reference than the generated file.\n${reference}\n${generated}"
-                    break
-                }
-                if (gline && !rline)
-                {
-                    logger.error "${process} ${generated.name}: there are more lines in the reference than the generated file.\n${reference}\n${generated}"
-                    break
-                }
-                if (gline != rline)
-                {
-                    logger.error "${process} ${generated.name}: files differ on line ${line}:\n${rline}\n${gline}\n${reference}\n${generated}"
-                    break
-                }
-            }
-        }
-    }
-}
-
 def mapForDiff(pname, channel)
 {
     channel.map
@@ -76,7 +33,6 @@ def mapForDiff(pname, channel)
 
 workflow
 {
-    /*
     // dumpParams(log, params)
 
     tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
@@ -132,16 +88,15 @@ workflow
     markOutliers(markOutliersChannel)
 
     mapForDiff('markOutliers', markOutliers.out.mutationsTSV) | diff6
-    */
 
     // Size characterisation
 
     sizeCharacterisation(channel.fromPath("testdata/sizeCharacterisation/source/*.rds").collect())
 
     mapForDiff('sizeCharacterisation', sizeCharacterisation.out.allSizesTSV.mix(sizeCharacterisation.out.summaryTSV)) | diff7
-    
+
     // Annotate main mutations with outlier suppression flags.
-    
+
     annotateMutationsWithOutlierSuppression(
         channel.fromPath("testdata/annotateMutationsWithOutlierSuppression/source/mutation_table.on_target.rds"),
         channel.fromPath("testdata/annotateMutationsWithOutlierSuppression/source/*.os.rds").collect())

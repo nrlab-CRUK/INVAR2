@@ -53,7 +53,7 @@ process annotateMutationsWithOutlierSuppression
     time   '1h'
 
     input:
-        path mutationsFile 
+        path mutationsFile
         path osMutationsFiles
 
     output:
@@ -81,7 +81,7 @@ workflow outlierSuppression
         sizedFiles = markOutliers.out.mutationsFile.map { pool, barcode, mfile -> mfile }.collect()
 
         sizeCharacterisation(sizedFiles)
-        
+
         annotateMutationsWithOutlierSuppression(mutationsChannel, sizedFiles)
 
     emit:
