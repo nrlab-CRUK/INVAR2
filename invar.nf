@@ -31,5 +31,5 @@ workflow
 
     sizeAnnotation(bamChannel, parse.out.onTargetMutationsFile, tumourMutationsChannel)
 
-    outlierSuppression(sizeAnnotation.out.mutationsFiles)
+    outlierSuppression(parse.out.onTargetMutationsFile, sizeAnnotation.out.mutationsFiles)
 }

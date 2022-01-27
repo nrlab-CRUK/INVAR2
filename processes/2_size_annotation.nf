@@ -2,7 +2,6 @@ process createSNVList
 {
     executor 'local'
     memory '256m'
-    cpus 1
     time '5m'
 
     input:
@@ -20,8 +19,6 @@ process createSNVList
 process getFragmentSize
 {
     memory '1g'
-    cpus   1
-    time   '4h'
 
     input:
         tuple val(pool), val(barcode), path(bamFile), path(bamIndex)
@@ -39,8 +36,6 @@ process getFragmentSize
 process annotateMutationsWithFragmentSize
 {
     memory '2g'
-    cpus   1
-    time   '4h'
 
     input:
         tuple val(pool), val(barcode), path(fragmentSizesFile)

@@ -1,8 +1,6 @@
 process markOutliers
 {
     memory '2g'
-    cpus   1
-    time   '4h'
 
     input:
         tuple val(pool), val(barcode), path(mutationsFile)
@@ -27,7 +25,6 @@ process sizeCharacterisation
 {
     memory '4g'
     cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, mutationsFiles.size()) }
-    time   '1h'
 
     input:
         path mutationsFiles
@@ -49,8 +46,7 @@ process sizeCharacterisation
 process annotateMutationsWithOutlierSuppression
 {
     memory '4g'
-    cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, mutationsFiles.size()) }
-    time   '1h'
+    cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, osMutationsFiles.size()) }
 
     input:
         path mutationsFile
@@ -74,16 +70,18 @@ workflow outlierSuppression
 {
     take:
         mutationsChannel
+        sizedMutationsChannel
 
     main:
-        markOutliers(mutationsChannel)
+        markOutliers(sizedMutationsChannel)
 
-        sizedFiles = markOutliers.out.mutationsFile.map { pool, barcode, mfile -> mfile }.collect()
+        outlierMarkedFiles = markOutliers.out.mutationsFile.map { pool, barcode, mfile -> mfile }.collect()
 
-        sizeCharacterisation(sizedFiles)
+        sizeCharacterisation(outlierMarkedFiles)
 
-        annotateMutationsWithOutlierSuppression(mutationsChannel, sizedFiles)
+        annotateMutationsWithOutlierSuppression(mutationsChannel, outlierMarkedFiles)
 
     emit:
-        mutationsFiles = annotateMutationsWithOutlierSuppression.out.mutationsFile
+        mutationsFile = annotateMutationsWithOutlierSuppression.out.mutationsFile
+        sizeCharacterisationFIle = sizeCharacterisation.out.summaryFile
 }

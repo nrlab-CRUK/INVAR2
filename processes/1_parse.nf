@@ -12,7 +12,6 @@ process slopPatientInfo
 {
     executor 'local'
     memory '256m'
-    cpus 1
     time '5m'
 
     input:
@@ -31,8 +30,7 @@ process slopPatientInfo
 
 process mpileup
 {
-    cpus 1
-    time '4h'
+    cpus { Math.min(params.MAX_CORES, 2) }
 
     input:
         path sloppedBedFile
@@ -54,7 +52,6 @@ process mpileup
 process biallelic
 {
     executor 'local'
-    cpus 1
     time '5m'
 
     input:
@@ -102,8 +99,6 @@ process tabixSnp
 {
     executor 'local'
     memory '32m'
-    cpus 1
-    time '1h'
 
     input:
         each path(tabixDatabase)
@@ -123,8 +118,6 @@ process tabixCosmic
 {
     executor 'local'
     memory '32m'
-    cpus 1
-    time '1h'
 
     input:
         each path(tabixDatabase)
@@ -143,8 +136,6 @@ process tabixCosmic
 process trinucleotide
 {
     memory '256m'
-    cpus 1
-    time '30m'
 
     input:
         each path(fastaReference)
@@ -163,8 +154,6 @@ process annotateMutation
 {
     executor 'local'
     memory '1G'
-    cpus 1
-    time '1h'
 
     input:
         tuple val(pool), val(barcode), path(mutationFile), path(snp), path(cosmic), path(trinucleotide)
@@ -189,8 +178,6 @@ process combineCSV
 {
     executor 'local'
     memory '32m'
-    cpus 1
-    time '1h'
 
     input:
         path(csvFiles)
@@ -207,8 +194,6 @@ process combineCSV
 process createMutationsTable
 {
     memory '8g'
-    cpus 1
-    time '1h'
 
     input:
         path mutationsFile
@@ -240,8 +225,7 @@ process createMutationsTable
 process offTargetErrorRates
 {
     memory '4g'
-    cpus 2
-    time '1h'
+    cpus   { Math.min(params.MAX_CORES, 2) }
 
     input:
         path mutationsFile
@@ -268,8 +252,6 @@ process offTargetErrorRates
 process createOnTargetMutationsTable
 {
     memory '4g'
-    cpus 1
-    time '1h'
 
     input:
         path mutationsFile
@@ -294,8 +276,6 @@ process createOnTargetMutationsTable
 process onTargetErrorRatesAndFilter
 {
     memory '4g'
-    cpus 1
-    time '1h'
 
     input:
         path mutationsFile
