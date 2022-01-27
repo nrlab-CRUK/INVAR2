@@ -206,13 +206,11 @@ process createMutationsTable
         path 'mutation_table.filtered.tsv', emit: "filteredMutationsTSV"
 
     shell:
-
         """
         Rscript --vanilla "!{params.projectHome}/R/1_parse/createMutationsTable.R" \
             --mutations="!{mutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
-            --tapas="!{tapasSetting}" \
             --cosmic-threshold=!{params.cosmic_threshold} \
             --mqsb-threshold=!{params.individual_MQSB_threshold} \
             --max-depth=!{params.max_depth} \

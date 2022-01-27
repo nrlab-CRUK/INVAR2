@@ -146,7 +146,7 @@ createLociErrorRatePlot <- function(errorRateTable, study, tapasSetting)
         theme_bw() +
         labs(x = "Background plasma AF across all samples",
              y = "Frequency",
-             title = paste(study, tapasSetting, "on-target, non-patient specific data"),
+             title = str_c(study, tapasSetting, "on-target, non-patient specific data", sep=" "),
              subtitle = str_c("Blacklisting of non-zero AF loci (representing ", nonZeroLociPercentage,
                               "% of data)\nBlacklisted loci (LOCUS_NOISE.FAIL) = ", locusNoiseFailPercentage,
                               "%\nsplit by COSMIC mutation status")) +

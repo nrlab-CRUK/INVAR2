@@ -16,9 +16,6 @@ parseOptions <- function()
     defaultMarker <- "<REQUIRED>"
 
     options_list <- list(
-        make_option(c("--tapas"), type="character", metavar="string",
-                    dest="TAPAS_SETTING", help="The TAPAS setting",
-                    default=defaultMarker),
         make_option(c("--mutations"), type="character", metavar="file",
                     dest="MUTATIONS_FILE", help="The calculated mutations file",
                     default=defaultMarker),
@@ -72,7 +69,6 @@ richTestOptions <- function()
 {
     list(
         MUTATIONS_FILE = 'EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv',
-        TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
         LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         COSMIC_THRESHOLD = 0L,
@@ -91,7 +87,7 @@ richTestOptions <- function()
 
 # Load the mutations table from file.
 
-loadMutationsTable <- function(mutationsFile, tumourMutationsTable, tapasSetting, cosmicThreshold)
+loadMutationsTable <- function(mutationsFile, tumourMutationsTable, cosmicThreshold)
 {
     assert_that(is.number(cosmicThreshold), msg = "cosmicThreshold must be a number.")
 
@@ -167,7 +163,6 @@ main <- function(scriptArgs)
 
     mutationTable.all <- loadMutationsTable(scriptArgs$MUTATIONS_FILE,
                                             tumourMutationTable,
-                                            tapasSetting = scriptArgs$TAPAS_SETTING,
                                             cosmicThreshold = scriptArgs$COSMIC_THRESHOLD)
 
     message("Number of mutations at start = ", nrow(mutationTable.all))
