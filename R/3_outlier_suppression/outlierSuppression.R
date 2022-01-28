@@ -5,6 +5,7 @@ suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 
 source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
+source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/detectionFunctions.R'))
 
 
 ##
@@ -60,34 +61,6 @@ richTestOptions <- function()
         OUTLIER_SUPPRESSION = 0.05,
         SAMPLING_SEED = 1024L
     )
-}
-
-
-##
-# Calculation functions.
-#
-
-##
-# From detection_functions.R
-#
-
-## Estimate p using the dervied EM algorithm.
-# M = MUTANT, R = DP, AF = TUMOUR_AF, e = BACKGROUND_AF
-estimate_p_EM <- function(M, R, AF, e, initial_p = 0.01, iterations = 200)
-{
-    g = AF*(1-e) + (1-AF)*e
-    p <- initial_p
-    for (i in 1:iterations)
-    {
-        ## Expectation step
-        Z_0 <- (1-g)*p/((1-g)*p + (1-e)*(1-p))
-        Z_1 <- g*p/(g*p + e*(1-p))
-
-        ## Maximization step
-        p <- sum(M*Z_1 + (R-M)*Z_0) / sum(R)
-    }
-
-    p
 }
 
 
