@@ -29,7 +29,16 @@ parseOptions <- function()
                     dest="BLOODSPOT", help="Indicate this is blood spot data."),
         make_option(c("--threads"), type="integer", metavar="integer",
                     dest="THREADS", help="The number of cores to use to process the input files.",
-                    default=1))
+                    default=1),
+        make_option(c("--minimum-fragment-length"), type="integer", metavar="integer",
+                    dest="MINIMUM_FRAGMENT_LENGTH", help="The minimum fragment length.",
+                    default=60),
+        make_option(c("--maximum-fragment-length"), type="integer", metavar="integer",
+                    dest="MAXIMUM_FRAGMENT_LENGTH", help="The maximum fragment length.",
+                    default=300),
+        make_option(c("--sampling-seed"), type="integer", metavar="number",
+                    dest="SAMPLING_SEED", help="The seed for random sampling. Only use in testing.",
+                    default=NA))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -60,7 +69,10 @@ richTestOptions <- function()
         MUTATIONS_TABLE_FILE = str_c(base, '/SLX-19721_SXTLI001.os.rds'),
         SIZE_CHARACTERISATION_FILE = str_c(base, '/size_characterisation.rds'),
         BLOODSPOT = FALSE,
-        THREADS = 1
+        THREADS = 1L,
+        MINIMUM_FRAGMENT_LENGTH = 60L,
+        MAXIMUM_FRAGMENT_LENGTH = 300L,
+        SAMPLING_SEED = 1024L
     )
 }
 
@@ -174,7 +186,13 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable)
 
     # Filter down the tables to only be relevant for the criteria.
 
-    mutationsTable <- mutationsTable %>% inner_join(joinCriteria, by = colnames(joinCriteria))
+    mutationsTable <- mutationsTable %>%
+        inner_join(joinCriteria, by = colnames(joinCriteria))
+
+    patientSpecificInfo <- mutationsTable %>%
+        count(PATIENT_SPECIFIC)
+
+    assert_that(nrow(patientSpecificInfo) == 1, msg = "Have both patient specific and non specific in the mutations table")
 
     # Calculate IMAFv2. Now have rows only for one sample and patient mutation
     # is for, so can use a slightly simpler function that returns a single value.
@@ -192,9 +210,50 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable)
             filter(OUTLIER.PASS)
     }
 
+    # Retune size characterisation table.
+
     sizeTable <- leaveOneOutFilter(mutationsTable, sizeTable)
 
-    mutationsTable
+    # tumour AF and size filters
+    # for error classes where there are zero mutant reads, add one
+    # just so that the background error estimate isn't zero
+
+    mutationsTable <- mutationsTable %>%
+        filter(TUMOUR_AF > 0 & SIZE > scriptArgs$MINIMUM_FRAGMENT_LENGTH & SIZE <= scriptArgs$MAXIMUM_FRAGMENT_LENGTH) %>%
+        mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF > 0, BACKGROUND_AF, 1 / BACKGROUND_DP))
+
+    # determine whether there are any mutant reads in the table for calculation of ctDNA
+
+    mutantReadsPresent = any(mutationsTable$MUTANT)
+
+    # only count mutant reads once for accurate ctDNA quantification
+
+    mutationsTable.half <- mutationsTable %>%
+        arrange(UNIQUE_POS, POOL_BARCODE, SIZE) %>%
+        slice(seq(1, n(), by = 2))
+
+    iterations <- ifelse(patientSpecificInfo$PATIENT_SPECIFIC, 1, 10)
+
+    if (is.numeric(scriptArgs$SAMPLING_SEED))
+    {
+        set.seed(scriptArgs$SAMPLING_SEED)
+    }
+
+    for (iteration in 1:iterations)
+    {
+        sampled <- mutationsTable.half
+        if (iteration > 1)
+        {
+            sampled <- mutationsTable.half %>%
+                slice_sample(n = nrow(mutationsTable.half), replace = TRUE)
+        }
+
+        # output <- calculate_likelihood_ratio_for_sample(data1, size_characterisation, min_length, max_length, use_size = TRUE, smooth = smooth, size_data.path.prefix, final_prefix, only_weigh_mutants)
+        #output.no_size <- calculate_likelihood_ratio_for_sample(data1, size_characterisation, min_length, max_length, use_size = FALSE, smooth = smooth, size_data.path.prefix, final_prefix, only_weigh_mutants)
+
+    }
+
+    NULL
 }
 
 ##
@@ -218,9 +277,9 @@ main <- function(scriptArgs)
 
     allSamplesAndFilterCombinations <- mutationsTable %>%
         distinct(SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO) %>%
-        crossing(OUTLIER.PASS = c(TRUE, FALSE)) %>%
+        crossing(OUTLIER.PASS = c(TRUE, FALSE))
         #filter(PATIENT_MUTATION_BELONGS_TO == 'PARA_028')
-        filter(PATIENT_MUTATION_BELONGS_TO == 'PARA_002')
+        #filter(PATIENT_MUTATION_BELONGS_TO == 'PARA_002' & OUTLIER.PASS)
 
     slicer <- function(n, table) { slice(table, n) }
 
@@ -229,7 +288,7 @@ main <- function(scriptArgs)
 
     mclapply(allSamplesAndFilterCombinationList, doMain,
              scriptArgs, mutationsTable, sizeTable,
-             mc.cores = scriptArgs$THREADS)
+             mc.cores = scriptArgs$THREADS, mc.set.seed = TRUE)
 
     #IMAFv2
 }
