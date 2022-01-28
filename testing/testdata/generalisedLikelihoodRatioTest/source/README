@@ -1,0 +1,5 @@
+Both inputs already exist from earlier processes. The size characterisation
+file is created as part of making the references to sizeCharacterisation
+(i.e. it's reference output). The sized sample mutations table is already
+an input (source) for sizeCharacterisation.
+

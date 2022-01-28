@@ -61,7 +61,12 @@ allSizes <- as_tibble(table) %>%
     select(any_of(desiredOrder)) %>%
     arrange_at(vars(any_of(orderByColumns)))
 
-message("Writing ", 'size_characterisation.all.tsv')
+message("Writing size_characterisation.all.rds")
+
+allSizes %>%
+    saveRDS('size_characterisation.all.rds')
+
+message("Writing size_characterisation.all.tsv")
 
 allSizes %>%
     mutate_if(is.logical, toChar) %>%
@@ -88,7 +93,12 @@ summary <- as_tibble(table) %>%
     select(PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE, COUNT, TOTAL, PROPORTION) %>%
     arrange(PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE)
 
-message("Writing ", 'size_characterisation.tsv')
+message("Writing size_characterisation.rds")
+
+summary %>%
+    saveRDS('size_characterisation.rds')
+
+message("Writing size_characterisation.tsv")
 
 summary %>%
     mutate_if(is.logical, toChar) %>%
