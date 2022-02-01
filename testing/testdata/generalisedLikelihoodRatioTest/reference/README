@@ -1,0 +1,13 @@
+Taken reference from processing the files
+output_R/os/PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.1.ptspec.0.05.combined.polished.size.os.Rdata
+and output_R/PARADIGM.f0.9_s2.BQ_20.MQ_40.size_characterisation.rds
+through GLRT_iterate_nonptspec.R and doing what the collection code does,
+namely looking for the lines with "INVAR_SCORE" in them (yes, really).
+
+Those rows were then manually juggled into a table and converted into
+the reference file seen here using tidyRef.R in this directory.
+
+Note: there is a bug in GLRT_iterate_nonptspec.R: it prints the with size
+null and alt likelihoods for both rows. So the likelihoods for the execution
+without size is wrong.
+

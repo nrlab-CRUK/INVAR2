@@ -83,5 +83,6 @@ workflow outlierSuppression
 
     emit:
         mutationsFile = annotateMutationsWithOutlierSuppression.out.mutationsFile
-        sizeCharacterisationFIle = sizeCharacterisation.out.summaryFile
+        sizeCharacterisationFile = sizeCharacterisation.out.summaryFile
+        perSampleMutationsFiles = markOutliers.out.mutationsFile
 }

@@ -127,8 +127,6 @@ main <- function(scriptArgs)
         left_join(outlierFlagTable, by = c('POOL', 'BARCODE', 'CHROM', 'POS')) %>%
         mutate(OUTLIER.PASS = ifelse(is.na(OUTLIER.PASS), TRUE, OUTLIER.PASS))
 
-    print(count(mutationTable.withOutlier, OUTLIER.PASS))
-
     mutationTable.withOutlier %>%
         arrangeMutationTableForExport() %>%
         saveRDSandTSV('mutation_table.with_outliers.rds')

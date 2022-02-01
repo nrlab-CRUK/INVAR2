@@ -54,7 +54,7 @@ process annotateMutationsWithFragmentSize
             --mutations="!{mutationsFile}" \
             --fragment-sizes="!{fragmentSizesFile}" \
             --pool="!{pool}" --barcode="!{barcode}" \
-            !{params.containsKey('sampling_seed') ? "--sampling-seed=${params.sampling_seed}" : ""}
+            !{params.containsKey('sampling_seed') ? "--sampling-seed=${params['sampling_seed']}" : ""}
         """
 }
 

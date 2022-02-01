@@ -10,9 +10,10 @@ include { createMutationsTable; offTargetErrorRates;
           createOnTargetMutationsTable; onTargetErrorRatesAndFilter } from '../processes/1_parse'
 include { annotateMutationsWithFragmentSize  } from '../processes/2_size_annotation'
 include { markOutliers; sizeCharacterisation; annotateMutationsWithOutlierSuppression } from '../processes/3_outlier_suppression'
+include { generalisedLikelihoodRatioTest } from '../processes/4_detection'
 
 include { diff as diff1; diff as diff2; diff as diff3; diff as diff4; diff as diff5; diff as diff6;
-          diff as diff7; diff as diff8 } from './diff'
+          diff as diff7; diff as diff8; diff as diff9 } from './diff'
 
 def dumpParams(logger, params)
 {
@@ -29,6 +30,28 @@ def mapForDiff(pname, channel)
     {
         tuple pname, it, file("testdata/${pname}/reference/REFERENCE_${it.name}", checkIfExists: true)
     }
+}
+
+process trimGLRT
+{
+    executor 'local'
+    time '2m'
+    cpus 1
+    memory '64m'
+
+    input:
+        path glrtOutputRDS
+
+    output:
+        path outputFilename, emit: "trimmedGLRT"
+
+    shell:
+        outputFilename = "${glrtOutputRDS.baseName}.trimmed.tsv"
+
+        """
+        Rscript --vanilla "!{params.projectHome}/testing/R/glrtTrim.R" \
+            "!{glrtOutputRDS}" "!{outputFilename}"
+        """
 }
 
 workflow
@@ -102,4 +125,17 @@ workflow
         channel.fromPath("testdata/annotateMutationsWithOutlierSuppression/source/*.os.rds").collect())
 
     mapForDiff('annotateMutationsWithOutlierSuppression', annotateMutationsWithOutlierSuppression.out.mutationsTSV) | diff8
+
+    // Generalised Likelihood Ratio Test
+
+    generalisedLikelihoodRatioTestChannel = channel.of(['SLX-19721', 'SXTLI001']).combine(
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/SLX-19721_SXTLI001.os.rds"))
+
+    generalisedLikelihoodRatioTest(
+        generalisedLikelihoodRatioTestChannel,
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/size_characterisation.rds"))
+
+    trimGLRT(generalisedLikelihoodRatioTest.out.invarScoresFile.map { p, b, f -> f } )
+
+    mapForDiff('generalisedLikelihoodRatioTest', trimGLRT.out.trimmedGLRT) | diff9
 }

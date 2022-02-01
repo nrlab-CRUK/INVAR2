@@ -9,6 +9,7 @@ nextflow.enable.dsl = 2
 include { parse } from './processes/1_parse'
 include { sizeAnnotation } from './processes/2_size_annotation'
 include { outlierSuppression } from './processes/3_outlier_suppression'
+include { detection } from './processes/4_detection'
 
 /*
  * Main work flow.
@@ -32,4 +33,6 @@ workflow
     sizeAnnotation(bamChannel, parse.out.onTargetMutationsFile, tumourMutationsChannel)
 
     outlierSuppression(parse.out.onTargetMutationsFile, sizeAnnotation.out.mutationsFiles)
+
+    detection(outlierSuppression.out.perSampleMutationsFiles, outlierSuppression.out.sizeCharacterisationFile)
 }

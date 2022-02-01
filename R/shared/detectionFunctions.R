@@ -116,39 +116,20 @@ calc_likelihood_ratio_with_RL <- function(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1,
     p_mle <<- estimate_p_EM_with_RL(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1, initial_p, iterations)
     alternative_likelihood <- calc_log_likelihood_with_RL(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1, p = p_mle)
 
-    if (is.na(p_mle))
-    {
-        print("debugging NA")
-        print(paste("M,R,AF,e,RL,RL_PROB_0,RL_PROB_1,iterations,initial_p",
-                    M, R, AF, e, RL, RL_PROB_0, RL_PROB_1, iterations, initial_p))
-    }
-
-    print(paste("first p_mle", p_mle))
     ## If we get a negative value, it means we did not converge to the MLE
     ## In that case, do a grid search, on the area left.
     if (alternative_likelihood < null_likelihood)
     {
-        print("alternative likelihood < null_likelihood !!")
-        print("MLE didn't converge; gonna do a grid search")
-
         # repeat estimate of p_mle with a lower initial p
         p_mle <<- estimate_p_EM_with_RL(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1, 1e-5, iterations)
-        print(paste("2nd p_mle, with lower initial p", p_mle))
 
         p_grid <<- seq(0, p_mle, length.out = 1000)
         p_mle <<- grid_search(p_grid)
 
-        print(paste("p_mle from grid_search = ", p_mle))
-        print(p_mle %in% p_grid)
         mle_index <- which(p_grid == p_mle)
-        print(paste("mle_index = ", mle_index))
 
         lower_finer_p_index <- max(1, mle_index - 1)
         higher_finer_p_index <- min(length(p_grid), mle_index + 1)
-
-        print(paste("p_grid" , head(p_grid, n = 50), tail(p_grid, n = 50)))
-        print(paste("low = ", p_grid[lower_finer_p_index], "index = ", lower_finer_p_index))
-        print(paste("high =", p_grid[higher_finer_p_index], "index = ", higher_finer_p_index))
 
         finer_grid <- seq(p_grid[lower_finer_p_index], p_grid[higher_finer_p_index], length.out = 1000)
         p_mle <- grid_search(finer_grid)
@@ -186,7 +167,7 @@ estimate_real_length_probability <- function(fragment_length, counts, bw_adjust 
     calc_probability <- function(frag_length)
     {
         weights <- counts / sum(counts)
-        #print(paste("weights:", weights))
+
         den <- density(fragment_length, weights = weights, adjust = bw_adjust,from = min_length - 0.5, to = max_length + 0.5)
         den_function <- approxfun(den)
 
@@ -202,84 +183,6 @@ estimate_real_length_probability <- function(fragment_length, counts, bw_adjust 
 }
 
 
-calculate_likelihood_ratio_for_sample <- function(data, size_characterisation, min_length, max_length,
-                                                  use_size = TRUE, smooth = 0.03, size_data.path.prefix,
-                                                  final_prefix, only_weigh_mutants = FALSE)
-{
-    assert_that(is.logical(use_size), msg = "use_size must be a logical")
-    assert_that(is.logical(only_weigh_mutants), msg = "only_weigh_mutants must be a logical")
-
-    size.combined <- size_characterisation
-
-    ## read length probabilites for mutant reads
-    print("generating read length probabilities")
-    fragment_length <- size.combined$size[size.combined$mut == 'TRUE']
-    counts <- size.combined$count[size.combined$mut == 'TRUE']
-
-    print("estimating READ length probabilities")
-    print(paste("smooth = ", smooth))
-    print(paste("min length = ", min_length))
-    print(paste("max length = ", max_length))
-    smooth <- as.numeric(smooth)
-
-    print("estimating read length probability")
-    probs_mut <- estimate_real_length_probability(fragment_length, counts, min_length = min_length, max_length = max_length, bw_adjust = smooth)
-
-    ## read length probabilties of normal reads
-    fragment_length <- size.combined$size[size.combined$mut == 'FALSE']
-    counts <- size.combined$count[size.combined$mut == 'FALSE']
-
-    print("default smooth on wild-type data set at 0.03")
-    probs_normal <- estimate_real_length_probability(fragment_length, counts, min_length = min_length, max_length = max_length, bw_adjust = smooth)
-
-    ## plot a bar plot of the different probabilties of read lengths
-    print("plot barplots")
-    probs_mut <-
-        data.frame(
-            mut = T,
-            fragment_length = probs_mut$fragment_length,
-            probability = probs_mut$probability
-        )
-    probs_normal <-
-        data.frame(
-            mut = F,
-            fragment_length = probs_normal$fragment_length,
-            probability = probs_normal$probability
-        )
-
-    M <- data$mutant
-    R <- rep(1, length(M))
-    AF <- data$tumour_AF
-    e <- data$background_AF
-    RL <- data$size
-
-    RL_indices <- RL - probs_mut$fragment_length[1] + 1  ## The rows in the probability table that we need
-
-    print(table(RL_indices))
-    RL_PROB_0 <- probs_normal$probability[RL_indices]
-    RL_PROB_1 <- probs_mut$probability[RL_indices]
-
-    print(paste('length of RL_PROB', length(RL_PROB_0)))
-    print(paste('length of M', length(M)))
-
-    if (only_weigh_mutants)
-    {
-        print("only weighting mutant reads.")
-        RL_PROB_0[M == 0] <- 0.1
-        RL_PROB_1[M == 0] <- 0.1
-    }
-
-    if (use_size) {
-        print("returning likelihood ratio with RL")
-        output <- calc_likelihood_ratio_with_RL(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1,
-                                                initial_p = 0.01, iterations = 200)
-    } else{
-        print("returning likelihood ratio without RL")
-        output <- calc_likelihood_ratio(M, R, AF, e, iterations = 200)
-    }
-
-    output
-}
 
 #### Functions for downsampling ---------
 generate_size_probabilities <- function(size.combined, min_length = 60, max_length = 300, smooth = 0.25)
@@ -310,54 +213,4 @@ generate_size_probabilities <- function(size.combined, min_length = 60, max_leng
     probs_normal <- data.frame(mut = FALSE, fragment_length = probs_normal$fragment_length, probability = probs_normal$probability)
 
     list(probs_mut, probs_normal)
-}
-
-calculate_likelihood_ratio_for_sample.fast <- function(data, use_size = TRUE, final_prefix,
-                                                       only_weigh_mutants = TRUE, probs_mut, probs_normal)
-{
-    assert_that(is.logical(use_size), msg = "use_size must be a logical")
-    assert_that(is.logical(only_weigh_mutants), msg = "only_weigh_mutants must be a logical")
-
-    ## N.B. fast version!
-
-    M <- data$mutant
-    R <- rep(1, length(M))
-    AF <- data$tumour_AF
-    e <- data$background_AF
-    RL <- data$size
-
-    RL_indeces <- RL - probs_mut$fragment_length[1] + 1  ## The rows in the probability table that we need
-
-    print(table(RL_indeces))
-    RL_PROB_0 <- probs_normal$probability[RL_indeces]
-    RL_PROB_1 <- probs_mut$probability[RL_indeces]
-
-    print(paste('length of RL_PROB', length(RL_PROB_0)))
-    print(paste('length of M', length(M)))
-
-    if (only_weigh_mutants)
-    {
-        print("only weighting mutant reads.")
-        RL_PROB_0[M == 0] <- 0.1
-        RL_PROB_1[M == 0] <- 0.1
-    }
-
-    if (use_size & sum(M) > 0)
-    {
-        print("returning likelihood ratio with RL")
-        output <- calc_likelihood_ratio_with_RL(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1,
-                                                initial_p = 0.01, iterations = 200)
-    }
-    else if (use_size & sum(M) == 0)
-    {
-        print("no mutant reads, no need to run GLRT")
-        output <- list(0, 0, 0, 0)
-    }
-    else
-    {
-        print("returning likelihood ratio without RL")
-        output <- calc_likelihood_ratio(M, R, AF, e, iterations = 200)
-    }
-
-    output
 }
