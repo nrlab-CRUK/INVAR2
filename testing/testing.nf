@@ -10,10 +10,11 @@ include { createMutationsTable; offTargetErrorRates;
           createOnTargetMutationsTable; onTargetErrorRatesAndFilter } from '../processes/1_parse'
 include { annotateMutationsWithFragmentSize  } from '../processes/2_size_annotation'
 include { markOutliers; sizeCharacterisation; annotateMutationsWithOutlierSuppression } from '../processes/3_outlier_suppression'
-include { generalisedLikelihoodRatioTest } from '../processes/4_detection'
+include { generalisedLikelihoodRatioTest as generalisedLikelihoodRatioTestSpecific;
+          generalisedLikelihoodRatioTest as generalisedLikelihoodRatioTestNonSpecific } from '../processes/4_detection'
 
 include { diff as diff1; diff as diff2; diff as diff3; diff as diff4; diff as diff5; diff as diff6;
-          diff as diff7; diff as diff8; diff as diff9 } from './diff'
+          diff as diff7; diff as diff8; diff as diff9; diff as diff10 } from './diff'
 
 def dumpParams(logger, params)
 {
@@ -128,14 +129,24 @@ workflow
 
     // Generalised Likelihood Ratio Test
 
-    generalisedLikelihoodRatioTestChannel = channel.of(['SLX-19721', 'SXTLI001']).combine(
-        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/SLX-19721_SXTLI001.os.rds"))
+    generalisedLikelihoodRatioTestChannelSpecific = channel.of(['SLX-19721', 'SXTLI001', 'PARA_002']).combine(
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/SLX-19721.SXTLI001.PARA_002.perpatient.rds"))
 
-    generalisedLikelihoodRatioTest(
-        generalisedLikelihoodRatioTestChannel,
-        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/size_characterisation.rds"))
+    generalisedLikelihoodRatioTestChannelNonSpecific = channel.of(['SLX-19721', 'SXTLI001', 'PARA_028']).combine(
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/SLX-19721.SXTLI001.PARA_028.perpatient.rds"))
 
-    trimGLRT(generalisedLikelihoodRatioTest.out.invarScoresFile.map { p, b, f -> f } )
+    generalisedLikelihoodRatioTestSizeChannel =
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/size_characterisation.rds")
 
-    mapForDiff('generalisedLikelihoodRatioTest', trimGLRT.out.trimmedGLRT) | diff9
+    generalisedLikelihoodRatioTestSpecific(
+        generalisedLikelihoodRatioTestChannelSpecific, generalisedLikelihoodRatioTestSizeChannel)
+
+    generalisedLikelihoodRatioTestNonSpecific(
+        generalisedLikelihoodRatioTestChannelNonSpecific, generalisedLikelihoodRatioTestSizeChannel)
+
+    // Need to trim the non-specific file to only include the first iteration.
+    trimGLRT(generalisedLikelihoodRatioTestNonSpecific.out.invarScoresFile.map { p, b, pt, f -> f } )
+
+    mapForDiff('generalisedLikelihoodRatioTest', generalisedLikelihoodRatioTestSpecific.out.invarScoresTSV) | diff9
+    mapForDiff('generalisedLikelihoodRatioTest', trimGLRT.out.trimmedGLRT) | diff10
 }

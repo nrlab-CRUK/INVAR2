@@ -20,16 +20,10 @@ parseOptions <- function()
 
     options_list <- list(
         make_option(c("--mutations"), type="character", metavar="file",
-                    dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by outlierSuppression.R",
+                    dest="MUTATIONS_TABLE_FILE", help="The per-patient mutations table file (RDS) with outlier suppression values",
                     default=defaultMarker),
         make_option(c("--size-characterisation"), type="character", metavar="file",
                     dest="SIZE_CHARACTERISATION_FILE", help="The size characterisation summary file (RDS)",
-                    default=defaultMarker),
-        make_option(c("--pool"), type="character", metavar="string",
-                    dest="POOL", help="The pool (SLX) identifier for the mutations table file (one pool + barcode)",
-                    default=defaultMarker),
-        make_option(c("--barcode"), type="character", metavar="string",
-                    dest="BARCODE", help="The barcode for the mutations table file (one pool + barcode)",
                     default=defaultMarker),
         make_option(c("--bloodspot"), action="store_true", default=FALSE,
                     dest="BLOODSPOT", help="Indicate this is blood spot data."),
@@ -80,10 +74,9 @@ richTestOptions <- function()
     base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/generalisedLikelihoodRatioTest/source')
 
     list(
-        MUTATIONS_TABLE_FILE = str_c(base, '/SLX-19721_SXTLI001.os.rds'),
+        #MUTATIONS_TABLE_FILE = str_c(base, '/SLX-19721_SXTLI001_PARA_002.perpatient.rds'),
+        MUTATIONS_TABLE_FILE = str_c(base, '/SLX-19721_SXTLI001_PARA_028.perpatient.rds'),
         SIZE_CHARACTERISATION_FILE = str_c(base, '/size_characterisation.rds'),
-        POOL = 'SLX-19721',
-        BARCODE = 'SXTLI001',
         BLOODSPOT = FALSE,
         OUTLIER_SUPPRESSION = 0.05,
         THREADS = 4L,
@@ -268,11 +261,17 @@ calculateLikelihoodRatioForSampleWithoutSize <- function(mutationsTable, sizeTab
 
 singleIteration <- function(iteration, mutationsTable, sizeTable,
                             minFragmentLength, maxFragmentLength,
-                            smooth, onlyWeighMutants)
+                            smooth, onlyWeighMutants,
+                            .samplingSeed = NA)
 {
     sampled <- mutationsTable
     if (iteration > 1)
     {
+        if (!is.na(.samplingSeed))
+        {
+            set.seed(.samplingSeed)
+        }
+
         sampled <- mutationsTable %>%
             slice_sample(n = nrow(mutationsTable), replace = TRUE)
     }
@@ -299,22 +298,9 @@ singleIteration <- function(iteration, mutationsTable, sizeTable,
 # outlier filter value.
 #
 
-doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable)
+doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed = FALSE)
 {
     assert_that(nrow(criteria) == 1, msg = "criteria expected to be exactly one row")
-
-    joinCriteria <- criteria %>%
-        select(SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO)
-
-    # Filter down the tables to only be relevant for the criteria.
-
-    mutationsTable <- mutationsTable %>%
-        inner_join(joinCriteria, by = colnames(joinCriteria))
-
-    patientSpecificInfo <- mutationsTable %>%
-        count(PATIENT_SPECIFIC)
-
-    assert_that(nrow(patientSpecificInfo) == 1, msg = "Have both patient specific and non specific in the mutations table")
 
     # Calculate IMAFv2. Now have rows only for one sample and patient mutation
     # is for, so can use a slightly simpler function that returns a single value.
@@ -364,20 +350,22 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable)
 
     # only count mutant reads once for accurate ctDNA quantification
 
-    iterations <- ifelse(patientSpecificInfo$PATIENT_SPECIFIC, 1, 10)
+    patientSpecific <- mutationsTable %>%
+        distinct(PATIENT, PATIENT_MUTATION_BELONGS_TO) %>%
+        summarise(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO)
+    assert_that(nrow(patientSpecific) == 1, msg = "Have more than one patient + patient mutation belongs to pairing in file")
 
-    if (!is.na(scriptArgs$SAMPLING_SEED))
-    {
-        set.seed(scriptArgs$SAMPLING_SEED)
-    }
+    iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, 10)
 
     allIterations <-
-        lapply(1:iterations, singleIteration,
-               mutationsTable.half, sizeTable,
-               minFragmentLength = scriptArgs$MINIMUM_FRAGMENT_LENGTH,
-               maxFragmentLength = scriptArgs$MAXIMUM_FRAGMENT_LENGTH,
-               smooth = scriptArgs$SMOOTHING,
-               onlyWeighMutants = scriptArgs$ONLY_WEIGH_MUTANTS)
+        mclapply(1:iterations, singleIteration,
+                 mutationsTable.half, sizeTable,
+                 minFragmentLength = scriptArgs$MINIMUM_FRAGMENT_LENGTH,
+                 maxFragmentLength = scriptArgs$MAXIMUM_FRAGMENT_LENGTH,
+                 smooth = scriptArgs$SMOOTHING,
+                 onlyWeighMutants = scriptArgs$ONLY_WEIGH_MUTANTS,
+                 .samplingSeed = scriptArgs$SAMPLING_SEED,
+                 mc.cores = scriptArgs$THREADS, mc.set.seed = mc.set.seed)
 
     mutationsTableSummary <- mutationsTable %>%
         summarise(DP = n(), MUTATION_SUM = sum(MUTANT))
@@ -418,47 +406,44 @@ main <- function(scriptArgs)
         filter(PATIENT_SPECIFIC) %>%
         select(MUTANT, SIZE, COUNT, TOTAL, PROPORTION)
 
-    # Create a table of all samples and variable filter, then turn this into
-    # a list of single row tibbles. mclapply can then be used to work on every
-    # sample + filter combination in parallel.
-
-    allSamplesAndFilterCombinations <- mutationsTable %>%
+    mutationsInfo <- mutationsTable %>%
         distinct(POOL, BARCODE, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO) %>%
+        mutate(PATIENT_FILENAME = str_replace_all(PATIENT_MUTATION_BELONGS_TO, "\\s+", "_")) %>%
+        mutate(PATIENT_FILENAME = str_replace_all(PATIENT_FILENAME, "[^\\w+]+", ""))
+
+    assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique POOL, BARCODE, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
+
+    # Create a table of all combinations of variable filter, then turn this into
+    # a list of single row tibbles. lapply can then be used to work on every
+    # sample + filter combination, and within that iterations can be run in parallel.
+
+    allFilterCombinations <-
         crossing(OUTLIER.PASS = c(TRUE, FALSE),
                  LOCUS_NOISE.PASS = TRUE,
                  BOTH_STRANDS = TRUE)
 
-    ## TESTING ONLY - limit to samples.
-
-    #allSamplesAndFilterCombinations <- allSamplesAndFilterCombinations %>%
-        #filter(PATIENT_MUTATION_BELONGS_TO == 'PARA_028')
-        #filter(PATIENT_MUTATION_BELONGS_TO == 'PARA_002' & OUTLIER.PASS)
-
     slicer <- function(n, table) { slice(table, n) }
 
-    allSamplesAndFilterCombinationList <-
-        lapply(1:nrow(allSamplesAndFilterCombinations), slicer, allSamplesAndFilterCombinations)
+    allFilterCombinationList <-
+        lapply(1:nrow(allFilterCombinations), slicer, allFilterCombinations)
 
     invarResultsList <-
-        mclapply(allSamplesAndFilterCombinationList, doMain,
-                 scriptArgs, mutationsTable, sizeTable,
-                 mc.cores = scriptArgs$THREADS, mc.set.seed = hasRNGSeed)
-
-    # invarResultsList <-
-    #     lapply(allSamplesAndFilterCombinationList, doMain,
-    #              scriptArgs, mutationsTable, sizeTable)
+        lapply(allFilterCombinationList, doMain,
+               scriptArgs, mutationsTable, sizeTable,
+               mc.set.seed = hasRNGSeed)
 
     invarResultsTable <-
         bind_rows(invarResultsList) %>%
+        full_join(mutationsInfo, by = character()) %>%
         select(POOL, BARCODE, SAMPLE_NAME, PATIENT, PATIENT_MUTATION_BELONGS_TO,
-               LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
                ITERATION, USING_SIZE,
+               LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
                INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
                DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
         arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
-                LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS, ITERATION, USING_SIZE)
+                ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS)
 
-    outputName <- str_c("invar_scores.", scriptArgs$POOL, "_", scriptArgs$BARCODE, ".rds")
+    outputName <- str_c("invar_scores", mutationsInfo$POOL, mutationsInfo$BARCODE, mutationsInfo$PATIENT_FILENAME, "rds", sep = ".")
 
     saveRDSandTSV(invarResultsTable, outputName)
 }

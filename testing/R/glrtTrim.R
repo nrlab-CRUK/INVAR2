@@ -1,6 +1,6 @@
 # Trims only the reproducible output from a GLRT execution, namely
-# the patient specific rows. These only have values calculated once
-# and there is no random sampling, so these should match.
+# the first iteration only. The first iteration of the algorithm has
+# no sampling, so the values should match.
 
 library(assertthat)
 library(tidyverse)
@@ -13,5 +13,5 @@ assert_that(length(args) == 2, msg = "Expect exactly two arguments: the generate
 assert_that(file.exists(args[1]), msg = str_c(args[1], " does not exist."))
 
 readRDS(args[1]) %>%
-    filter(PATIENT == PATIENT_MUTATION_BELONGS_TO) %>%
+    filter(ITERATION == 1) %>%
     exportTSV(args[2])

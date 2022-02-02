@@ -4,8 +4,28 @@ and output_R/PARADIGM.f0.9_s2.BQ_20.MQ_40.size_characterisation.rds
 through GLRT_iterate_nonptspec.R and doing what the collection code does,
 namely looking for the lines with "INVAR_SCORE" in them (yes, really).
 
-Those rows were then manually juggled into a table and converted into
-the reference file seen here using tidyRef.R in this directory.
+The code should be run with:
+
+Rscript R/GLRT_iterate_nonptspec.R | tee GLRT.out
+
+We can then use the two scripts in this directory to manipulate the output into
+the reference tables:
+
+extractInvarScores.sh invarscore.SLX-19721_SXTLI001_PARA_002.csv
+
+Run GLRT_iterate_nonptspec.R again with the file
+output_R/os/PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.3.ptspec.0.05.combined.polished.size.os.Rdata
+
+This is "patient mutation belongs to" == PARA_028
+
+extractInvarScores.sh invarscore.SLX-19721_SXTLI001_PARA_028.csv
+
+When we have these two files, run the R script:
+
+Rscript tidyRef.R
+
+It produces a trimmed version of PARA_028 using only the first iteration.
+Subsequent iterations sample from the reads so are no reproducable.
 
 Note: there is a bug in GLRT_iterate_nonptspec.R: it prints the with size
 null and alt likelihoods for both rows. So the likelihoods for the execution

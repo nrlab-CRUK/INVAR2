@@ -1,5 +1,11 @@
 Both inputs already exist from earlier processes. The size characterisation
 file is created as part of making the references to sizeCharacterisation
 (i.e. it's reference output). The sized sample mutations table is already
-an input (source) for sizeCharacterisation.
+an input (source) for sizeCharacterisation. Now we're running GLRT on per
+pool + sample + patient files, the actual source file (per patient) is made
+by running in R:
+
+t <- readRDS('SLX-19721_SXTLI001.os.rds')
+t %>% filter(PATIENT_MUTATION_BELONGS_TO == 'PARA_002') %>% saveRDS('SLX-19721.SXTLI001.PARA_002.perpatient.rds')
+t %>% filter(PATIENT_MUTATION_BELONGS_TO == 'PARA_028') %>% saveRDS('SLX-19721.SXTLI001.PARA_028.perpatient.rds')
 
