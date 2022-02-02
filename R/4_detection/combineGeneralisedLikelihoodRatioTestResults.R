@@ -1,7 +1,7 @@
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))
-suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(stringr))
 
 source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
 

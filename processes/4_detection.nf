@@ -64,7 +64,7 @@ workflow detection
         scoresChannel =
             generalisedLikelihoodRatioTest.out.invarScoresFile
                 .map { p, b, f -> f }
-                .combine()
+                .collect()
 
         combineGeneralisedLikelihoodRatioTestResults(scoresChannel)
 }
