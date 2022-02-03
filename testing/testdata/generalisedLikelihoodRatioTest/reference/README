@@ -8,24 +8,34 @@ The code should be run with:
 
 Rscript R/GLRT_iterate_nonptspec.R | tee GLRT.out
 
-We can then use the two scripts in this directory to manipulate the output into
-the reference tables:
+The "testdata" directory has three files "reorganiseInvarScores.*".
 
-extractInvarScores.sh invarscore.SLX-19721_SXTLI001_PARA_002.csv
+The GLRT.out file from above should be processed with the .sh version,
+with five parameters.
 
-Run GLRT_iterate_nonptspec.R again with the file
-output_R/os/PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.3.ptspec.0.05.combined.polished.size.os.Rdata
+1. The path to "GLRT.out" from above.
+2. The pool (SLX) number.
+3. The barcode.
+4. The patient the mutation is for.
+5. The sample name.
 
-This is "patient mutation belongs to" == PARA_028
+The shell script uses first the Python script to untangle the output
+lines and then the R script to standardise and arrange the file.
 
-extractInvarScores.sh invarscore.SLX-19721_SXTLI001_PARA_028.csv
+For example:
 
-When we have these two files, run the R script:
+../../reorganiseInvarScores.sh ~/work/invar/pipeline/GLRT.out SLX-19721 SXTLI001 PARA_028 "EXP3079_PARA_002_EOT" 
+../../reorganiseInvarScores.sh ~/work/invar/pipeline/GLRT.out SLX-19721 SXTLI001 PARA_002 "EXP3079_PARA_002_EOT" 
 
-Rscript tidyRef.R
+The script will produce files
+REFERENCE_invar_scores.<pool>.<barcode>.<patient>.rds
+REFERENCE_invar_scores.<pool>.<barcode>.<patient>.tsv
+REFERENCE_invar_scores.<pool>.<barcode>.<patient>.trimmed.tsv
 
-It produces a trimmed version of PARA_028 using only the first iteration.
-Subsequent iterations sample from the reads so are no reproducable.
+The trimmed version is only iteration one of the GLRT algorithm, which
+has no sampling and is therefore reproduceable. It will be the same
+when the GLRT algorithm ran on the patient specific mutations.
+
 
 Note: there is a bug in GLRT_iterate_nonptspec.R: it prints the with size
 null and alt likelihoods for both rows. So the likelihoods for the execution

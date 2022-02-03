@@ -24,7 +24,7 @@ parseOptions <- function()
 
     options_list <- list(
         make_option(c("--mutations"), type="character", metavar="file",
-                    dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by part one of the pipeline",
+                    dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) with outlier suppression flags",
                     default=defaultMarker),
         make_option(c("--pool"), type="character", metavar="string",
                     dest="POOL", help="The pool (SLX) identifier for the mutations table file (one pool + barcode)",

@@ -43,7 +43,10 @@ parseArgs <- function(args)
         convertedFile = str_c(dir, str_c(name, '.new.tsv'), sep='/')
     }
 
-    list(SOURCE = args[1], NAME = name, EXTENSION = extension, CONVERTED = convertedFile)
+    filenameParts = (basename(convertedFile) %>% str_split('\\.'))[[1]]
+    convertedExtension = str_to_lower(tail(filenameParts, 1))
+
+    list(SOURCE = args[1], NAME = name, EXTENSION = extension, CONVERTED = convertedFile, CONVERTED_EXTENSION = convertedExtension)
 }
 
 desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'REF_R', 'ALT_R', 'MQSB',
@@ -93,7 +96,7 @@ if ('MUT_CLASS' %in% colnames(t)) {
 
 if ('SAMPLE_NAME' %in% colnames(t)) {
     t <- t %>%
-        mutate(SAMPLE_NAME = str_remove(SAMPLE_NAME, str_c(' (.+)$')))
+        mutate(SAMPLE_NAME = str_remove(SAMPLE_NAME, ' (.+)$'))
 }
 
 if ('MUTANT' %in% colnames(t)) {
@@ -109,11 +112,17 @@ if ('PASS' %in% colnames(t)) {
 # See https://stackoverflow.com/questions/26497751/pass-a-vector-of-variable-names-to-arrange-in-dplyr
 t <- t %>%
     select(any_of(desiredOrder)) %>%
-    mutate_if(is.logical, toChar) %>%
-    mutate_if(is.double, signif, digits = 6) %>%
     arrange_at(vars(any_of(orderByColumns)))
 
 message("Writing ", args$CONVERTED)
 
-write_tsv(t, file = args$CONVERTED)
+if (args$CONVERTED_EXTENSION == 'rds') {
+    saveRDS(t, args$CONVERTED)
+} else if (args$CONVERTED_EXTENSION == 'tsv') {
+    t %>%
+        mutate_if(is.logical, toChar) %>%
+        mutate_if(is.double, signif, digits = 6) %>%
+        write_tsv(t, file = args$CONVERTED)
+}
+
 

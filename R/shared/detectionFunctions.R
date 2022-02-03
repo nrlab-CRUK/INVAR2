@@ -181,36 +181,3 @@ estimate_real_length_probability <- function(fragment_length, counts, bw_adjust 
 
     data.frame(fragment_length = lengths, probability = probs)
 }
-
-
-
-#### Functions for downsampling ---------
-generate_size_probabilities <- function(size.combined, min_length = 60, max_length = 300, smooth = 0.25)
-{
-    ## read length probabilites for mutant reads
-    print("generating read length probabilities")
-    fragment_length <- size.combined$size[size.combined$mut == 'TRUE']
-    counts <- size.combined$count[size.combined$mut == 'TRUE']
-
-    print("estimating READ length probabilities")
-    print(paste("smooth = ", smooth))
-    print(paste("min length = ", min_length))
-    print(paste("max length = ", max_length))
-    smooth <- as.numeric(smooth)
-
-    probs_mut <- estimate_real_length_probability(fragment_length, counts, min_length = min_length, max_length = max_length, bw_adjust = smooth)
-
-    ## read length probabilties of normal reads
-    fragment_length <- size.combined$size[size.combined$mut == 'FALSE']
-    counts <- size.combined$count[size.combined$mut == 'FALSE']
-
-    print("default smooth on wild-type data set at 0.03")
-    probs_normal <- estimate_real_length_probability(fragment_length, counts, min_length = min_length, max_length = max_length, bw_adjust = smooth)
-
-    ## plot a bar plot of the different probabilties of read lengths
-    print("plot barplots")
-    probs_mut <- data.frame(mut = TRUE, fragment_length = probs_mut$fragment_length, probability = probs_mut$probability)
-    probs_normal <- data.frame(mut = FALSE, fragment_length = probs_normal$fragment_length, probability = probs_normal$probability)
-
-    list(probs_mut, probs_normal)
-}
