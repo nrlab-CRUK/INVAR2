@@ -137,7 +137,7 @@ main <- function(scriptArgs)
     mutationsTable %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
-        saveRDSandTSV(outputName)
+        saveRDS(outputName)
 }
 
 # Launch it.

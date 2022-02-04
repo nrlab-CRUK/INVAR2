@@ -106,10 +106,10 @@ main <- function(scriptArgs)
         arrange(PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE)
 
     sizeCharacteristicsTable %>%
-        saveRDSandTSV("size_characterisation.all.rds")
+        saveRDS("size_characterisation.all.rds")
 
     sizeCharacteristicsSummary %>%
-        saveRDSandTSV("size_characterisation.rds")
+        saveRDS("size_characterisation.rds")
 }
 
 # Launch it.

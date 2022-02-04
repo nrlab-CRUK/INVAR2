@@ -389,12 +389,12 @@ main <- function(scriptArgs)
         addPatientAndBackgroundColumns(mutationTable, tumourMutationTable, layoutTable, backgroundErrorTable)
 
     backgroundErrorTable %>%
-        saveRDSandTSV('background_error_rates.rds')
+        saveRDS('background_error_rates.rds')
 
     mutationTable.withPatientAndBackground %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
-        saveRDSandTSV('mutation_table.on_target.all.rds')
+        saveRDS('mutation_table.on_target.all.rds')
 }
 
 # Launch it.

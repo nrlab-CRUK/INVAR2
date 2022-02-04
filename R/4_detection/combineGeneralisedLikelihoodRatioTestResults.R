@@ -54,7 +54,8 @@ main <- function(scriptArgs)
         arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
                 LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS, ITERATION, USING_SIZE)
 
-    saveRDSandTSV(glrtTable, 'invar_scores.rds')
+    saveRDS(glrtTable, 'invar_scores.rds')
+    exportTSV(glrtTable, 'invar_scores.tsv')
 }
 
 # Launch it.

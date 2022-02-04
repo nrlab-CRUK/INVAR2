@@ -204,32 +204,7 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
         LOCUS_NOISE.BOTH_READS = bothFilters
     )
 
-    saveRDS(allErrorRates, str_c('mutation_table.error_rates.', cosmicFilePart, '.rds'))
-
-    # Save tables as TSV for reference
-
-    if (TRUE)
-    {
-        oneRead %>%
-            removeMutationTableDerivedColumns() %>%
-            arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
-            exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.oneread.tsv'))
-
-        locusNoisePass %>%
-            removeMutationTableDerivedColumns() %>%
-            arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
-            exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise.tsv'))
-
-        bothStrands %>%
-            removeMutationTableDerivedColumns() %>%
-            arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
-            exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.bothreads.tsv'))
-
-        bothFilters %>%
-            removeMutationTableDerivedColumns() %>%
-            arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
-            exportTSV(str_c('mutation_table.off_target.', cosmicFilePart, '.locusnoise_bothreads.tsv'))
-    }
+    saveRDS(allErrorRates, str_c('error_rates.off_target.', cosmicFilePart, '.rds'))
 
     allErrorRates
 }
@@ -271,8 +246,6 @@ main <- function(scriptArgs)
     # Calculate the error rates with filters and with or without COSMIC.
 
     mclapply(c(TRUE, FALSE), doMain, mutationTable, layoutTable, lociErrorRateTable)
-    #doMain(TRUE, mutationTable, layoutTable, lociErrorRateTable)
-    #doMain(FALSE, mutationTable, layoutTable, lociErrorRateTable)
 }
 
 # Launch it.

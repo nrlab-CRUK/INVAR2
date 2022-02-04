@@ -76,7 +76,6 @@ process annotateMutationsWithFragmentSize
 
     output:
         tuple val(pool), val(barcode), path("index.csv"), path("mutation_table.with_sizes.*.rds"), emit: "mutationsFiles"
-        path("mutation_table.with_sizes.*.tsv"), emit: "mutationsTSVs"
 
     shell:
         """

@@ -219,14 +219,6 @@ main <- function(scriptArgs)
         select(-UNIQUE_POS) %>%
         saveRDS('locus_error_rates.on_target.rds')
 
-    # To make it as similar as possible to the old pipeline output when saved.
-    # Aids comparison.
-
-    lociErrorRateTable %>%
-        select(-UNIQUE_POS, -LOCUS_NOISE.PASS) %>%
-        arrange(CHROM, POS, TRINUCLEOTIDE) %>%
-        exportTSV('locus_error_rates.on_target.tsv')
-
     lociErrorRatePlot <- lociErrorRateTable %>%
         createLociErrorRatePlot(study = scriptArgs$STUDY, tapasSetting = scriptArgs$TAPAS_SETTING)
 
@@ -248,7 +240,7 @@ main <- function(scriptArgs)
     mutationTable.filtered %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
-        saveRDSandTSV('mutation_table.on_target.rds')
+        saveRDS('mutation_table.on_target.rds')
 }
 
 # Launch it.

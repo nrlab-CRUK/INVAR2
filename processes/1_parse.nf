@@ -170,9 +170,7 @@ process createMutationsTable
         path layoutFile
 
     output:
-        path 'mutation_table.all.rds', emit: "allMutationsFile", optional: true
         path 'mutation_table.filtered.rds', emit: "filteredMutationsFile"
-        path 'mutation_table.filtered.tsv', emit: "filteredMutationsTSV"
 
     shell:
         """
@@ -200,10 +198,8 @@ process offTargetErrorRates
 
     output:
         path 'locus_error_rates.off_target.rds', emit: 'locusErrorRates'
-        path 'locus_error_rates.off_target.tsv', emit: 'locusErrorRatesTSV'
-        path 'mutation_table.error_rates.cosmic.rds', emit: "cosmicErrorRates"
-        path 'mutation_table.error_rates.no_cosmic.rds', emit: "noCosmicErrorRates"
-        path 'mutation_table.off_target.*.tsv', emit: "errorRatesTSV"
+        path 'error_rates.off_target.cosmic.rds', emit: "cosmicErrorRates"
+        path 'error_rates.off_target.no_cosmic.rds', emit: "noCosmicErrorRates"
 
     shell:
         """
@@ -228,9 +224,7 @@ process createOnTargetMutationsTable
 
     output:
         path 'mutation_table.on_target.all.rds', emit: "onTargetMutationsFile"
-        path 'mutation_table.on_target.all.tsv', emit: "onTargetMutationsTSV"
         path 'background_error_rates.rds', emit: "backgroundErrorRates"
-        path 'background_error_rates.tsv', emit: "backgroundErrorRatesTSV"
 
     shell:
         """
@@ -253,10 +247,8 @@ process onTargetErrorRatesAndFilter
 
     output:
         path 'locus_error_rates.on_target.rds', emit: 'locusErrorRates'
-        path 'locus_error_rates.on_target.tsv', emit: 'locusErrorRatesTSV'
         path 'locus_error_rates.on_target.pdf', optional: true, emit: 'locusErrorRatesPlot'
         path 'mutation_table.on_target.rds', emit: "onTargetMutationsFile"
-        path 'mutation_table.on_target.tsv', emit: "onTargetMutationsTSV"
 
     shell:
         tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"

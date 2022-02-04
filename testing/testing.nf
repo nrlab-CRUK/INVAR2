@@ -13,8 +13,8 @@ include { markOutliers; sizeCharacterisation; annotateMutationsWithOutlierSuppre
 include { generalisedLikelihoodRatioTest as generalisedLikelihoodRatioTestSpecific;
           generalisedLikelihoodRatioTest as generalisedLikelihoodRatioTestNonSpecific } from '../processes/4_detection'
 
-include { diff as diff1; diff as diff2; diff as diff3; diff as diff4; diff as diff5; diff as diff6;
-          diff as diff7; diff as diff8; diff as diff9; diff as diff10 } from './diff'
+include { rdsDiff as diff1; rdsDiff as diff2; rdsDiff as diff3; rdsDiff as diff4; rdsDiff as diff5; rdsDiff as diff6;
+          rdsDiff as diff7; rdsDiff as diff8; rdsDiff as diff9; rdsDiff as diff10 } from './diff'
 
 def dumpParams(logger, params)
 {
@@ -29,7 +29,7 @@ def mapForDiff(pname, channel)
 {
     channel.map
     {
-        tuple pname, it, file("testdata/${pname}/reference/REFERENCE_${it.name}", checkIfExists: true)
+        tuple pname, it, file("testdata/${pname}/reference/REFERENCE_${it.baseName}.tsv", checkIfExists: true)
     }
 }
 
@@ -44,14 +44,14 @@ process trimGLRT
         path glrtOutputRDS
 
     output:
-        path outputFilename, emit: "trimmedGLRT"
+        path trimmedGLRT, emit: "trimmedGLRT"
 
     shell:
-        outputFilename = "${glrtOutputRDS.baseName}.trimmed.tsv"
+        trimmedGLRT = "${glrtOutputRDS.baseName}.trimmed.rds"
 
         """
         Rscript --vanilla "!{params.projectHome}/testing/R/glrtTrim.R" \
-            "!{glrtOutputRDS}" "!{outputFilename}"
+            "!{glrtOutputRDS}" "!{trimmedGLRT}"
         """
 }
 
@@ -68,24 +68,29 @@ workflow
                          tumourMutationsChannel,
                          layoutChannel)
 
-    mapForDiff('createMutationsTable', createMutationsTable.out.filteredMutationsTSV) | diff1
+    mapForDiff('createMutationsTable', createMutationsTable.out.filteredMutationsFile) | diff1
 
     // offTargetErrorRates
 
     offTargetErrorRates(channel.fromPath("testdata/offTargetErrorRates/source/mutation_table.filtered.rds"),
                         layoutChannel)
 
-    mapForDiff('offTargetErrorRates', offTargetErrorRates.out.locusErrorRatesTSV.mix(offTargetErrorRates.out.errorRatesTSV.flatten())) | diff2
+    offTargetOutputs =
+        offTargetErrorRates.out.locusErrorRates
+            .mix(offTargetErrorRates.out.cosmicErrorRates)
+            .mix(offTargetErrorRates.out.noCosmicErrorRates)
+    
+    mapForDiff('offTargetErrorRates', offTargetOutputs) | diff2
 
     // createOnTargetMutationsTable
 
     createOnTargetMutationsTable(channel.fromPath('testdata/createOnTargetMutationsTable/source/mutation_table.filtered.rds'),
                                  tumourMutationsChannel,
                                  layoutChannel,
-                                 channel.fromPath('testdata/createOnTargetMutationsTable/source/mutation_table.error_rates.no_cosmic.rds'))
+                                 channel.fromPath('testdata/createOnTargetMutationsTable/source/error_rates.off_target.no_cosmic.rds'))
 
     mapForDiff('createOnTargetMutationsTable',
-        createOnTargetMutationsTable.out.onTargetMutationsTSV.mix(createOnTargetMutationsTable.out.backgroundErrorRatesTSV)) | diff3
+        createOnTargetMutationsTable.out.onTargetMutationsFile.mix(createOnTargetMutationsTable.out.backgroundErrorRates)) | diff3
 
     // onTargetErrorRatesAndFilter
 
@@ -93,7 +98,7 @@ workflow
                                 tumourMutationsChannel,
                                 layoutChannel)
 
-    mapForDiff('onTargetErrorRatesAndFilter', onTargetErrorRatesAndFilter.out.locusErrorRatesTSV.mix(onTargetErrorRatesAndFilter.out.onTargetMutationsTSV)) | diff4
+    mapForDiff('onTargetErrorRatesAndFilter', onTargetErrorRatesAndFilter.out.locusErrorRates.mix(onTargetErrorRatesAndFilter.out.onTargetMutationsFile)) | diff4
 
     // sizeAnnotation
 
@@ -115,8 +120,7 @@ workflow
             }
             .map { p, b, pt, f -> f }
 
-    // TODO: Produces only RDS files. Need to change to compare TSV.
-    // mapForDiff('annotateMutationsWithFragmentSize', annotateMutationsWithFragmentSize_perPatientChannel) | diff5
+    mapForDiff('annotateMutationsWithFragmentSize', annotateMutationsWithFragmentSize_perPatientChannel) | diff5
 
     // Outlier suppression
 
@@ -125,13 +129,13 @@ workflow
 
     markOutliers(markOutliersChannel)
 
-    mapForDiff('markOutliers', markOutliers.out.mutationsTSV) | diff6
+    mapForDiff('markOutliers', markOutliers.out.mutationsFile.map { p, b, pt, f -> f }) | diff6
 
     // Size characterisation
 
     sizeCharacterisation(channel.fromPath("testdata/sizeCharacterisation/source/*.rds").collect())
 
-    mapForDiff('sizeCharacterisation', sizeCharacterisation.out.allSizesTSV.mix(sizeCharacterisation.out.summaryTSV)) | diff7
+    mapForDiff('sizeCharacterisation', sizeCharacterisation.out.allSizesFile.mix(sizeCharacterisation.out.summaryFile)) | diff7
 
     // Annotate main mutations with outlier suppression flags.
 
@@ -139,7 +143,7 @@ workflow
         channel.fromPath("testdata/annotateMutationsWithOutlierSuppression/source/mutation_table.on_target.rds"),
         channel.fromPath("testdata/annotateMutationsWithOutlierSuppression/source/mutation_table.outliersuppressed.*.rds").collect())
 
-    mapForDiff('annotateMutationsWithOutlierSuppression', annotateMutationsWithOutlierSuppression.out.mutationsTSV) | diff8
+    mapForDiff('annotateMutationsWithOutlierSuppression', annotateMutationsWithOutlierSuppression.out.mutationsFile) | diff8
 
     // Generalised Likelihood Ratio Test
 
@@ -159,8 +163,8 @@ workflow
         generalisedLikelihoodRatioTestChannelNonSpecific, generalisedLikelihoodRatioTestSizeChannel)
 
     // Need to trim the non-specific file to only include the first iteration.
-    trimGLRT(generalisedLikelihoodRatioTestNonSpecific.out.invarScoresFile.map { p, b, pt, f -> f } )
+    trimGLRT(generalisedLikelihoodRatioTestNonSpecific.out.invarScores.map { p, b, pt, f -> f } )
 
-    mapForDiff('generalisedLikelihoodRatioTest', generalisedLikelihoodRatioTestSpecific.out.invarScoresTSV) | diff9
+    mapForDiff('generalisedLikelihoodRatioTest', generalisedLikelihoodRatioTestSpecific.out.invarScores.map { p, b, pt, f -> f }) | diff9
     mapForDiff('generalisedLikelihoodRatioTest', trimGLRT.out.trimmedGLRT) | diff10
 }

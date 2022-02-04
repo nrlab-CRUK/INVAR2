@@ -256,7 +256,7 @@ saveForPatient <- function(patient, mutationsTable, pool, barcode)
         filter(PATIENT_MUTATION_BELONGS_TO == patient) %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
-        saveRDSandTSV(filename)
+        saveRDS(filename)
 
     tibble(POOL = pool, BARCODE = barcode,
            PATIENT_MUTATION_BELONGS_TO = patient, FILE_NAME = filename)

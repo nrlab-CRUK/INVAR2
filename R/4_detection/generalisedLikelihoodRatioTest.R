@@ -412,9 +412,7 @@ main <- function(scriptArgs)
         select(MUTANT, SIZE, COUNT, TOTAL, PROPORTION)
 
     mutationsInfo <- mutationsTable %>%
-        distinct(POOL, BARCODE, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO) %>%
-        mutate(PATIENT_FILENAME = str_replace_all(PATIENT_MUTATION_BELONGS_TO, "\\s+", "_")) %>%
-        mutate(PATIENT_FILENAME = str_replace_all(PATIENT_FILENAME, "[^\\w+]+", ""))
+        distinct(POOL, BARCODE, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO)
 
     assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique POOL, BARCODE, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
 
@@ -448,9 +446,10 @@ main <- function(scriptArgs)
         arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
                 ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS)
 
-    outputName <- str_c("invar_scores", mutationsInfo$POOL, mutationsInfo$BARCODE, mutationsInfo$PATIENT_FILENAME, "rds", sep = ".")
+    outputName <- str_c("invar_scores", mutationsInfo$POOL, mutationsInfo$BARCODE,
+                        makeSafeForFileName(mutationsInfo$PATIENT_MUTATION_BELONGS_TO), "rds", sep = ".")
 
-    saveRDSandTSV(invarResultsTable, outputName)
+    saveRDS(invarResultsTable, outputName)
 }
 
 # Launch it.

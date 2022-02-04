@@ -16,13 +16,10 @@ process generalisedLikelihoodRatioTest
         each path(sizeCharacterisationFile)
 
     output:
-        tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(invarScoresFile), emit: "invarScoresFile"
-        path invarScoresTSV, emit: "invarScoresTSV"
+        tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(invarScoresFile), emit: "invarScores"
 
     shell:
-        def basename = "invar_scores.${pool}.${barcode}.${makeSafeForFileName(patientMutationBelongsTo)}"
-        invarScoresFile = "${basename}.rds"
-        invarScoresTSV = "${basename}.tsv"
+        invarScoresFile = "invar_scores.${pool}.${barcode}.${makeSafeForFileName(patientMutationBelongsTo)}.rds"
 
         """
         Rscript --vanilla "!{params.projectHome}/R/4_detection/generalisedLikelihoodRatioTest.R" \
@@ -72,7 +69,7 @@ workflow detection
         generalisedLikelihoodRatioTest(osMutationsChannel, sizeCharacterisationChannel)
 
         scoresChannel =
-            generalisedLikelihoodRatioTest.out.invarScoresFile
+            generalisedLikelihoodRatioTest.out.invarScores
                 .map { p, b, pt, f -> f }
                 .collect()
 

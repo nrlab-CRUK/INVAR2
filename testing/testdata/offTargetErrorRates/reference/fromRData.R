@@ -23,17 +23,23 @@ toChar <- function(l)
     ifelse(l, 'T', 'F')
 }
 
+convert <- function(errorRateTable)
+{
+    as_tibble(errorRateTable) %>%
+    rename_all(str_to_upper) %>%
+    select(-contains('UNIQ')) %>%
+    rename(POOL = SLX, DP_SUM = TOTAL_DP, MUTATION_SUM = MUT_SUM) %>%
+    mutate_if(is.logical, toChar) %>%
+    mutate_if(is.double, signif, digits = 6) %>%
+    arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE)
+}
+
 convertAndSave <- function(errorRateTable, tsvFile)
 {
     message("Writing ", tsvFile)
 
-    as_tibble(errorRateTable) %>%
-    rename_all(str_to_upper) %>%
-    select(-contains('UNIQ'), -any_of(c('MUT_SUM'))) %>%
-    rename(POOL = SLX, DP_SUM = TOTAL_DP) %>%
-    mutate_if(is.logical, toChar) %>%
-    mutate_if(is.double, signif, digits = 6) %>%
-    arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
+    errorRateTable %>%
+    convert() %>%
     write_tsv(tsvFile)
 }
 
@@ -53,11 +59,14 @@ for (cosmic in c(FALSE, TRUE))
 
     cosmicc = ifelse(cosmic, 'cosmic', 'no_cosmic')
 
-    saveRDS(errorRateList, str_c('mutation_table.off_target.', cosmicc, '.rds'))
+    converted <- lapply(errorRateList, convert)
+    saveRDS(converted, str_c('error_rates.off_target.', cosmicc, '.rds'))
 
-    convertAndSave(errorRateList$pre_filter, str_c('REFERENCE_mutation_table.off_target.', cosmicc, '.oneread.tsv'))
-    convertAndSave(errorRateList$locus_noise_filter_only, str_c('REFERENCE_mutation_table.off_target.', cosmicc, '.locusnoise.tsv'))
-    convertAndSave(errorRateList$both_strands_only, str_c('REFERENCE_mutation_table.off_target.', cosmicc, '.bothreads.tsv'))
-    convertAndSave(errorRateList$locus_noise.both_strands, str_c('REFERENCE_mutation_table.off_target.', cosmicc, '.locusnoise_bothreads.tsv'))
+    write_tsv(bind_rows(converted), str_c('REFERENCE_error_rates.off_target.', cosmicc, '.tsv'))
+
+    write_tsv(converted$pre_filter, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.oneread.tsv'))
+    write_tsv(converted$locus_noise_filter_only, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.locusnoise.tsv'))
+    write_tsv(converted$both_strands_only, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.bothreads.tsv'))
+    write_tsv(converted$locus_noise.both_strands, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.locusnoise_bothreads.tsv'))
 }
 

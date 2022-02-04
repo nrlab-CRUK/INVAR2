@@ -108,7 +108,7 @@ main <- function(scriptArgs)
         bind_rows(outlierFlagTables) %>%
         arrange(POOL, BARCODE, CHROM, POS)
 
-    saveRDSandTSV(outlierFlagTable, "outlierflags.rds")
+    saveRDS(outlierFlagTable, "outlierflags.rds")
 
     outlierFlagTable %>%
         filter(!OUTLIER.PASS) %>%
@@ -129,7 +129,7 @@ main <- function(scriptArgs)
 
     mutationTable.withOutlier %>%
         arrangeMutationTableForExport() %>%
-        saveRDSandTSV('mutation_table.with_outliers.rds')
+        saveRDS('mutation_table.with_outliers.rds')
 }
 
 # Launch it.

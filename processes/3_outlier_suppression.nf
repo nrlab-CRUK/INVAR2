@@ -11,12 +11,9 @@ process markOutliers
 
     output:
         tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(outlierMarkedFile), emit: "mutationsFile"
-        path outlierMarkedTSV, emit: "mutationsTSV"
 
     shell:
-        def basename = "mutation_table.outliersuppressed.${pool}.${barcode}.${makeSafeForFileName(patientMutationBelongsTo)}"
-        outlierMarkedFile = "${basename}.rds"
-        outlierMarkedTSV = "${basename}.tsv"
+        outlierMarkedFile = "mutation_table.outliersuppressed.${pool}.${barcode}.${makeSafeForFileName(patientMutationBelongsTo)}.rds"
 
         """
         Rscript --vanilla "!{params.projectHome}/R/3_outlier_suppression/outlierSuppression.R" \
@@ -35,9 +32,7 @@ process sizeCharacterisation
 
     output:
         path 'size_characterisation.all.rds', emit: "allSizesFile"
-        path 'size_characterisation.all.tsv', emit: "allSizesTSV"
         path 'size_characterisation.rds', emit: "summaryFile"
-        path 'size_characterisation.tsv', emit: "summaryTSV"
 
     shell:
         """
@@ -58,7 +53,6 @@ process annotateMutationsWithOutlierSuppression
 
     output:
         path 'mutation_table.with_outliers.rds', emit: "mutationsFile"
-        path 'mutation_table.with_outliers.tsv', emit: "mutationsTSV"
 
     shell:
         """

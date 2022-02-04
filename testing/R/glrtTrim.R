@@ -14,4 +14,4 @@ assert_that(file.exists(args[1]), msg = str_c(args[1], " does not exist."))
 
 readRDS(args[1]) %>%
     filter(ITERATION == 1) %>%
-    exportTSV(args[2])
+    saveRDS(args[2])

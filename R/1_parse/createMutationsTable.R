@@ -194,15 +194,10 @@ main <- function(scriptArgs)
 
     message("Number of mutations after multiallelic filter = ", nrow(mutationTable.biallelic))
 
-    #mutationTable.all %>%
-    #    removeMutationTableDerivedColumns() %>%
-    #    arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE) %>%
-    #    saveRDSandTSV('mutation_table.all.rds')
-
     mutationTable.biallelic %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
-        saveRDSandTSV("mutation_table.filtered.rds")
+        saveRDS("mutation_table.filtered.rds")
 
     if (nrow(multiallelicBlacklist) > 0)
     {
