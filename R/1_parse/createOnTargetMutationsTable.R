@@ -64,11 +64,14 @@ parseOptions <- function()
 
 richTestOptions <- function()
 {
+    testhome <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/')
+    base <- str_c(testhome, 'createOnTargetMutationsTable/source/')
+
     list(
-        MUTATIONS_TABLE_FILE = 'mutations/mutation_table.filtered.rds',
-        TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
-        LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
-        ERROR_RATES_FILE = 'off_target/mutation_table.error_rates.no_cosmic.rds'
+        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.filtered.rds'),
+        ERROR_RATES_FILE = str_c(base, 'mutation_table.error_rates.no_cosmic.rds'),
+        TUMOUR_MUTATIONS_FILE = str_c(testhome, 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv'),
+        LAYOUT_FILE = str_c(testhome, 'source_files/combined.SLX_table_with_controls_031220.csv')
     )
 }
 
@@ -307,7 +310,7 @@ errorTableComplementaryClasses <- function(backgroundErrorTable)
 # Referred functions are from TAPAS_functions.R
 #
 
-addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
+addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, layoutTable, backgroundErrorTable)
 {
     # This bit from "annotate_with_SLX_table", plus the additional column
 
@@ -333,11 +336,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
         classifyForPatientSpecificity(tumourMutationTable, layoutTable) %>%
         convertComplementaryMutations()
 
-    # Calculate background error rates.
-
-    backgroundErrorTable <- errorRatesList %>%
-        calculateBackgroundError(layoutTable) %>%
-        errorTableComplementaryClasses()
+    # Add background error rates.
 
     backgroundErrorTable.forJoin <- backgroundErrorTable %>%
         mutate(MUTATION_CLASS = str_c(REF, ALT, sep = '/')) %>%
@@ -382,8 +381,15 @@ main <- function(scriptArgs)
             mutate(ERROR_RATE_TYPE = str_to_lower(v))
     }
 
+    backgroundErrorTable <- errorRatesList %>%
+        calculateBackgroundError(layoutTable) %>%
+        errorTableComplementaryClasses()
+
     mutationTable.withPatientAndBackground <-
-        addPatientAndBackgroundColumns(mutationTable, tumourMutationTable, layoutTable, errorRatesList)
+        addPatientAndBackgroundColumns(mutationTable, tumourMutationTable, layoutTable, backgroundErrorTable)
+
+    backgroundErrorTable %>%
+        saveRDSandTSV('background_error_rates.rds')
 
     mutationTable.withPatientAndBackground %>%
         removeMutationTableDerivedColumns() %>%

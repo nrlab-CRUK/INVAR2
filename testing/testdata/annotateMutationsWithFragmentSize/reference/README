@@ -1,6 +1,11 @@
-Reference is from saving the combined.polished.size_ann data
-frame in size_annotation.R (line 38) and standardising with
-reorganiseMutationTable.R.
+References are from the files
+PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.1.ptspec.0.05.combined.polished.size.Rdata
+and
+PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.3.nonptspec.0.05.combined.polished.size.Rdata
+in output_R/combined.polished.size/
+
+Sample 1 is PARA_002 and sample 3 is PARA_028 for the patient
+mutation belongs to column.
 
 Also need to set the seed for the random number generator when
 sampling in downsample_fragments from TAPAS_functions.R

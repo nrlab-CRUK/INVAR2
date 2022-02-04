@@ -1,8 +1,12 @@
-The source information is taken by making a small modification to
-size_annotation.R to save the whole data frame for SLX-19721 barcode
-SXTLI001 rather than the split per sample files it originally outputs.
+Sources are from the files
+PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.1.ptspec.0.05.combined.polished.size.Rdata
+and
+PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.3.nonptspec.0.05.combined.polished.size.Rdata
+in output_R/combined.polished.size/
 
-That is run through reorganiseMutationTable.R to create the final table.
-That script can be tweaked to save the output as an RDS file, which is
-what we actually want rather than the TSV. Or the TSV can be loaded and
-saved as an RDS.
+Sample 1 is PARA_002 and sample 3 is PARA_028 for the patient
+mutation belongs to column.
+
+Each file is run through reorganiseMutationTable.R to produce
+the rds files.
+

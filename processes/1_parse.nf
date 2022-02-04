@@ -1,13 +1,3 @@
-// tapasSetting is a closure that can be used inside more than one process that
-// gives the full string for the TAPAS setting.
-
-tapasSetting =
-{
-    return "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"
-}
-
-// Processes
-
 process slopPatientInfo
 {
     executor 'local'
@@ -30,18 +20,20 @@ process slopPatientInfo
 
 process mpileup
 {
+    tag "${pool} ${barcode}"
+
     cpus { Math.min(params.MAX_CORES, 2) }
 
     input:
-        path sloppedBedFile
-        path fastaReference
-        each path(bamFile)
+        each path(sloppedBedFile)
+        each path(fastaReference)
+        tuple val(pool), val(barcode), path(bamFile), path(bamIndex)
 
     output:
-        path vcfFile, emit: "vcfFile"
+        tuple val(pool), val(barcode), path(vcfFile), emit: "vcfFile"
 
     shell:
-        vcfFile = "${bamFile.baseName}.vcf"
+        vcfFile = "${pool}.${barcode}.mpileup.vcf"
 
         dedupFlags = params.REMOVE_DUPLICATES ? "-R --ff UNMAP" : ""
 
@@ -51,45 +43,19 @@ process mpileup
 
 process biallelic
 {
-    executor 'local'
-    time '5m'
+    tag "${pool} ${barcode}"
+
+    memory '256m'
+    time   '10m'
 
     input:
-        path vcfFile
+        tuple val(pool), val(barcode), path(vcfFile)
 
     output:
-        tuple val(pool), val(barcode), path(mutationFile)
+        tuple val(pool), val(barcode), path(mutationsFile), emit: "mutationsFile"
 
     shell:
-        pool = ""
-
-        def matcher = vcfFile.name =~ /(SLX-\d+)/
-        if (matcher.find())
-        {
-            pool = matcher[0][1]
-        }
-
-        switch (params.LIBRARY_PREP)
-        {
-            case "Rubicon":
-                matcher = vcfFile.name =~ /(D.*_D.*)\./
-                break
-
-            case "Aglient":
-                matcher = vcfFile.name =~ /(SXT[A-Z]{2}[0-9]{3})/
-                break
-
-            default:
-                throw new Exception("Library prep '${params.LIBRARY_PREP}' not recognised.")
-        }
-
-        barcode = ""
-        if (matcher.find())
-        {
-            barcode = matcher[0][1]
-        }
-
-        mutationFile = "${pool}_${barcode}.BQ_${params.BASEQ}.MQ_${params.MAPQ}.final.tsv"
+        mutationsFile = "${pool}.${barcode}.tsv"
 
         template "1_parse/biallelic.sh"
 }
@@ -97,7 +63,8 @@ process biallelic
 
 process tabixSnp
 {
-    executor 'local'
+    tag "${pool} ${barcode}"
+
     memory '32m'
 
     input:
@@ -109,14 +76,15 @@ process tabixSnp
         tuple val(pool), val(barcode), path(tabixFile)
 
     shell:
-        tabixFile = "${pool}_${barcode}_snp.vcf"
+        tabixFile = "${pool}.${barcode}.snp.vcf"
 
         template "1_parse/tabix.sh"
 }
 
 process tabixCosmic
 {
-    executor 'local'
+    tag "${pool} ${barcode}"
+
     memory '32m'
 
     input:
@@ -128,13 +96,15 @@ process tabixCosmic
         tuple val(pool), val(barcode), path(tabixFile)
 
     shell:
-        tabixFile = "${pool}_${barcode}_cosmic.vcf"
+        tabixFile = "${pool}.${barcode}.cosmic.vcf"
 
         template "1_parse/tabix.sh"
 }
 
 process trinucleotide
 {
+    tag "${pool} ${barcode}"
+
     memory '256m'
 
     input:
@@ -145,24 +115,23 @@ process trinucleotide
         tuple val(pool), val(barcode), path(trinucleotideFile)
 
     shell:
-        trinucleotideFile = "${pool}_${barcode}_trinucleotide.fa"
+        trinucleotideFile = "${pool}.${barcode}.trinucleotide.fa"
 
         template "1_parse/samtools_faidx.sh"
 }
 
 process annotateMutation
 {
-    executor 'local'
-    memory '1G'
+    tag "${pool} ${barcode}"
 
     input:
         tuple val(pool), val(barcode), path(mutationFile), path(snp), path(cosmic), path(trinucleotide)
 
     output:
-        tuple val(pool), val(barcode), path(annotatedFile)
+        tuple val(pool), val(barcode), path(annotatedFile), emit: "mutationsFile"
 
     shell:
-        annotatedFile = "${pool}_${barcode}.mutations.tsv"
+        annotatedFile = "${pool}.${barcode}.mutations.tsv"
 
         """
         python3 "!{params.projectHome}/python/1_parse/addTabixAndTrinucleotides.py" \
@@ -260,6 +229,8 @@ process createOnTargetMutationsTable
     output:
         path 'mutation_table.on_target.all.rds', emit: "onTargetMutationsFile"
         path 'mutation_table.on_target.all.tsv', emit: "onTargetMutationsTSV"
+        path 'background_error_rates.rds', emit: "backgroundErrorRates"
+        path 'background_error_rates.tsv', emit: "backgroundErrorRatesTSV"
 
     shell:
         """
@@ -288,6 +259,8 @@ process onTargetErrorRatesAndFilter
         path 'mutation_table.on_target.tsv', emit: "onTargetMutationsTSV"
 
     shell:
+        tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"
+
         """
         Rscript --vanilla "!{params.projectHome}/R/1_parse/onTargetErrorRatesAndFilter.R" \
             --mutations="!{mutationsFile}" \
@@ -311,8 +284,6 @@ workflow parse
         layoutChannel
 
     main:
-        simpleBamChannel = bamChannel.map { pool, barcode, bam, index -> bam }
-
         genome_channel = channel.fromPath(params.HG19_GENOME, checkIfExists: true)
         fasta_channel = channel.fromPath(params.FASTAREF, checkIfExists: true)
         snp_channel = channel.fromPath(params.K1G_DB, checkIfExists: true)
@@ -322,7 +293,7 @@ workflow parse
 
         slopPatientInfo(tumourMutationsChannel, genome_channel)
 
-        mpileup(slopPatientInfo.out, fasta_channel, simpleBamChannel)
+        mpileup(slopPatientInfo.out, fasta_channel, bamChannel)
         biallelic(mpileup.out)
 
         mutationChannel = biallelic.out.filter { pool, bc, f -> f.countLines() > 1 }
@@ -359,4 +330,6 @@ workflow parse
     emit:
         mutationsFile = combineCSV.out
         onTargetMutationsFile = onTargetErrorRatesAndFilter.out.onTargetMutationsFile
+        onTargetErrorRatesFile = onTargetErrorRatesAndFilter.out.locusErrorRates
+        backgroundErrorRatesFile = createOnTargetMutationsTable.out.backgroundErrorRates
 }

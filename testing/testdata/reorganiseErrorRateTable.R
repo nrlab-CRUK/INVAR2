@@ -1,5 +1,5 @@
 # Script to convert an error rate data frame into the current format.
-# The values are organised by UNIQUE_POS, TRINUCLEOTIDE.
+# The values are organised by CHROM, POS, TRINUCLEOTIDE.
 
 
 library(assertthat)
@@ -27,6 +27,7 @@ parseArgs <- function(args)
     assert_that(length(args) >= 1, msg = "Need the name of the mutations table file to convert.")
 
     filenameParts = (basename(args[1]) %>% str_split('\\.'))[[1]]
+    name = str_c(filenameParts[1:length(filenameParts) - 1], collapse='.')
     extension = str_to_lower(tail(filenameParts, 1))
 
     if (length(args) >= 2)
@@ -36,11 +37,13 @@ parseArgs <- function(args)
     else
     {
         dir = dirname(args[1])
-        name = str_c(filenameParts[1:length(filenameParts) - 1], collapse='.')
         convertedFile = str_c(dir, str_c(name, '.new.tsv'), sep='/')
     }
 
-    list(SOURCE = args[1], EXTENSION = extension, CONVERTED = convertedFile)
+    filenameParts = (basename(convertedFile) %>% str_split('\\.'))[[1]]
+    convertedExtension = str_to_lower(tail(filenameParts, 1))
+
+    list(SOURCE = args[1], NAME = name, EXTENSION = extension, CONVERTED = convertedFile, CONVERTED_EXTENSION = convertedExtension)
 }
 
 desiredOrder = c('CHROM', 'POS', 'MUTATION_CLASS', 'TRINUCLEOTIDE', 'PATIENT_MUTATION_BELONGS_TO', 'COSMIC',
@@ -67,12 +70,17 @@ if ('MUT_CLASS' %in% colnames(t)) {
 }
 
 t <- t %>%
-    mutate_if(is.logical, toChar) %>%
-    mutate_if(is.double, signif, digits = 6) %>%
-    arrange(CHROM, POS, TRINUCLEOTIDE) %>%
-    select(any_of(desiredOrder))
+    select(any_of(desiredOrder)) %>%
+    arrange(CHROM, POS, TRINUCLEOTIDE)
 
 message("Writing ", args$CONVERTED)
 
-write_tsv(t, file = args$CONVERTED)
+if (args$CONVERTED_EXTENSION == 'rds') {
+    saveRDS(t, args$CONVERTED)
+} else if (args$CONVERTED_EXTENSION == 'tsv') {
+    t %>%
+        mutate_if(is.logical, toChar) %>%
+        mutate_if(is.double, signif, digits = 6) %>%
+        write_tsv(file = args$CONVERTED, progress = TRUE)
+}
 

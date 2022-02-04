@@ -71,12 +71,14 @@ parseOptions <- function()
 
 richTestOptions <- function()
 {
-    base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/generalisedLikelihoodRatioTest/source')
+    base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/generalisedLikelihoodRatioTest/source/')
 
     list(
-        #MUTATIONS_TABLE_FILE = str_c(base, '/SLX-19721_SXTLI001_PARA_002.perpatient.rds'),
-        MUTATIONS_TABLE_FILE = str_c(base, '/SLX-19721_SXTLI001_PARA_028.perpatient.rds'),
-        SIZE_CHARACTERISATION_FILE = str_c(base, '/size_characterisation.rds'),
+        # Sample 1 is PARA_002. Sample 3 is PARA_028.
+
+        #MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.SLX-19721.SXTLI001.1.rds'),
+        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.SLX-19721.SXTLI001.3.rds'),
+        SIZE_CHARACTERISATION_FILE = str_c(base, 'size_characterisation.rds'),
         BLOODSPOT = FALSE,
         OUTLIER_SUPPRESSION = 0.05,
         THREADS = 4L,
@@ -344,7 +346,10 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
     contaminationRisk = unique(mutationsTable$CONTAMINATION_RISK.PASS)
     assert_that(length(contaminationRisk) == 1, msg = "Have mix of CONTAMINATION_RISK.PASS flags in mutations table rows.")
 
-    mutationsTable.half <- mutationsTable %>%
+    # There are two rows per molecule, so from the sorted table we can
+    # slice out every other row to give a row per molecule.
+
+    mutationsTable.perMolecule <- mutationsTable %>%
         arrange(UNIQUE_POS, POOL_BARCODE, SIZE) %>%
         slice(seq(1, n(), by = 2))
 
@@ -359,7 +364,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
 
     allIterations <-
         mclapply(1:iterations, singleIteration,
-                 mutationsTable.half, sizeTable,
+                 mutationsTable.perMolecule, sizeTable,
                  minFragmentLength = scriptArgs$MINIMUM_FRAGMENT_LENGTH,
                  maxFragmentLength = scriptArgs$MAXIMUM_FRAGMENT_LENGTH,
                  smooth = scriptArgs$SMOOTHING,

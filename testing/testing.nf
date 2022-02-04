@@ -8,7 +8,7 @@ nextflow.enable.dsl = 2
 
 include { createMutationsTable; offTargetErrorRates;
           createOnTargetMutationsTable; onTargetErrorRatesAndFilter } from '../processes/1_parse'
-include { annotateMutationsWithFragmentSize  } from '../processes/2_size_annotation'
+include { annotateMutationsWithFragmentSize ; combineIndexFileWithMutationsFiles } from '../processes/2_size_annotation'
 include { markOutliers; sizeCharacterisation; annotateMutationsWithOutlierSuppression } from '../processes/3_outlier_suppression'
 include { generalisedLikelihoodRatioTest as generalisedLikelihoodRatioTestSpecific;
           generalisedLikelihoodRatioTest as generalisedLikelihoodRatioTestNonSpecific } from '../processes/4_detection'
@@ -84,7 +84,8 @@ workflow
                                  layoutChannel,
                                  channel.fromPath('testdata/createOnTargetMutationsTable/source/mutation_table.error_rates.no_cosmic.rds'))
 
-    mapForDiff('createOnTargetMutationsTable', createOnTargetMutationsTable.out.onTargetMutationsTSV) | diff3
+    mapForDiff('createOnTargetMutationsTable',
+        createOnTargetMutationsTable.out.onTargetMutationsTSV.mix(createOnTargetMutationsTable.out.backgroundErrorRatesTSV)) | diff3
 
     // onTargetErrorRatesAndFilter
 
@@ -97,17 +98,30 @@ workflow
     // sizeAnnotation
 
     sizeAnnotationInsertsChannel = channel.of(['SLX-19721', 'SXTLI001']).combine(
-        channel.fromPath("testdata/annotateMutationsWithFragmentSize/source/SLX-19721_SXTLI001.inserts.tsv"))
+        channel.fromPath("testdata/annotateMutationsWithFragmentSize/source/SLX-19721.SXTLI001.inserts.tsv"))
 
     annotateMutationsWithFragmentSize(sizeAnnotationInsertsChannel,
                                       channel.fromPath('testdata/annotateMutationsWithFragmentSize/source/mutation_table.on_target.rds'))
 
-    mapForDiff('annotateMutationsWithFragmentSize', annotateMutationsWithFragmentSize.out.mutationsTSV) | diff5
+    annotateMutationsWithFragmentSize_perPatientChannel =
+        annotateMutationsWithFragmentSize.out.mutationsFiles
+            .flatMap {
+                pool, barcode, indexFile, mutationsFiles ->
+                combineIndexFileWithMutationsFiles(indexFile, mutationsFiles)
+            }
+            .filter {
+                p, b, pt, f ->
+                p == 'SLX-19721' && b == 'SXTLI001' && pt in ['PARA_002', 'PARA_028']
+            }
+            .map { p, b, pt, f -> f }
+
+    // TODO: Produces only RDS files. Need to change to compare TSV.
+    // mapForDiff('annotateMutationsWithFragmentSize', annotateMutationsWithFragmentSize_perPatientChannel) | diff5
 
     // Outlier suppression
 
-    markOutliersChannel = channel.of(['SLX-19721', 'SXTLI001']).combine(
-        channel.fromPath("testdata/markOutliers/source/combined.polished.size_ann.SLX-19721_SXTLI001.rds"))
+    markOutliersChannel = channel.of(['SLX-19721', 'SXTLI001', 'PARA_002']).combine(
+        channel.fromPath("testdata/markOutliers/source/mutation_table.with_sizes.SLX-19721.SLXLI001.PARA_002.rds"))
 
     markOutliers(markOutliersChannel)
 
@@ -123,17 +137,17 @@ workflow
 
     annotateMutationsWithOutlierSuppression(
         channel.fromPath("testdata/annotateMutationsWithOutlierSuppression/source/mutation_table.on_target.rds"),
-        channel.fromPath("testdata/annotateMutationsWithOutlierSuppression/source/*.os.rds").collect())
+        channel.fromPath("testdata/annotateMutationsWithOutlierSuppression/source/mutation_table.outliersuppressed.*.rds").collect())
 
     mapForDiff('annotateMutationsWithOutlierSuppression', annotateMutationsWithOutlierSuppression.out.mutationsTSV) | diff8
 
     // Generalised Likelihood Ratio Test
 
     generalisedLikelihoodRatioTestChannelSpecific = channel.of(['SLX-19721', 'SXTLI001', 'PARA_002']).combine(
-        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/SLX-19721.SXTLI001.PARA_002.perpatient.rds"))
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/mutation_table.outliersuppressed.SLX-19721.SXTLI001.1.rds"))
 
     generalisedLikelihoodRatioTestChannelNonSpecific = channel.of(['SLX-19721', 'SXTLI001', 'PARA_028']).combine(
-        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/SLX-19721.SXTLI001.PARA_028.perpatient.rds"))
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/mutation_table.outliersuppressed.SLX-19721.SXTLI001.3.rds"))
 
     generalisedLikelihoodRatioTestSizeChannel =
         channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/size_characterisation.rds")

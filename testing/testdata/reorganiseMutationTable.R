@@ -109,6 +109,11 @@ if ('PASS' %in% colnames(t)) {
         rename(OUTLIER.PASS = PASS)
 }
 
+if (!'CASE_OR_CONTROL' %in% colnames(t)) {
+    t <- t %>%
+        mutate(CASE_OR_CONTROL = ifelse(str_detect(SAMPLE_NAME, "^EXP3079"), 'case', 'control_negative'))
+}
+
 # See https://stackoverflow.com/questions/26497751/pass-a-vector-of-variable-names-to-arrange-in-dplyr
 t <- t %>%
     select(any_of(desiredOrder)) %>%
@@ -122,7 +127,5 @@ if (args$CONVERTED_EXTENSION == 'rds') {
     t %>%
         mutate_if(is.logical, toChar) %>%
         mutate_if(is.double, signif, digits = 6) %>%
-        write_tsv(t, file = args$CONVERTED)
+        write_tsv(file = args$CONVERTED, progress = TRUE)
 }
-
-

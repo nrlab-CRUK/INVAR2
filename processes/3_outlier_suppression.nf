@@ -1,22 +1,26 @@
+include { makeSafeForFileName } from '../functions/naming'
+
 process markOutliers
 {
+    tag "${pool} ${barcode} ${patientMutationBelongsTo}"
+
     memory '2g'
 
     input:
-        tuple val(pool), val(barcode), path(mutationsFile)
+        tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(mutationsFile)
 
     output:
-        tuple val(pool), val(barcode), path(outlierMarkedFile), emit: "mutationsFile"
+        tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(outlierMarkedFile), emit: "mutationsFile"
         path outlierMarkedTSV, emit: "mutationsTSV"
 
     shell:
-        outlierMarkedFile = "mutation_table.outliersuppressed.${pool}_${barcode}.rds"
-        outlierMarkedTSV = "mutation_table.outliersuppressed.${pool}_${barcode}.tsv"
+        def basename = "mutation_table.outliersuppressed.${pool}.${barcode}.${makeSafeForFileName(patientMutationBelongsTo)}"
+        outlierMarkedFile = "${basename}.rds"
+        outlierMarkedTSV = "${basename}.tsv"
 
         """
         Rscript --vanilla "!{params.projectHome}/R/3_outlier_suppression/outlierSuppression.R" \
             --mutations="!{mutationsFile}" \
-            --pool="!{pool}" --barcode="!{barcode}" \
             --outlier-suppression=!{params.outlier_suppression_threshold}
         """
 }
@@ -24,10 +28,10 @@ process markOutliers
 process sizeCharacterisation
 {
     memory '4g'
-    cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, mutationsFiles.size()) }
+    cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, osMutationsFiles.size()) }
 
     input:
-        path mutationsFiles
+        path osMutationsFiles
 
     output:
         path 'size_characterisation.all.rds', emit: "allSizesFile"
@@ -39,7 +43,7 @@ process sizeCharacterisation
         """
         Rscript --vanilla "!{params.projectHome}/R/3_outlier_suppression/sizeCharacterisation.R" \
             --threads=!{task.cpus} \
-            !{mutationsFiles}
+            !{osMutationsFiles}
         """
 }
 
@@ -75,7 +79,10 @@ workflow outlierSuppression
     main:
         markOutliers(sizedMutationsChannel)
 
-        outlierMarkedFiles = markOutliers.out.mutationsFile.map { pool, barcode, mfile -> mfile }.collect()
+        outlierMarkedFiles =
+            markOutliers.out.mutationsFile
+                .map { p, b, pt, mfile -> mfile }
+                .collect()
 
         sizeCharacterisation(outlierMarkedFiles)
 

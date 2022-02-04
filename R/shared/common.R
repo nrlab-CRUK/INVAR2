@@ -109,3 +109,13 @@ saveRDSandTSV <- function(t, file)
 
     t
 }
+
+# Converts a string so it is safe to use in a file name.
+# Replaces all white space with a single underscore, and removes
+# all characters that are not word characters (letter, number, underscore).
+makeSafeForFileName <- function(string)
+{
+    string <- str_replace_all(string, "\\s+", "_")
+    string <- str_replace_all(string, "[^\\w]+", "")
+    string
+}

@@ -18,13 +18,7 @@ parseOptions <- function()
 
     options_list <- list(
         make_option(c("--mutations"), type="character", metavar="file",
-                    dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by part one of the pipeline",
-                    default=defaultMarker),
-        make_option(c("--pool"), type="character", metavar="string",
-                    dest="POOL", help="The pool (SLX) identifier for the BAM/sizes file",
-                    default=defaultMarker),
-        make_option(c("--barcode"), type="character", metavar="string",
-                    dest="BARCODE", help="The barcode for the BAM/sizes file",
+                    dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) written by sizeAnnotation.R",
                     default=defaultMarker),
         make_option(c("--outlier-suppression"), type="double", metavar="number",
                     dest="OUTLIER_SUPPRESSION", help="The outlier suppression threshold",
@@ -53,11 +47,10 @@ parseOptions <- function()
 
 richTestOptions <- function()
 {
+    base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/markOutliers/source/')
+
     list(
-        #MUTATIONS_TABLE_FILE = 'on_target/mutation_table.with_sizes.SLX-19721_SXTLI001.rds',
-        MUTATIONS_TABLE_FILE = str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/markOutliers/source/combined.polished.size_ann.SLX-19721_SXTLI001.rds'),
-        POOL = 'SLX-19721',
-        BARCODE = 'SXTLI001',
+        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.with_sizes.SLX-19721.SLXLI001.PARA_002.rds'),
         OUTLIER_SUPPRESSION = 0.05,
         SAMPLING_SEED = 1024L
     )
@@ -68,15 +61,9 @@ richTestOptions <- function()
 # From TAPAS_functions.R
 #
 
-# The original version of this method worked on files limited to a single sample.
-# This version works on all the samples belonging to a pool + barcode pair,
-# performing the sample calculations per grouping of sample and mutation patient.
-
-repolish <- function(mutationTable, outlierSuppressionThreshold)
+repolish <- function(mutationsTable, outlierSuppressionThreshold)
 {
     assert_that(is.number(outlierSuppressionThreshold), msg = "outlierSuppressionThreshold must be a number")
-
-    groupCols <- c('SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO')
 
     # do not include loci with AF>0.25 or with >10 mutant reads as we are trying to detect MRD.
     # If there are loci with high AF, then there will also be some loci with lower AF (given sufficient loci).
@@ -91,11 +78,10 @@ repolish <- function(mutationTable, outlierSuppressionThreshold)
         max(estimate_p_EM(MUTANT, DP, TUMOUR_AF, BACKGROUND_AF), weighted.mean(AF, TUMOUR_AF))
     }
 
-    mutationTable.forPEstimate <- mutationTable %>%
+    mutationsTable.forPEstimate <- mutationsTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS & AF < 0.25 & MUTATION_SUM < 10 & TUMOUR_AF > 0) %>%
         mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF == 0, 1 / BACKGROUND_DP, BACKGROUND_AF),
                DP = 1) %>%
-        group_by_at(all_of(groupCols)) %>%
         summarise(P_THRESHOLD = outlierSuppressionThreshold / n_distinct(UNIQUE_POS),
                   P_ESTIMATE = ifelse(!any(MUTANT), 0, estimateP(MUTANT, DP, AF, TUMOUR_AF, BACKGROUND_AF)),
                   .groups = "drop")
@@ -109,15 +95,15 @@ repolish <- function(mutationTable, outlierSuppressionThreshold)
         ifelse(x <= 0, 1, binom.test(x, n, p, alternative = "greater")$p.value)
     }
 
-    mutationTable.withTest <- mutationTable %>%
-        left_join(mutationTable.forPEstimate, by = groupCols) %>%
+    mutationsTable.withTest <- mutationsTable %>%
+        left_join(mutationsTable.forPEstimate, by = character()) %>%
         rowwise() %>%
         mutate(BINOMIAL_PROB = binom(x = MUTATION_SUM, n = DP, p = P_ESTIMATE)) %>%
         ungroup() %>% # Removes the "rowwise" grouping
         mutate(OUTLIER.PASS = BINOMIAL_PROB > P_THRESHOLD) %>%
         select(-P_THRESHOLD, -P_ESTIMATE, -BINOMIAL_PROB)
 
-    mutationTable.withTest
+    mutationsTable.withTest
 }
 
 
@@ -127,17 +113,31 @@ repolish <- function(mutationTable, outlierSuppressionThreshold)
 
 main <- function(scriptArgs)
 {
-    mutationTable <-
+    mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
 
-    mutationTable <- mutationTable %>%
+    # Expect the combination of pool, barcode and patient mutation belongs to to be
+    # unique in this file.
+
+    mutationsFileCheck <- mutationsTable %>%
+        distinct(POOL, BARCODE, PATIENT_MUTATION_BELONGS_TO)
+
+    assert_that(nrow(mutationsFileCheck) == 1,
+                msg = str_c("Do not have single pool + barcode and patient (mutation belongs to) in ", scriptArgs$MUTATIONS_TABLE_FILE))
+
+    mutationsTable <- mutationsTable %>%
         repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION)
 
-    mutationTable %>%
+    outputName <- str_c('mutation_table.outliersuppressed',
+                        mutationsFileCheck$POOL, mutationsFileCheck$BARCODE,
+                        makeSafeForFileName(mutationsFileCheck$PATIENT_MUTATION_BELONGS_TO),
+                        'rds', sep = '.')
+
+    mutationsTable %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
-        saveRDSandTSV(str_c('mutation_table.outliersuppressed.', scriptArgs$POOL, '_', scriptArgs$BARCODE, '.rds'))
+        saveRDSandTSV(outputName)
 }
 
 # Launch it.

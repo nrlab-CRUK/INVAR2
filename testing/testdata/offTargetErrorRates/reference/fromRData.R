@@ -53,9 +53,11 @@ for (cosmic in c(FALSE, TRUE))
 
     cosmicc = ifelse(cosmic, 'cosmic', 'no_cosmic')
 
-    convertAndSave(errorRateList$pre_filter, str_c('mutation_table.off_target.', cosmicc, '.oneread.tsv'))
-    convertAndSave(errorRateList$locus_noise_filter_only, str_c('mutation_table.off_target.', cosmicc, '.locusnoise.tsv'))
-    convertAndSave(errorRateList$both_strands_only, str_c('mutation_table.off_target.', cosmicc, '.bothreads.tsv'))
-    convertAndSave(errorRateList$locus_noise.both_strands, str_c('mutation_table.off_target.', cosmicc, '.locusnoise_bothreads.tsv'))
+    saveRDS(errorRateList, str_c('mutation_table.off_target.', cosmicc, '.rds'))
+
+    convertAndSave(errorRateList$pre_filter, str_c('REFERENCE_mutation_table.off_target.', cosmicc, '.oneread.tsv'))
+    convertAndSave(errorRateList$locus_noise_filter_only, str_c('REFERENCE_mutation_table.off_target.', cosmicc, '.locusnoise.tsv'))
+    convertAndSave(errorRateList$both_strands_only, str_c('REFERENCE_mutation_table.off_target.', cosmicc, '.bothreads.tsv'))
+    convertAndSave(errorRateList$locus_noise.both_strands, str_c('REFERENCE_mutation_table.off_target.', cosmicc, '.locusnoise_bothreads.tsv'))
 }
 

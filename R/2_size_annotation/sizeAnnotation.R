@@ -1,6 +1,7 @@
 suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 
@@ -31,6 +32,9 @@ parseOptions <- function()
         make_option(c("--outlier-suppression"), type="double", metavar="number",
                     dest="OUTLIER_SUPPRESSION", help="The outlier suppression setting",
                     default=0.05),
+        make_option(c("--threads"), type="integer", metavar="integer",
+                    dest="THREADS", help="The number of cores to use to process the input files.",
+                    default=1),
         make_option(c("--sampling-seed"), type="integer", metavar="number",
                     dest="SAMPLING_SEED", help="The seed for random sampling. Only use in testing.",
                     default=NA))
@@ -58,32 +62,18 @@ parseOptions <- function()
 
 richTestOptions <- function()
 {
+    base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/annotateMutationsWithFragmentSize/source/')
+
     list(
-        MUTATIONS_TABLE_FILE = 'on_target/mutation_table.on_target.rds',
-        FRAGMENT_SIZES_FILE = 'EMMA/output_size/SLX-19721_SXTLI001.inserts_for_annotation.tsv',
+        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.on_target.rds'),
+        FRAGMENT_SIZES_FILE = str_c(base, 'SLX-19721.SXTLI001.inserts.tsv'),
         POOL = 'SLX-19721',
         BARCODE = 'SXTLI001',
         OUTLIER_SUPPRESSION = 0.05,
-        SAMPLING_SEED = 1024L
+        SAMPLING_SEED = 1024L,
+        THREADS = 2
     )
 }
-
-
-# Load (locally to Rich) the mutations table from Emma's data into a tibble
-# that can be used as if from the pipeline.
-readOriginalEmmaMutationsTable <- function(scriptArgs)
-{
-    combined_polished.path <- '/home/data/INVAR/EMMA/output_R/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.rds'
-
-    mutationsTable <- as_tibble(readRDS(combined_polished.path)) %>%
-        rename(POOL = SLX,
-               MUTATION_CLASS = mut_class,
-               UNIQUE_POS = uniq_pos) %>%
-        filter(POOL == scriptArgs$POOL & BARCODE == scriptArgs$BARCODE)
-
-    mutationsTable
-}
-
 
 
 ##
@@ -254,6 +244,25 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, .samplingSeed
 
 
 ##
+# Addition to the main function to save the mutation table rows
+# for a specific patient (mutation belongs to).
+#
+
+saveForPatient <- function(patient, mutationsTable, pool, barcode)
+{
+    filename <- str_c('mutation_table.with_sizes', pool, barcode, makeSafeForFileName(patient), "rds", sep = '.')
+
+    mutationsTable %>%
+        filter(PATIENT_MUTATION_BELONGS_TO == patient) %>%
+        removeMutationTableDerivedColumns() %>%
+        arrangeMutationTableForExport() %>%
+        saveRDSandTSV(filename)
+
+    tibble(POOL = pool, BARCODE = barcode,
+           PATIENT_MUTATION_BELONGS_TO = patient, FILE_NAME = filename)
+}
+
+##
 # The main script, wrapped as a function.
 #
 
@@ -264,7 +273,19 @@ main <- function(scriptArgs)
         filter(POOL == scriptArgs$POOL & BARCODE == scriptArgs$BARCODE) %>%
         addMutationTableDerivedColumns()
 
-    # mutationsTable <- readOriginalEmmaMutationsTable(scriptArgs)
+    # Expect the combination of pool, barcode and patient mutation belongs to to be
+    # unique in this file.
+
+    mutationsFileCheck <- mutationsTable %>%
+        distinct(POOL, BARCODE) %>%
+        mutate(MATCHING = POOL == scriptArgs$POOL & BARCODE == scriptArgs$BARCODE)
+
+    assert_that(nrow(mutationsFileCheck) == 1,
+                msg = str_c("Do not have a single pool + barcode in ", scriptArgs$MUTATIONS_TABLE_FILE))
+
+    assert_that(all(mutationsFileCheck$MATCHING),
+                msg = str_c("Mutations in", scriptArgs$MUTATIONS_TABLE_FILE, "do not belong to ",
+                            scriptArgs$POOL, scriptArgs$BARCODE, sep = " "))
 
     fragmentSizesTable <-
         read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci') %>%
@@ -276,10 +297,21 @@ main <- function(scriptArgs)
         equaliseSizeCounts(mutationsTable, fragmentSizesTable,
                            .samplingSeed = scriptArgs$SAMPLING_SEED)
 
-    mutationsTable.withSizes %>%
-        removeMutationTableDerivedColumns() %>%
-        arrangeMutationTableForExport() %>%
-        saveRDSandTSV(str_c('mutation_table.with_sizes.', scriptArgs$POOL, '_', scriptArgs$BARCODE, ".rds"))
+    fileInfoList <-
+        mclapply(unique(mutationsTable.withSizes$PATIENT_MUTATION_BELONGS_TO), saveForPatient,
+                 mutationsTable.withSizes,
+                 pool = scriptArgs$POOL, barcode = scriptArgs$BARCODE,
+                 mc.cores = scriptArgs$THREADS)
+
+    fileInfoTable <- bind_rows(fileInfoList)
+
+    if (any(duplicated(fileInfoTable$FILE_NAME)))
+    {
+        print(fileInfoTable)
+        stop("Some file names have clashed after munging. This is a problem that cannot be fixed without changing the patient names.")
+    }
+
+    write_csv(fileInfoTable, "index.csv")
 }
 
 # Launch it.

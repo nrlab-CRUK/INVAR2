@@ -1,19 +1,12 @@
-Getting a reference needed some hacking. The original size_annotation.R
-code was changed to perform a calculation of every sample in the source file
-(in ../source) and to produce a table for all the samples, instead of the
-sample by sample work. The addition was, after loading the RData object:
+References are from the files
+PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.1.ptspec.0.05.combined.polished.size.Rdata
+and
+PARADIGM.f0.9_s2.BQ_20.MQ_40.SLX-19721_SXTLI001.3.nonptspec.0.05.combined.polished.size.Rdata
+in output_R/os/
 
-owners <- unique(combined.polished.size_ann$pt_mutation_belongs_to)
+Sample 1 is PARA_002 and sample 3 is PARA_028 for the patient
+mutation belongs to column.
 
-repolishForOwner <- function(owner) {
-    message('Processing ', owner)
-    curr <- filter(combined.polished.size_ann, pt_mutation_belongs_to == owner)
-    repolish(curr, outlier_suppression_threshold_settings)
-}
-
-all <- lapply(owners, repolishForOwner)
-
-raw <- rbindlist(all)
-
-The resulting RData object saved ("raw") was passed through reorganiseMutationTable.R.
+Each file is run through reorganiseMutationTable.R to produce
+the tsv files.
 

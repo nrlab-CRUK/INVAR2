@@ -89,7 +89,8 @@ calculateSizeCharacteristics <- function(mutationTableFileName)
 main <- function(scriptArgs)
 {
     sizeTables <-
-        mclapply(scriptArgs$MUTATIONS_TABLE_FILES, calculateSizeCharacteristics, mc.cores = scriptArgs$THREADS)
+        #mclapply(scriptArgs$MUTATIONS_TABLE_FILES, calculateSizeCharacteristics, mc.cores = scriptArgs$THREADS)
+        lapply(scriptArgs$MUTATIONS_TABLE_FILES, calculateSizeCharacteristics)
 
     sizeCharacteristicsTable <-
         bind_rows(sizeTables) %>%
