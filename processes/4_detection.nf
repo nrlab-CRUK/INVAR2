@@ -41,7 +41,7 @@ process combineGeneralisedLikelihoodRatioTestResults
     memory '4g'
     time   '5m'
 
-    publishDir 'invarScores', mode: 'link'
+    publishDir 'invarScores', mode: 'link', overwrite: true
 
     input:
         path invarScoresFiles

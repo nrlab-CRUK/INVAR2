@@ -167,7 +167,6 @@ process createMutationsTable
     input:
         path mutationsFile
         path tumourMutationsFile
-        path layoutFile
 
     output:
         path 'mutation_table.filtered.rds', emit: "filteredMutationsFile"
@@ -177,7 +176,6 @@ process createMutationsTable
         Rscript --vanilla "!{params.projectHome}/R/1_parse/createMutationsTable.R" \
             --mutations="!{mutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
-            --layout="!{layoutFile}" \
             --cosmic-threshold=!{params.cosmic_threshold} \
             --mqsb-threshold=!{params.individual_MQSB_threshold} \
             --max-depth=!{params.max_depth} \
@@ -243,7 +241,6 @@ process onTargetErrorRatesAndFilter
     input:
         path mutationsFile
         path tumourMutationsFile
-        path layoutFile
 
     output:
         path 'locus_error_rates.on_target.rds', emit: 'locusErrorRates'
@@ -256,7 +253,6 @@ process onTargetErrorRatesAndFilter
         """
         Rscript --vanilla "!{params.projectHome}/R/1_parse/onTargetErrorRatesAndFilter.R" \
             --mutations="!{mutationsFile}" \
-            --layout="!{layoutFile}" \
             --study="!{params.STUDY_ID}" \
             --tapas="!{tapasSetting}" \
             --cosmic-threshold=!{params.cosmic_threshold} \
@@ -306,7 +302,7 @@ workflow parse
 
         combineCSV(allMutationsList)
 
-        createMutationsTable(combineCSV.out, tumourMutationsChannel, layoutChannel)
+        createMutationsTable(combineCSV.out, tumourMutationsChannel)
 
         offTargetErrorRates(createMutationsTable.out.filteredMutationsFile, layoutChannel)
 
@@ -317,8 +313,7 @@ workflow parse
             offTargetErrorRates.out.noCosmicErrorRates)
 
         onTargetErrorRatesAndFilter(createOnTargetMutationsTable.out.onTargetMutationsFile,
-                                    tumourMutationsChannel,
-                                    layoutChannel)
+                                    tumourMutationsChannel)
     emit:
         mutationsFile = combineCSV.out
         onTargetMutationsFile = onTargetErrorRatesAndFilter.out.onTargetMutationsFile

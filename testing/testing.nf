@@ -65,8 +65,7 @@ workflow
     // createMutationsTable
 
     createMutationsTable(channel.fromPath('testdata/createMutationsTable/source/mutation_table.tsv'),
-                         tumourMutationsChannel,
-                         layoutChannel)
+                         tumourMutationsChannel)
 
     mapForDiff('createMutationsTable', createMutationsTable.out.filteredMutationsFile) | diff1
 
@@ -79,7 +78,7 @@ workflow
         offTargetErrorRates.out.locusErrorRates
             .mix(offTargetErrorRates.out.cosmicErrorRates)
             .mix(offTargetErrorRates.out.noCosmicErrorRates)
-    
+
     mapForDiff('offTargetErrorRates', offTargetOutputs) | diff2
 
     // createOnTargetMutationsTable
@@ -95,8 +94,7 @@ workflow
     // onTargetErrorRatesAndFilter
 
     onTargetErrorRatesAndFilter(channel.fromPath('testdata/onTargetErrorRatesAndFilter/source/mutation_table.on_target.all.rds'),
-                                tumourMutationsChannel,
-                                layoutChannel)
+                                tumourMutationsChannel)
 
     mapForDiff('onTargetErrorRatesAndFilter', onTargetErrorRatesAndFilter.out.locusErrorRates.mix(onTargetErrorRatesAndFilter.out.onTargetMutationsFile)) | diff4
 

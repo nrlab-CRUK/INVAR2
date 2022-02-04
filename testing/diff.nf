@@ -6,10 +6,10 @@ process rdsDiff
 
     input:
         tuple val(name), path(rdsFile), path(reference)
-    
+
     shell:
         tsvFile = rdsFile.name.replaceAll(/.rds$/, /.tsv/)
-        
+
         """
         Rscript --vanilla "!{params.projectHome}/testing/R/rdsToTSV.R" \
             "!{rdsFile}" "!{tsvFile}"

@@ -217,7 +217,7 @@ main <- function(scriptArgs)
 {
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        filter(CASE_OR_CONTROL == "case")
+        select(CASE_OR_CONTROL, POOL_BARCODE)
 
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%

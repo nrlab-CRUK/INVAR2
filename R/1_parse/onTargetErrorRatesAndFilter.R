@@ -27,9 +27,6 @@ parseOptions <- function()
         make_option(c("--mutations"), type="character", metavar="file",
                     dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by createOnTargetMutationsTable.R",
                     default=defaultMarker),
-        make_option(c("--layout"), type="character", metavar="file",
-                    dest="LAYOUT_FILE", help="The sequencing layout file",
-                    default=defaultMarker),
         make_option(c("--cosmic-threshold"), type="integer", metavar="int",
                     dest="COSMIC_THRESHOLD", help="Loci with >0 entries in COSMIC are considered as COSMIC mutations",
                     default=0L),
@@ -70,7 +67,6 @@ richTestOptions <- function()
 {
     list(
         MUTATIONS_TABLE_FILE = 'on_target/mutation_table.on_target.all.rds',
-        LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         STUDY = 'PARADIGM',
         TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         CONTROL_PROPORTION = 0.1,
@@ -90,7 +86,6 @@ richTestOptions <- function()
 # Locus error rate = overall background error rate per locus, aggregated across control samples
 #
 createLociErrorRateTable <- function(mutationTable,
-                                     layoutTable,
                                      proportion_of_controls,
                                      max_background_mean_AF,
                                      is.blood_spot)
@@ -201,17 +196,12 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
 
 main <- function(scriptArgs)
 {
-    layoutTable <-
-        loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        select(STUDY, SAMPLE_NAME, PATIENT, SAMPLE_TYPE, CASE_OR_CONTROL, INPUT_INTO_LIBRARY_NG, POOL_BARCODE)
-
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
 
     lociErrorRateTable <- mutationTable %>%
-        createLociErrorRateTable(layoutTable,
-                                 proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
+        createLociErrorRateTable(proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
                                  max_background_mean_AF = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY,
                                  is.blood_spot = scriptArgs$BLOODSPOT)
 

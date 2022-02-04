@@ -22,9 +22,6 @@ parseOptions <- function()
         make_option(c("--tumour-mutations"), type="character", metavar="file",
                     dest="TUMOUR_MUTATIONS_FILE", help="The source patient mutations file",
                     default=defaultMarker),
-        make_option(c("--layout"), type="character", metavar="file",
-                    dest="LAYOUT_FILE", help="The sequencing layout file",
-                    default=defaultMarker),
         make_option(c("--cosmic-threshold"), type="integer", metavar="int",
                     dest="COSMIC_THRESHOLD", help="Loci with >0 entries in COSMIC are considered as COSMIC mutations",
                     default=0L),
@@ -70,7 +67,6 @@ richTestOptions <- function()
     list(
         MUTATIONS_FILE = 'EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv',
         TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
-        LAYOUT_FILE = 'source_files/combined.SLX_table_with_controls_031220.csv',
         COSMIC_THRESHOLD = 0L,
         MQSB_THRESHOLD = 0.01,
         MAX_DEPTH = 2000L,
@@ -153,13 +149,6 @@ main <- function(scriptArgs)
 
     tumourMutationTable <-
         loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
-
-    # Read the layout file and extract unique pool id and barcode pairs.
-    # For this script, that column is all that is needed.
-
-    layoutTable <-
-        loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        distinct(POOL_BARCODE)
 
     mutationTable.all <- loadMutationsTable(scriptArgs$MUTATIONS_FILE,
                                             tumourMutationTable,
