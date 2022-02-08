@@ -36,9 +36,9 @@ def validatePipeline(params)
 
     params.with
     {
-        if (!containsKey('STUDY_ID'))
+        if (!containsKey('STUDY'))
         {
-            log.error "STUDY_ID must be set in your project's configuration file."
+            log.error "STUDY must be set in your project's configuration file."
             errors = true
         }
         if (!containsKey('ERROR_SUPPRESSION_NAME'))

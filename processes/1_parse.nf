@@ -257,7 +257,7 @@ process onTargetErrorRatesAndFilter
         """
         Rscript --vanilla "!{params.projectHome}/R/1_parse/onTargetErrorRatesAndFilter.R" \
             --mutations="!{mutationsFile}" \
-            --study="!{params.STUDY_ID}" \
+            --study="!{params.STUDY}" \
             --tapas="!{tapasSetting}" \
             --cosmic-threshold=!{params.COSMIC_THRESHOLD} \
             --control-proportion=!{params.PROPORTION_OF_CONTROLS} \
