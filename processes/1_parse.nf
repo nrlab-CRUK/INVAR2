@@ -176,12 +176,12 @@ process createMutationsTable
         Rscript --vanilla "!{params.projectHome}/R/1_parse/createMutationsTable.R" \
             --mutations="!{mutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
-            --cosmic-threshold=!{params.cosmic_threshold} \
-            --mqsb-threshold=!{params.individual_MQSB_threshold} \
-            --max-depth=!{params.max_depth} \
-            --min-ref-depth=!{params.min_ref_depth} \
-            --alt-alleles-threshold=!{params.n_alt_alleles_threshold} \
-            --minor-alt-allele-threshold=!{params.minor_alt_allele_threshold}
+            --cosmic-threshold=!{params.COSMIC_THRESHOLD} \
+            --mqsb-threshold=!{params.MQSB_THRESHOLD} \
+            --max-depth=!{params.MAXIMUM_DEPTH} \
+            --min-ref-depth=!{params.MINIMUM_REFERENCE_DEPTH} \
+            --alt-alleles-threshold=!{params.ALT_ALLELES_THRESHOLD} \
+            --minor-alt-allele-threshold=!{params.MINOR_ALT_ALLELE_THRESHOLD}
         """
 }
 
@@ -204,9 +204,9 @@ process offTargetErrorRates
         Rscript --vanilla "!{params.projectHome}/R/1_parse/offTargetErrorRates.R" \
             --mutations="!{mutationsFile}" \
             --layout="!{layoutFile}" \
-            --control-proportion=!{params.proportion_of_controls} \
-            --max-background-allele-frequency=!{params.max_background_mean_allele_frequency} \
-            !{params.is_bloodspot ? "--bloodspot" : ""}
+            --control-proportion=!{params.PROPORTION_OF_CONTROLS} \
+            --max-background-allele-frequency=!{params.MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY} \
+            !{params.IS_BLOODSPOT ? "--bloodspot" : ""}
         """
 }
 
@@ -248,18 +248,18 @@ process onTargetErrorRatesAndFilter
         path 'mutation_table.on_target.rds', emit: "onTargetMutationsFile"
 
     shell:
-        tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASEQ}.MQ_${params.MAPQ}"
+        tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASE_QUALITY}.MQ_${params.MAPPING_QUALITY}"
 
         """
         Rscript --vanilla "!{params.projectHome}/R/1_parse/onTargetErrorRatesAndFilter.R" \
             --mutations="!{mutationsFile}" \
             --study="!{params.STUDY_ID}" \
             --tapas="!{tapasSetting}" \
-            --cosmic-threshold=!{params.cosmic_threshold} \
-            --control-proportion=!{params.proportion_of_controls} \
-            --max-background-allele-frequency=!{params.max_background_mean_allele_frequency} \
-            !{params.is_bloodspot ? "--bloodspot" : ""} \
-            --allele-frequency-threshold=!{params.allele_frequency_threshold}
+            --cosmic-threshold=!{params.COSMIC_THRESHOLD} \
+            --control-proportion=!{params.PROPORTION_OF_CONTROLS} \
+            --max-background-allele-frequency=!{params.MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY} \
+            !{params.IS_BLOODSPOT ? "--bloodspot" : ""} \
+            --allele-frequency-threshold=!{params.ALLELE_FREQUENCY_THRESHOLD}
         """
 }
 
@@ -273,11 +273,11 @@ workflow parse
 
     main:
         genome_channel = channel.fromPath(params.HG19_GENOME, checkIfExists: true)
-        fasta_channel = channel.fromPath(params.FASTAREF, checkIfExists: true)
-        snp_channel = channel.fromPath(params.K1G_DB, checkIfExists: true)
-        snp_index_channel = channel.fromPath("${params.K1G_DB}.tbi")
-        cosmic_channel = channel.fromPath(params.COSMIC_DB, checkIfExists: true)
-        cosmic_index_channel = channel.fromPath("${params.COSMIC_DB}.tbi")
+        fasta_channel = channel.fromPath(params.FASTA_REFERENCE, checkIfExists: true)
+        snp_channel = channel.fromPath(params.THOUSAND_GENOMES_DATABASE, checkIfExists: true)
+        snp_index_channel = channel.fromPath("${params.THOUSAND_GENOMES_DATABASE}.tbi")
+        cosmic_channel = channel.fromPath(params.COSMIC_DATABASE, checkIfExists: true)
+        cosmic_index_channel = channel.fromPath("${params.COSMIC_DATABASE}.tbi")
 
         slopPatientInfo(tumourMutationsChannel, genome_channel)
 

@@ -26,13 +26,13 @@ process generalisedLikelihoodRatioTest
             --threads=!{task.cpus} \
             --mutations="!{osMutationsFile}" \
             --size-characterisation="!{sizeCharacterisationFile}" \
-            !{params.is_bloodspot ? "--bloodspot" : ""} \
-            --outlier-suppression=!{params.outlier_suppression_threshold} \
-            --minimum-fragment-length=!{params.minimum_fragment_length} \
-            --maximum-fragment-length=!{params.maximum_fragment_length} \
-            --smoothing=!{params.SMOOTH} \
-            !{params.only_weigh_mutants ? "--only-weigh-mutants" : ""} \
-            !{params.containsKey('sampling_seed') ? "--sampling-seed=${params['sampling_seed']}" : ""}
+            !{params.IS_BLOODSPOT ? "--bloodspot" : ""} \
+            --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD} \
+            --minimum-fragment-length=!{params.MINIMUM_FRAGMENT_LENGTH} \
+            --maximum-fragment-length=!{params.MAXIMUM_FRAGMENT_LENGTH} \
+            --smoothing=!{params.SMOOTHING} \
+            !{params.ONLY_WEIGH_MUTANTS ? "--only-weigh-mutants" : ""} \
+            !{params.containsKey('SAMPLING_SEED') ? "--sampling-seed=${params['SAMPLING_SEED']}" : ""}
         """
 }
 

@@ -6,10 +6,19 @@
 
 nextflow.enable.dsl = 2
 
+include { validatePipeline } from './functions/validation'
 include { parse } from './processes/1_parse'
 include { sizeAnnotation } from './processes/2_size_annotation'
 include { outlierSuppression } from './processes/3_outlier_suppression'
 include { detection } from './processes/4_detection'
+
+/*
+ * Check the pipeline is set up without basic errors.
+ */
+if (!validatePipeline(params))
+{
+    exit 1
+}
 
 /*
  * Main work flow.

@@ -17,7 +17,7 @@ bcftools query \
 Rscript --vanilla "!{params.projectHome}/R/1_parse/formatAndAnnotateMutations.R" \
     split2.tsv \
     "!{mutationsFile}" \
-    !{params.MIN_DP} \
+    !{params.MPILEUP_MINIMUM_DEPTH} \
     "!{pool}" \
     "!{barcode}"
 
