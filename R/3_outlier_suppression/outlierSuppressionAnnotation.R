@@ -129,7 +129,7 @@ main <- function(scriptArgs)
 
     mutationTable.withOutlier %>%
         arrangeMutationTableForExport() %>%
-        saveRDS('mutation_table.with_outliers.rds')
+        saveRDS('mutation_table.outliersuppressed.rds')
 }
 
 # Launch it.
