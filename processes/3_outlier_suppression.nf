@@ -27,6 +27,8 @@ process sizeCharacterisation
     memory '4g'
     cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, osMutationsFiles.size()) }
 
+    publishDir params.RESULTS_DIR, mode: 'link', overwrite: true
+
     input:
         path osMutationsFiles
 
@@ -47,12 +49,14 @@ process annotateMutationsWithOutlierSuppression
     memory '4g'
     cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, osMutationsFiles.size()) }
 
+    publishDir params.RESULTS_DIR, mode: 'link', overwrite: true
+
     input:
         path mutationsFile
         path osMutationsFiles
 
     output:
-        path 'mutation_table.with_outliers.rds', emit: "mutationsFile"
+        path 'mutation_table.outliersuppressed.rds', emit: "mutationsFile"
 
     shell:
         """

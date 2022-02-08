@@ -190,6 +190,8 @@ process offTargetErrorRates
     memory '4g'
     cpus   { Math.min(params.MAX_CORES, 2) }
 
+    publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: 'error_rates.*.rds"
+
     input:
         path mutationsFile
         path layoutFile
@@ -237,6 +239,8 @@ process createOnTargetMutationsTable
 process onTargetErrorRatesAndFilter
 {
     memory '4g'
+
+    publishDir params.RESULTS_DIR, mode: 'link', overwrite: true
 
     input:
         path mutationsFile
