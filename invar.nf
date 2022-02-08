@@ -33,7 +33,7 @@ workflow
         .map {
             row ->
             bam = file(row.FILE_NAME, checkIfExists: true)
-            index = file("${bam.name}.bai") // The index file may or may not exist.
+            index = file("${bam}.bai") // The index file may or may not exist.
             tuple row.POOL, row.BARCODE, bam, index
         }
 
