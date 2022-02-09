@@ -323,4 +323,6 @@ workflow parse
         onTargetMutationsFile = onTargetErrorRatesAndFilter.out.onTargetMutationsFile
         onTargetErrorRatesFile = onTargetErrorRatesAndFilter.out.locusErrorRates
         backgroundErrorRatesFile = createOnTargetMutationsTable.out.backgroundErrorRates
+        offTargetErrorRatesWithCosmic = offTargetErrorRates.out.cosmicErrorRates
+        offTargetErrorRatesNoCosmic = offTargetErrorRates.out.noCosmicErrorRates
 }

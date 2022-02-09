@@ -11,6 +11,7 @@ include { parse } from './processes/1_parse'
 include { sizeAnnotation } from './processes/2_size_annotation'
 include { outlierSuppression } from './processes/3_outlier_suppression'
 include { detection } from './processes/4_detection'
+include { analysis } from './processes/5_analysis'
 
 /*
  * Check the pipeline is set up without basic errors.
@@ -44,4 +45,10 @@ workflow
     outlierSuppression(parse.out.onTargetMutationsFile, sizeAnnotation.out.mutationsFiles)
 
     detection(outlierSuppression.out.perSampleMutationsFiles, outlierSuppression.out.sizeCharacterisationFile)
+
+    analysis(outlierSuppression.out.mutationsFile,
+             layoutChannel,
+             parse.out.onTargetErrorRatesFile,
+             parse.out.offTargetErrorRatesNoCosmic,
+             detection.out.invarScores)
 }

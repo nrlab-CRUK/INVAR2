@@ -47,7 +47,7 @@ process combineGeneralisedLikelihoodRatioTestResults
         path invarScoresFiles
 
     output:
-        path 'invar_scores.rds', emit: 'invarScoresFile'
+        path 'invar_scores.rds', emit: 'invarScores'
         path 'invar_scores.tsv', emit: 'invarScoresTSV'
 
     shell:
@@ -74,4 +74,7 @@ workflow detection
                 .collect()
 
         combineGeneralisedLikelihoodRatioTestResults(scoresChannel)
+
+    emit:
+        invarScores = combineGeneralisedLikelihoodRatioTestResults.out.invarScores
 }
