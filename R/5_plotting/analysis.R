@@ -237,9 +237,9 @@ filteringComparisonPlot <- function(errorRatesTable, study, setting)
     plot
 }
 
-backgroundErrorCaseControlPlot <- function(backgroundErrorRates, study)
+backgroundErrorCaseControlPlot <- function(errorRatesINV042, study)
 {
-    backgroundErrorRates %>%
+    errorRatesINV042 %>%
         ggplot(aes(x = MUTATION_CLASS, y = BACKGROUND_AF, colour = CASE_OR_CONTROL)) +
             geom_boxplot()+
             scale_y_log10()+
@@ -294,7 +294,7 @@ convertComplementaryMutations <- function(backgroundErrorTable)
         arrange(TRINUCLEOTIDE, CASE_OR_CONTROL, REF, ALT)
 }
 
-calculateBackgroundErrorINV042 <- function(errorRatesTable, layoutTable)
+calculateErrorRatesINV042 <- function(errorRatesTable, layoutTable)
 {
     layoutTable <- layoutTable %>%
         select(POOL, BARCODE, CASE_OR_CONTROL)
@@ -330,6 +330,20 @@ calculateBackgroundErrorINV042 <- function(errorRatesTable, layoutTable)
         convertComplementaryMutations()
 }
 
+errorRateSummary <- function(errorRatesINV042)
+{
+    errorRatesINV042 %>%
+        group_by(MUTATION_CLASS) %>%
+        mutate(CLASS_ERROR_RATE = weighted.mean(BACKGROUND_AF)) %>%
+        ungroup() %>%
+        group_by(MUTATION_CLASS, TRINUCLEOTIDE) %>%
+        mutate(CONTEXT_ERROR_RATE = weighted.mean(BACKGROUND_AF)) %>%
+        ungroup() %>%
+        summarise(MINIMUM_BY_CLASS = min(CLASS_ERROR_RATE),
+                  MAXIMUM_BY_CLASS = max(CLASS_ERROR_RATE),
+                  MINIMUM_BY_3BP = min(CONTEXT_ERROR_RATE),
+                  MAXIMUM_BY_3BP = max(CONTEXT_ERROR_RATE))
+}
 
 ##
 # The main script, wrapped as a function.
@@ -370,8 +384,11 @@ main <- function(scriptArgs)
     patientSummaryTable %>%
         write_csv("tumour_mutation_per_patient.csv")
 
-    backgroundErrorRatesINV042 <-
-        calculateBackgroundErrorINV042(offTargetErrorRatesList[['pre_filter']], layoutTable)
+    errorRatesINV042 <-
+        calculateErrorRatesINV042(offTargetErrorRatesList[['pre_filter']], layoutTable)
+
+    errorRateSummary(errorRatesINV042) %>%
+        write_csv("error_rate_summary.csv")
 
     # plotting 3bp context
 
@@ -397,6 +414,13 @@ main <- function(scriptArgs)
            filename = "p4_cohort_mut_class.pdf",
            width = 6, height = 5)
 
+
+    ## Case vs control error rates.
+
+    ggsave(plot = backgroundErrorCaseControlPlot(backgroundErrorRatesINV042, "PARADIGM"),
+           filename = "p5_background_error_comparison.case_vs_control.pdf",
+           width = 6, height = 4)
+
     ## Summary plots
 
     ggsave(plot = backgroundErrorRatesPlot(errorRatesTable, "PARADIGM", "fam_2"),
@@ -417,12 +441,6 @@ main <- function(scriptArgs)
 
     ggsave(plot = filteringComparisonPlot(errorRatesTable, "PARADIGM", "fam_2"),
            filename = "p20_filtering_comparison.pdf",
-           width = 6, height = 4)
-
-    ## Case vs control error rates.
-
-    ggsave(plot = backgroundErrorCaseControlPlot(backgroundErrorRatesINV042, "PARADIGM"),
-           filename = "p5_background_error_comparison.case_vs_control.pdf",
            width = 6, height = 4)
 
 }
