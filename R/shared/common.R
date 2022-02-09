@@ -27,7 +27,8 @@ loadLayoutTable <- function(layoutFile)
 {
     suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
         rename_with(str_to_upper) %>%
-        mutate(POOL_BARCODE = str_c(SLX_ID, str_replace(BARCODE, '-', '_'), sep = '_'))
+        rename(POOL = SLX_ID) %>%
+        mutate(POOL_BARCODE = str_c(POOL, str_replace(BARCODE, '-', '_'), sep = '_'))
 }
 
 ##

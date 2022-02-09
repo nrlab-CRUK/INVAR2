@@ -1,6 +1,7 @@
 suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(ggpubr))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
@@ -25,6 +26,9 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--error-rates"), type="character", metavar="file",
                     dest="ERROR_RATES_FILE", help="The on target background error rates.",
+                    default=defaultMarker),
+        make_option(c("--off-target-error-rates"), type="character", metavar="file",
+                    dest="OFF_TARGET_ERROR_RATES_FILE", help="The off target error rates.",
                     default=defaultMarker),
         make_option(c("--invar-scores"), type="character", metavar="file",
                     dest="INVAR_SCORES_FILE", help="The mutations table file (RDS) created by part one of the pipeline",
@@ -60,6 +64,7 @@ richTestOptions <- function()
         MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.with_outliers.rds'),
         INVAR_SCORES_FILE = str_c(base, 'invar_scores.rds'),
         ERROR_RATES_FILE = str_c(base, 'background_error_rates.rds'),
+        OFF_TARGET_ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
         LAYOUT_FILE = str_c(testhome, 'source_files/combined.SLX_table_with_controls_031220.csv')
     )
 }
@@ -232,6 +237,99 @@ filteringComparisonPlot <- function(errorRatesTable, study, setting)
     plot
 }
 
+backgroundErrorCaseControlPlot <- function(backgroundErrorRates, study)
+{
+    backgroundErrorRates %>%
+        ggplot(aes(x = MUTATION_CLASS, y = BACKGROUND_AF, colour = CASE_OR_CONTROL)) +
+            geom_boxplot()+
+            scale_y_log10()+
+            stat_compare_means(method = "t.test",
+                               method.args = list(alternative = "greater"),
+                               aes(label = str_c("p = ", ..p.format..))) +
+            theme_bw() +
+            labs(x = "Mutation class",
+                 y = "Background error rate",
+                 colour = "Case/control",
+                 title = "Comparison of error rate estimates in case vs. control",
+                 subtitle = str_c(study, " cohort")) +
+            theme(axis.text=element_text(size=12),
+                  axis.title=element_text(size=14),
+                  panel.grid.major = element_line(colour = alpha("black", 0.1))) +
+            stat_compare_means(method = "t.test",
+                               method.args = list(alternative = "greater"),
+                               aes(label = str_c("p = ", ..p.format..)))
+}
+
+
+##
+# Calculation functions.
+#
+
+##
+# Complement the MUTATION_CLASS columns for reference alleles
+# 'A' and 'G'. 'T' and 'C' remain unchanged.
+#
+convertComplementaryMutations <- function(backgroundErrorTable)
+{
+    complement <- function(sequence)
+    {
+        chartr('ATCG', 'TAGC', sequence)
+    }
+
+    complementary <- function(base)
+    {
+        base == 'A' | base == 'G'
+    }
+
+    forward <- backgroundErrorTable %>%
+        filter(!complementary(REF))
+
+    reverse <- backgroundErrorTable %>%
+        filter(complementary(REF))
+
+    reverse <- reverse %>%
+        mutate(MUTATION_CLASS = complement(MUTATION_CLASS))
+
+    bind_rows(forward, reverse) %>%
+        arrange(TRINUCLEOTIDE, CASE_OR_CONTROL, REF, ALT)
+}
+
+calculateBackgroundErrorINV042 <- function(errorRatesTable, layoutTable)
+{
+    layoutTable <- layoutTable %>%
+        select(POOL, BARCODE, CASE_OR_CONTROL)
+
+    errorRatesTable <- errorRatesTable %>%
+        left_join(layoutTable, by = c('POOL', 'BARCODE'))
+
+    controls <- errorRatesTable %>%
+        filter(str_detect(CASE_OR_CONTROL, "control"))
+
+    cases <- errorRatesTable %>%
+        filter(CASE_OR_CONTROL == "case") %>%
+        slice_sample(n = nrow(controls), replace = TRUE)
+
+    backgroundErrorTable <-
+        bind_rows(cases, controls) %>%
+        group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL) %>%
+        summarise(MUTATION_SUM = sum(MUTATION_SUM),
+                  DP_SUM = sum(DP_SUM),
+                  .groups = "drop") %>%
+        group_by(TRINUCLEOTIDE, CASE_OR_CONTROL) %>%
+        mutate(DP = sum(DP_SUM)) %>%
+        ungroup() %>%
+        filter(ALT != '.') %>%
+        group_by(TRINUCLEOTIDE, CASE_OR_CONTROL, REF, ALT, DP) %>%
+        summarise(MUTATION_SUM = sum(MUTATION_SUM),
+                  .groups = "drop") %>%
+        mutate(BACKGROUND_AF = MUTATION_SUM / DP) %>%
+        mutate(ERROR_RATE_TYPE = 'one_strand', .after = 'CASE_OR_CONTROL') %>%
+        mutate(MUTATION_CLASS = str_c(REF, ALT, sep = "/"))
+
+    backgroundErrorTable %>%
+        convertComplementaryMutations()
+}
+
 
 ##
 # The main script, wrapped as a function.
@@ -241,20 +339,23 @@ main <- function(scriptArgs)
 {
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        select(STUDY, POOL_BARCODE, TIMEPOINT)
+        select(STUDY, POOL, BARCODE, CASE_OR_CONTROL, TIMEPOINT)
 
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns() %>%
         mutate(UNIQUE_PATIENT_POS = str_c(PATIENT, UNIQUE_POS, sep="_")) %>%
         filter(PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS & OUTLIER.PASS) %>%
-        left_join(layoutTable, by = c('STUDY', 'POOL_BARCODE'))
+        left_join(layoutTable, by = c('STUDY', 'POOL', 'BARCODE'))
 
     invarScoresTable <- readRDS(scriptArgs$INVAR_SCORES_FILE)
 
     errorRatesTable <- readRDS(scriptArgs$ERROR_RATES_FILE) %>%
         mutate(MUTATION_CLASS = str_c(REF, ALT, sep = '/'))
 
+    offTargetErrorRatesList <- readRDS(scriptArgs$OFF_TARGET_ERROR_RATES_FILE)
+
+    # Manipulation and further calculations.
 
     contextMutationsTable <- mutationsTable %>%
         group_by(PATIENT, UNIQUE_POS) %>%
@@ -268,6 +369,9 @@ main <- function(scriptArgs)
 
     patientSummaryTable %>%
         write_csv("tumour_mutation_per_patient.csv")
+
+    backgroundErrorRatesINV042 <-
+        calculateBackgroundErrorINV042(offTargetErrorRatesList[['pre_filter']], layoutTable)
 
     # plotting 3bp context
 
@@ -313,6 +417,12 @@ main <- function(scriptArgs)
 
     ggsave(plot = filteringComparisonPlot(errorRatesTable, "PARADIGM", "fam_2"),
            filename = "p20_filtering_comparison.pdf",
+           width = 6, height = 4)
+
+    ## Case vs control error rates.
+
+    ggsave(plot = backgroundErrorCaseControlPlot(backgroundErrorRatesINV042, "PARADIGM"),
+           filename = "p5_background_error_comparison.case_vs_control.pdf",
            width = 6, height = 4)
 
 }

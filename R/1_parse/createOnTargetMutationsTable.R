@@ -109,7 +109,7 @@ convertComplementaryMutations <- function(mutationTable)
         mutate(TRINUCLEOTIDE = reverseComplement(TRINUCLEOTIDE),
                MUTATION_CLASS = complement(MUTATION_CLASS))
 
-    add_row(forward, reverse) %>%
+    bind_rows(forward, reverse) %>%
         arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE)
 }
 
@@ -280,7 +280,7 @@ convertComplementaryBackgroundError <- function(backgroundErrorTable)
                REF = complement(REF),
                ALT = complement(ALT))
 
-    add_row(forward, reverse) %>%
+    bind_rows(forward, reverse) %>%
         arrange(REF, ALT, TRINUCLEOTIDE)
 }
 

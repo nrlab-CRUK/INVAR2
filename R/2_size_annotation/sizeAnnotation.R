@@ -136,7 +136,8 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
 
         positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
 
-        positionSizes <- positionSizes.mutant %>% add_row(positionSizes.wildType)
+        positionSizes <-
+            bind_rows(positionSizes.mutant, positionSizes.wildType)
     }
 
     nPositionSizes = summarise(positionSizes, N = n())
@@ -171,7 +172,8 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
         positionSizes.wildType <- positionSizes.wildType %>%
             slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATION_SUM, replace = tooFew)
 
-        positionSizes <- positionSizes.mutant %>% add_row(positionSizes.wildType)
+        positionSizes <-
+            bind_rows(positionSizes.mutant, positionSizes.wildType)
     }
 
     positionSizes
@@ -232,8 +234,8 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, .samplingSeed
 
     fragmentSizesTable.fixed <- fragmentSizesTable %>%
         filter(UNIQUE_POS %in% correct$UNIQUE_POS) %>%
-        add_row(fragmentSizesTable.discrepant.zero.fixed) %>%
-        add_row(fragmentSizesTable.discrepant.nonzero.fixed) %>%
+        bind_rows(fragmentSizesTable.discrepant.zero.fixed) %>%
+        bind_rows(fragmentSizesTable.discrepant.nonzero.fixed) %>%
         select(UNIQUE_POS, MUTATION_CLASS, SIZE, MUTANT)
 
     mutationsWithSize <- mutationsTable %>%
