@@ -335,6 +335,43 @@ backgroundPolishingPlot <- function(mutationsTable, errorSuppression, outlierSup
     plot
 }
 
+tumourAFInLociPlot <- function(mutationsTable)
+{
+    study = getStudy(mutationsTable)
+
+    # recalculate average to exclude high level samples
+
+    samplesToKeep <- mutationsTable %>%
+        group_by(PATIENT, POOL_BARCODE) %>%
+        summarise(AVERAGE = weighted.mean(AF, DP), .groups = "drop") %>%
+        filter(AVERAGE <= 0.01) %>%
+        distinct(POOL_BARCODE)
+
+    mutationsTable.filtered <- mutationsTable %>%
+        filter(OUTLIER.PASS & BOTH_STRANDS & CONTAMINATION_RISK.PASS & LOCUS_NOISE.PASS &
+               POOL_BARCODE %in% samplesToKeep$POOL_BARCODE) %>%
+        mutate(IN_PLASMA = ifelse(AF > 0, "Yes", "No"),
+               COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Controls")))
+
+    plot <- mutationsTable.filtered %>%
+        ggplot(aes(x = COHORT, y = TUMOUR_AF, fill = IN_PLASMA)) +
+            geom_boxplot(outlier.colour = NA, notch = T) +
+            theme_classic()+
+            labs(x = "Data",
+                 y = "Tumour allele fraction",
+                 fill = "Observed in plasma",
+                 title = str_c(study, ": Tumour AF of detected vs. non detected loci"),
+                 subtitle = "Split by patient specific and controls") +
+            theme(axis.text=element_text(size = 12),
+                  axis.title=element_text(size = 14, face = "bold"),
+                  panel.grid.major = element_line(colour = alpha("black", 0.1))) +
+            stat_compare_means(method = "t.test",
+                               method.args = list(alternative = "greater"),
+                               aes(label = str_c("p = ", ..p.format..)))
+
+    plot
+}
+
 ##
 # Calculation functions.
 #
@@ -535,6 +572,12 @@ main <- function(scriptArgs)
     ggsave(plot = backgroundPolishingPlot(mutationsTable, errorSuppression = scriptArgs$ERROR_SUPPRESSION, outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION),
            filename = "p8_background_polishing.pdf",
            width = 15, height = 12)
+
+    ## Tumour AF in observed and unobserved loci.
+
+    ggsave(plot = tumourAFInLociPlot(mutationsTable),
+           filename = "p10_tumour_AF_for_observed_non_observed_loci.pdf",
+           width = 5, height = 4)
 }
 
 # Launch it.
