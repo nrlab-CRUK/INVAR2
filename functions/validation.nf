@@ -46,6 +46,11 @@ def validatePipeline(params)
             log.error "ERROR_SUPPRESSION_NAME must be set in your project's configuration file."
             errors = true
         }
+        if (!containsKey('FAMILY_SIZE'))
+        {
+            log.error "FAMILY_SIZE must be set in your project's configuration file."
+            errors = true
+        }
 
         /**
          * Input files.

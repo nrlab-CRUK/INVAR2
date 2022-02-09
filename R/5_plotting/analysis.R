@@ -32,7 +32,19 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--invar-scores"), type="character", metavar="file",
                     dest="INVAR_SCORES_FILE", help="The mutations table file (RDS) created by part one of the pipeline",
-                    default=defaultMarker))
+                    default=defaultMarker),
+        make_option(c("--study"), type="character", metavar="string",
+                    dest="STUDY", help="The study name",
+                    default=defaultMarker),
+        make_option(c("--error-suppression"), type="character", metavar="string",
+                    dest="ERROR_SUPPRESSION", help="The error suppression string",
+                    default=defaultMarker),
+        make_option(c("--family-size"), type="character", metavar="string",
+                    dest="FAMILY_SIZE", help="The family size string",
+                    default=defaultMarker),
+        make_option(c("--outlier-suppression"), type="double", metavar="number",
+                    dest="OUTLIER_SUPPRESSION", help="The outlier suppression threshold",
+                    default=0.05))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -65,15 +77,22 @@ richTestOptions <- function()
         INVAR_SCORES_FILE = str_c(base, 'invar_scores.rds'),
         ERROR_RATES_FILE = str_c(base, 'background_error_rates.rds'),
         OFF_TARGET_ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
-        LAYOUT_FILE = str_c(testhome, 'source_files/combined.SLX_table_with_controls_031220.csv')
+        LAYOUT_FILE = str_c(testhome, 'source_files/combined.SLX_table_with_controls_031220.csv'),
+        STUDY = 'PARADIGM',
+        ERROR_SUPPRESSION = 'f0.9_s2',
+        FAMILY_SIZE = 'fam_2',
+        OUTLIER_SUPPRESSION = 0.05
     )
 }
 
 
+##
+# Plot functions.
+#
+
 cohortMutationContextPlot <- function(contextMutationsTable)
 {
-    study = unique(contextMutationsTable$STUDY)
-    assert_that(length(study) == 1, msg = "Have more than one study in the mutations table.")
+    study = getStudy(contextMutationsTable)
 
     plot <- contextMutationsTable %>%
         ggplot(aes(x = as.character(TRINUCLEOTIDE), fill = MUTATION_CLASS)) +
@@ -96,8 +115,7 @@ cohortMutationAFByClassPlot <- function(contextMutationsTable, layoutTable)
     contextMutationsTable <- contextMutationsTable %>%
         filter(TUMOUR_AF > 0)
 
-    study = unique(contextMutationsTable$STUDY)
-    assert_that(length(study) == 1, msg = "Have more than one study in the mutations table.")
+    study = getStudy(contextMutationsTable)
 
     plot <- contextMutationsTable %>%
         ggplot(aes(x = TUMOUR_AF, fill = MUTATION_CLASS)) +
@@ -113,8 +131,7 @@ cohortMutationAFByClassPlot <- function(contextMutationsTable, layoutTable)
 
 mutationsPerPatientPlot <- function(patientSummaryTable)
 {
-    study = unique(patientSummaryTable$STUDY)
-    assert_that(length(study) == 1, msg = "Have more than one study in the mutations table.")
+    study = getStudy(patientSummaryTable)
 
     plot <- patientSummaryTable %>%
         ggplot(aes(x = PATIENT, y = MUTATIONS)) +
@@ -129,6 +146,8 @@ mutationsPerPatientPlot <- function(patientSummaryTable)
 
 mutationClassByCohortPlot <- function(contextMutationsTable)
 {
+    study = getStudy(contextMutationsTable)
+
     contextMutationsClassSummary <- contextMutationsTable %>%
         group_by(STUDY) %>%
         mutate(TOTAL_MUTATIONS = n()) %>%
@@ -148,7 +167,7 @@ mutationClassByCohortPlot <- function(contextMutationsTable)
                   legend.position = c(0.75, 0.8)) +
             labs(x = "Mutation class",
                  y = "Fraction",
-                 title = str_c("Mutation class in ", unique(contextMutationsClassSummary$STUDY), " panel"),
+                 title = str_c("Mutation class in ", study, " panel"),
                  subtitle = "Unique patient specific mutations in polished filtered data")
 
     plot
@@ -159,7 +178,7 @@ mutationClassByCohortPlot <- function(contextMutationsTable)
 # From functions.R, get.error_rate_polishing_comparison
 #
 
-backgroundErrorRatesPlot <- function(errorRatesTable, study, setting)
+backgroundErrorRatesPlot <- function(errorRatesTable, study, familySize)
 {
     plot <- errorRatesTable %>%
         filter(CASE_OR_CONTROL == 'case' & ERROR_RATE_TYPE == 'locus_noise.both_reads') %>%
@@ -173,7 +192,7 @@ backgroundErrorRatesPlot <- function(errorRatesTable, study, setting)
             scale_y_log10(breaks = c(1e-7, 1e-6, 1e-5, 1e-4)) +
             labs(x = "Trinucleotide context",
                  y = "Background error rate",
-                 title = str_c("Background error rates for", study, setting, sep = ' '),
+                 title = str_c("Background error rates for", study, familySize, sep = ' '),
                  subtitle = "Using cases only") +
             guides(fill = 'none') +
             annotation_logticks(sides = "l")
@@ -220,7 +239,7 @@ errorRatePolishingComparisonPlot <- function(errorRatesTable, errorPolishingSett
     plot
 }
 
-filteringComparisonPlot <- function(errorRatesTable, study, setting)
+filteringComparisonPlot <- function(errorRatesTable, study, familySize)
 {
     plot <- errorRatesTable %>%
         filter(CASE_OR_CONTROL == 'case') %>%
@@ -232,7 +251,7 @@ filteringComparisonPlot <- function(errorRatesTable, study, setting)
             labs(x = "Mutation class",
                  y = "Background AF",
                  fill = "Error rate type",
-                 title = str_c("Background error filtering steps\n", study, setting))
+                 title = str_c("Background error filtering steps\n", study, ' ', familySize))
 
     plot
 }
@@ -260,10 +279,73 @@ backgroundErrorCaseControlPlot <- function(errorRatesINV042, study)
                                aes(label = str_c("p = ", ..p.format..)))
 }
 
+summaryCohortPlot <- function(mutationsTable)
+{
+    study = getStudy(mutationsTable)
+
+    cohortSummary <- mutationsTable %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS & CONTAMINATION_RISK.PASS &
+               AF > 0 & AF < 0.25 & MUTATION_SUM < 10) %>%
+        group_by(STUDY, PATIENT_SPECIFIC) %>%
+        summarise(PROPORTION = sum(OUTLIER.PASS) / n(),
+                  TOTAL_ROWS = n(),
+                  .groups = "drop") %>%
+        mutate(COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Controls")))
+
+    plot <- cohortSummary %>%
+        ggplot(aes(x = COHORT, y = PROPORTION, fill = STUDY, label = round(PROPORTION, digits = 2))) +
+            geom_bar(position = "dodge", stat = "identity") +
+            geom_text(vjust = 1.2) +
+            labs(title = str_c(study, ": Effect of outlier suppression"),
+                 fill = "Study",
+                 x = "Cohort",
+                 y = "Proportion of signal retained after filter") +
+            theme_classic() +
+            theme(legend.position = c(0.7, 0.7)) +
+            scale_y_continuous(limits = c(0,1))
+
+    plot
+}
+
+backgroundPolishingPlot <- function(mutationsTable, errorSuppression, outlierSuppression)
+{
+    study = getStudy(mutationsTable)
+
+    # SAMPLE_NAME in original now has the patient mutation belongs to as part of it.
+    # That might need to be done here too.
+
+    plot <- mutationsTable %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS & CONTAMINATION_RISK.PASS &
+               AF > 0 & AF < 0.25 & MUTATION_SUM < 10) %>%
+        mutate(COMBINED_SAMPLE_NAME = str_c(SAMPLE_NAME, " (", PATIENT_MUTATION_BELONGS_TO, ")"),
+               PASS = ifelse(OUTLIER.PASS, "Yes", "No"),
+               COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Controls"))) %>%
+        ggplot(aes(x = COMBINED_SAMPLE_NAME, y = AF, colour = PASS)) +
+            geom_point() +
+            theme_classic() +
+            scale_y_log10() +
+            facet_wrap(STUDY ~ COHORT, scales = "free_x", nrow = 3) +
+            theme(axis.text.x=element_text(angle = 90)) +
+            labs(title = str_c("Effect of outlier suppression ", study),
+                 subtitle = str_c(errorSuppression, ", threshold = ", outlierSuppression),
+                 colour = "Pass",
+                 x = "Sample",
+                 y = "Mutant allele fraction")
+
+    plot
+}
 
 ##
 # Calculation functions.
 #
+
+getStudy <- function(table)
+{
+    assert_that('STUDY' %in% colnames(table), msg = "Table doesn't contain a STUDY column.")
+    study = unique(table$STUDY)
+    assert_that(length(study) == 1, msg = "Table doesn't contain unique study values.")
+    study
+}
 
 ##
 # Complement the MUTATION_CLASS columns for reference alleles
@@ -358,8 +440,6 @@ main <- function(scriptArgs)
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns() %>%
-        mutate(UNIQUE_PATIENT_POS = str_c(PATIENT, UNIQUE_POS, sep="_")) %>%
-        filter(PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS & OUTLIER.PASS) %>%
         left_join(layoutTable, by = c('STUDY', 'POOL', 'BARCODE'))
 
     invarScoresTable <- readRDS(scriptArgs$INVAR_SCORES_FILE)
@@ -372,6 +452,7 @@ main <- function(scriptArgs)
     # Manipulation and further calculations.
 
     contextMutationsTable <- mutationsTable %>%
+        filter(PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS & OUTLIER.PASS) %>%
         group_by(PATIENT, UNIQUE_POS) %>%
         slice_head(n = 1) %>%
         ungroup()
@@ -389,6 +470,8 @@ main <- function(scriptArgs)
 
     errorRateSummary(errorRatesINV042) %>%
         write_csv("error_rate_summary.csv")
+
+    ## Creating and saving plots.
 
     # plotting 3bp context
 
@@ -417,13 +500,13 @@ main <- function(scriptArgs)
 
     ## Case vs control error rates.
 
-    ggsave(plot = backgroundErrorCaseControlPlot(backgroundErrorRatesINV042, "PARADIGM"),
+    ggsave(plot = backgroundErrorCaseControlPlot(errorRatesINV042, study = scriptArgs$STUDY),
            filename = "p5_background_error_comparison.case_vs_control.pdf",
            width = 6, height = 4)
 
     ## Summary plots
 
-    ggsave(plot = backgroundErrorRatesPlot(errorRatesTable, "PARADIGM", "fam_2"),
+    ggsave(plot = backgroundErrorRatesPlot(errorRatesTable, study = scriptArgs$STUDY, familySize = scriptArgs$FAMILY_SIZE),
            filename = "p7_background_error_rates.pdf",
            width = 8, height = 4)
 
@@ -439,10 +522,19 @@ main <- function(scriptArgs)
            filename = "p9_error_rate_comparison.locus_noise_both_reads.pdf",
            width = 6, height = 3)
 
-    ggsave(plot = filteringComparisonPlot(errorRatesTable, "PARADIGM", "fam_2"),
+    ggsave(plot = filteringComparisonPlot(errorRatesTable, study = scriptArgs$STUDY, familySize = scriptArgs$FAMILY_SIZE),
            filename = "p20_filtering_comparison.pdf",
            width = 6, height = 4)
 
+    ## Outlier suppression plots
+
+    ggsave(plot = summaryCohortPlot(mutationsTable),
+           filename = "p6_os_data_retained.pdf",
+           width = 5, height = 6)
+
+    ggsave(plot = backgroundPolishingPlot(mutationsTable, errorSuppression = scriptArgs$ERROR_SUPPRESSION, outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION),
+           filename = "p8_background_polishing.pdf",
+           width = 15, height = 12)
 }
 
 # Launch it.
