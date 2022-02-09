@@ -176,127 +176,62 @@ backgroundErrorRatesPlot <- function(errorRatesTable, study, setting)
     plot
 }
 
-errorRatePolishingComparisonPlots <- function(errorRatesTable, study, setting)
+errorRatePolishingComparisonPlot <- function(errorRatesTable, errorPolishingSetting)
 {
-    compare <- function(errorPolishingSetting, errorRatesTable, study, setting)
-    {
-        oneReadErrorRates <- errorRatesTable %>%
-            filter(ERROR_RATE_TYPE, "one_read") %>%
-            rename(BACKGROUND_AF.ONE_READ = BACKGROUND_AF)
+    oneReadErrorRates <- errorRatesTable %>%
+        filter(ERROR_RATE_TYPE == "one_read") %>%
+        rename(BACKGROUND_AF.ONE_READ = BACKGROUND_AF)
 
-        otherErrorRates <- errorRatesTable %>%
-            filter(ERROR_RATE_TYPE, errorPolishingSetting) %>%
-            rename(OTHER_SETTING = BACKGROUND_AF) %>%
-            select(TRINUCLEOTIDE, ALT, CASE_OR_CONTROL, OTHER_SETTING)
+    otherErrorRates <- errorRatesTable %>%
+        filter(ERROR_RATE_TYPE == errorPolishingSetting) %>%
+        rename(BACKGROUND_AF.OTHER = BACKGROUND_AF) %>%
+        select(TRINUCLEOTIDE, ALT, CASE_OR_CONTROL, BACKGROUND_AF.OTHER)
 
-        errorRatesComparison <- oneReadErrorRates %>%
-            inner_join(otherErrorRates, by = c('TRINUCLEOTIDE', 'ALT', 'CASE_OR_CONTROL')) %>%
-            mutate(RATIO = OTHER_SETTING / BACKGROUND_AF.ONE_READ)
+    errorRatesComparison <- oneReadErrorRates %>%
+        inner_join(otherErrorRates, by = c('TRINUCLEOTIDE', 'ALT', 'CASE_OR_CONTROL')) %>%
+        mutate(RATIO = BACKGROUND_AF.OTHER / BACKGROUND_AF.ONE_READ)
 
-        plot <- errorRatesComparison %>%
-            filter(CASE_OR_CONTROL == 'case') %>%
-            ggplot(aes(x = BACKGROUND_AF.ONE_READ, y = OTHER_SETTING, color = MUTATION_CLASS))+
-            geom_point() +
-            scale_y_log10(limits = c(0.5e-7, 1e-2)) +
-            scale_x_log10(limits = c(0.5e-7, 1e-2)) +
-            geom_abline(slope = 1, linetype = "dashed") +
-            labs(x = "Error rate pre-filter",
-                 y = "Error rate post-filter",
-                 title = errorPolishingSetting) +
-            theme_classic()+
-            guides(fill = 'none') +
-            theme(axis.text = element_text(size = 12),
-                  axis.title = element_text(size = 14))
+    plotTitle <- errorPolishingSetting %>%
+        str_replace_all('_', ' ') %>%
+        str_replace_all('\\.', ' & ') %>%
+        str_to_sentence()
 
-        plot
-    }
+    plot <- errorRatesComparison %>%
+        filter(CASE_OR_CONTROL == 'case') %>%
+        ggplot(aes(x = BACKGROUND_AF.ONE_READ, y = BACKGROUND_AF.OTHER, color = MUTATION_CLASS))+
+        geom_point() +
+        scale_y_log10(limits = c(0.5e-7, 1e-2)) +
+        scale_x_log10(limits = c(0.5e-7, 1e-2)) +
+        geom_abline(slope = 1, linetype = "dashed") +
+        labs(x = "Error rate pre-filter",
+             y = "Error rate post-filter",
+             color = "Mutation class",
+             title = plotTitle) +
+        theme_classic()+
+        guides(fill = 'none') +
+        theme(axis.text = element_text(size = 12),
+              axis.title = element_text(size = 14))
 
-    errorPolishingSettings <- errorRatesTable %>%
-        distinct(ERROR_RATE_TYPE) %>%
-        filter(ERROR_RATE_TYPE != "one_read")
-
-    plotList <- lapply(errorPolishingSettings$ERROR_RATE_TYPE, compare, errorRatesTable, study, setting)
-
-    plotList
+    plot
 }
 
-errorRatePolishingComparison <- function(errorRatesList, layoutTable, exclude_PPC = T, study , setting, plot = c(F,T)){
-    # load background rates
-    background_error <- calculate.background_error(error_file, SLX_layout, exclude_PPC = T)
-    background_error <- add.missing_error_classes(background_error, trinucleotide_depth)
-    background_error <- combine_classes(background_error)
-
-    if (plot == T){
-
-        print("Looking into polishing strategies")
-        # non changing variables
-        error_polishing_settings <- unique(background_error$data)
-        one_read_error_rates <- filter(background_error, data == "one_read")
-        names(one_read_error_rates)[names(one_read_error_rates) == "background_AF"] <- "background_AF.one_read"
-
-        # looping through the settings
-        for (i in 1:length(error_polishing_settings)){
-            print(error_polishing_settings[i])
-
-            two_read_error_rates <- filter(background_error, data == error_polishing_settings[i])
-            names(two_read_error_rates)[names(two_read_error_rates) == "background_AF"] <- "other_setting"
-
-            error_rates_comparison <- inner_join(one_read_error_rates, two_read_error_rates[,c("TRINUCLEOTIDE", "case_or_control", "ALT", "other_setting")], by = c("TRINUCLEOTIDE", "ALT", "case_or_control"))
-
-            if (error_polishing_settings[i] == "locus_noise.both_reads"){
-                print("saving locus_noise.both_reads")
-                error_rates_comparison.locus_noise.both_reads <- error_rates_comparison
-            }
-
-            error_rates_comparison$ratio <- error_rates_comparison$other_setting / error_rates_comparison$background_AF.one_read
-
-            curr_plot <- ggplot(filter(error_rates_comparison, case_or_control == "case"), aes(x = background_AF.one_read, y = other_setting, color = mut_class))+
-                geom_point() +
-                scale_y_log10(limits = c(0.5e-7, 1e-2))+
-                scale_x_log10(limits = c(0.5e-7, 1e-2))+
-                geom_abline(slope = 1, linetype = "dashed")+
-                labs(x = "Error rate pre-filter",
-                     y = paste("Error rate post-filter"),
-                     title = error_polishing_settings[i]) +
-                theme_classic()+
-                guides(fill=FALSE) +
-                theme(axis.text=element_text(size=12),
-                      axis.title=element_text(size=14))
-
-            print(curr_plot)
-
-            assign(paste0("error_polishing_", error_polishing_settings[i]),curr_plot)
-        }
-
-        print("Now saving all the plots combined")
-
-        ggsave(paste0(plot_dir, "p9_", study, "_", setting,".", Sys.Date(), ".pdf"),
-               plot = multiplot(error_polishing_locus_noise,
-                                error_polishing_both_reads,
-                                #error_polishing_polished_only,
-                                error_polishing_locus_noise.both_reads,
-                                cols = 1),
-               width = 6, height = 9)
-
-
-        print("Making plot to compare filtering steps in a boxplot - p20")
-        #background_error$data <- factor(background_error$data, levels = c("one_read", "both_reads", "polished_only", "polished.both_reads"))
-        filter(background_error, case_or_control == "case")%>%
-            ggplot(aes(x = mut_class, y = background_AF, fill = data)) +
+filteringComparisonPlot <- function(errorRatesTable, study, setting)
+{
+    plot <- errorRatesTable %>%
+        filter(CASE_OR_CONTROL == 'case') %>%
+        ggplot(aes(x = MUTATION_CLASS, y = BACKGROUND_AF, fill = ERROR_RATE_TYPE)) +
             geom_boxplot() +
-            scale_y_log10(breaks = c(1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2))+
+            scale_y_log10(breaks = c(1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2)) +
             theme_classic() +
             scale_fill_discrete(name = "Background filtering")+
-            labs(x= "Mutation class",
-                 y= "Background AF",
-                 title= paste("Background error filtering steps\n", study, setting))
-        ggsave(paste0(plot_dir, "p20_", study, "_", setting,".",Sys.Date(), ".pdf"), width = 6, height = 4)
+            labs(x = "Mutation class",
+                 y = "Background AF",
+                 fill = "Error rate type",
+                 title = str_c("Background error filtering steps\n", study, setting))
 
-    } else{
-        print("not plotting data, in order to plot, please set variable in function")
-    }
-    return(background_error)
+    plot
 }
+
 
 ##
 # The main script, wrapped as a function.
@@ -361,17 +296,25 @@ main <- function(scriptArgs)
     ## Summary plots
 
     ggsave(plot = backgroundErrorRatesPlot(errorRatesTable, "PARADIGM", "fam_2"),
-           filename = str_c("p7_background_error_rates.pdf"),
+           filename = "p7_background_error_rates.pdf",
            width = 8, height = 4)
 
-    errorRatePlotList <- errorRatePolishingComparisonPlots(errorRatesTable, "PARADIGM", "fam_2")
+    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "both_reads"),
+           filename = "p9_error_rate_comparison.both_reads.pdf",
+           width = 6, height = 3)
 
-    for (polishingTechnique in names(errorRatePlotList))
-    {
-        ggsave(plot = errorRatePlotList[[polishingTechnique]],
-               filename = str_c("p9_error_rate_comparison_", polishingTechnique, ".rds"),
-               width = 6, height = 3)
-    }
+    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise"),
+           filename = "p9_error_rate_comparison.locus_noise.pdf",
+           width = 6, height = 3)
+
+    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise.both_reads"),
+           filename = "p9_error_rate_comparison.locus_noise_both_reads.pdf",
+           width = 6, height = 3)
+
+    ggsave(plot = filteringComparisonPlot(errorRatesTable, "PARADIGM", "fam_2"),
+           filename = "p20_filtering_comparison.pdf",
+           width = 6, height = 4)
+
 }
 
 # Launch it.
