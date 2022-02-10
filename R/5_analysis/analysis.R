@@ -378,29 +378,14 @@ tumourAFInLociPlot <- function(mutationsTable, study)
 
 ## Fragment size per cohort, with different levels of error-suppression
 
-fragmentSizePerCohortPlot <- function(sizeCharacterisationTable, layoutTable, study)
+fragmentSizePerCohortPlot <- function(sizeCharacterisationSummary, study)
 {
-    studyInfo <- layoutTable %>%
-        filter(STUDY == study) %>%
-        distinct(STUDY, SAMPLE_TYPE)
+    assert_that(is.character(study), msg = "Study is expected to be a string")
 
-    assert_that(nrow(studyInfo) == 1, msg = str_c("Different samples types in ", study))
-
-    roundTo <- 5
-
-    summary <- sizeCharacterisationTable %>%
-        mutate(STUDY = study,
-               SIZE.ROUNDED = plyr::round_any(SIZE, accuracy = roundTo)) %>%
-        group_by(STUDY, PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE.ROUNDED) %>%
-        summarise(COUNT = sum(COUNT), .groups = "drop_last") %>%
-        mutate(TOTAL = sum(COUNT)) %>%
-        ungroup() %>%
-        mutate(PROPORTION = COUNT / TOTAL,
-               SAMPLE_TYPE = studyInfo$SAMPLE_TYPE)
-
-    plot <- summary %>%
+    plot <- sizeCharacterisationSummary %>%
         filter(PATIENT_SPECIFIC) %>%
-        mutate(MUTANT_LABEL = as.factor(ifelse(MUTANT, "Yes", "No"))) %>%
+        mutate(STUDY = study,
+               MUTANT_LABEL = as.factor(ifelse(MUTANT, "Yes", "No"))) %>%
         ggplot(aes(x = SIZE.ROUNDED, y = PROPORTION, fill = MUTANT_LABEL)) +
             geom_bar(stat = "identity", position = "dodge") +
             labs(x = "Fragment size in bp",
@@ -417,6 +402,50 @@ fragmentSizePerCohortPlot <- function(sizeCharacterisationTable, layoutTable, st
             geom_vline(xintercept = c(166, 166*2), linetype = "dashed", alpha = 0.5) +
             annotate("text", x = 200, y = 0.15, label = "166bp", alpha = 0.5) +
             annotate("text", x = 370, y = 0.15, label = "332bp", alpha = 0.5)
+
+    plot
+}
+
+enrichmentLevelPlot <- function(sizeCharacterisationSummary, study)
+{
+    assert_that(is.character(study), msg = "Study is expected to be a string")
+
+    joinColumns <- c("PATIENT_SPECIFIC", "CASE_OR_CONTROL", "SAMPLE_TYPE", "SIZE.ROUNDED")
+    selectColumns <- c(joinColumns, "COUNT", "TOTAL", "PROPORTION")
+
+    size.mutant = sizeCharacterisationSummary %>%
+        filter(MUTANT) %>%
+        select(all_of(selectColumns))
+
+    size.wildType = sizeCharacterisationSummary %>%
+        filter(!MUTANT) %>%
+        select(all_of(selectColumns))
+
+    enrichmentRatio <- size.wildType %>%
+        left_join(size.mutant, by = joinColumns, suffix = c(".WT", ".M")) %>%
+        group_by(PATIENT_SPECIFIC, CASE_OR_CONTROL) %>%
+        mutate(TOTAL = sum(ifelse(is.na(PROPORTION.M), 0, COUNT.WT))) %>%
+        ungroup() %>%
+        mutate(PROPORTION.WT = COUNT.WT / TOTAL,
+               RATIO = PROPORTION.M / PROPORTION.WT,
+               RATIO.LOG2 = log2(RATIO))
+
+    plot <- enrichmentRatio %>%
+        mutate(STUDY = study) %>%
+        filter(PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case' & !is.na(RATIO.LOG2)) %>%
+        ggplot(aes(x = SIZE.ROUNDED, y = RATIO.LOG2)) +
+            geom_bar(stat = "identity", position = "dodge") +
+            labs(x = "Fragment size in bp",
+                 y = "Enrichment ratio - log2 ratio",
+                 title = str_c(study, ": Enrichment ratio for ctDNA vs. error suppression")) +
+            theme_classic() +
+            theme(axis.text = element_text(size = 12),
+                  axis.title = element_text(size = 14, face = "bold")) +
+            scale_x_continuous(limits = c(0, 500)) +
+            facet_grid(STUDY~.) +
+            geom_vline(xintercept = c(166, 166*2), linetype = "dashed", alpha = 0.5) +
+            annotate("text", x = 210, y = 5, label = "166bp", alpha = 0.5) +
+            annotate("text", x = 380, y = 5, label = "332bp", alpha = 0.5)
 
     plot
 }
@@ -490,7 +519,7 @@ calculateErrorRatesINV042 <- function(errorRatesTable, layoutTable)
         convertComplementaryMutations()
 }
 
-errorRateSummary <- function(errorRatesINV042)
+calculateErrorRateSummary <- function(errorRatesINV042)
 {
     errorRatesINV042 %>%
         group_by(MUTATION_CLASS) %>%
@@ -504,6 +533,28 @@ errorRateSummary <- function(errorRatesINV042)
                   MINIMUM_BY_3BP = min(CONTEXT_ERROR_RATE),
                   MAXIMUM_BY_3BP = max(CONTEXT_ERROR_RATE))
 }
+
+calculateSizeCharacterisationSummary <- function(sizeCharacterisationTable, layoutTable, study, roundTo)
+{
+    assert_that(is.character(study), msg = "Study is expected to be a string")
+    assert_that(is.numeric(roundTo), msg = "roundTo must be a number.")
+
+    studyInfo <- layoutTable %>%
+        filter(STUDY == study) %>%
+        distinct(STUDY, SAMPLE_TYPE)
+
+    assert_that(nrow(studyInfo) == 1, msg = str_c("Different samples types in ", study))
+
+    sizeCharacterisationTable %>%
+        mutate(SIZE.ROUNDED = plyr::round_any(SIZE, accuracy = roundTo)) %>%
+        group_by(PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE.ROUNDED) %>%
+        summarise(COUNT = sum(COUNT), .groups = "drop_last") %>%
+        mutate(TOTAL = sum(COUNT)) %>%
+        ungroup() %>%
+        mutate(PROPORTION = COUNT / TOTAL,
+               SAMPLE_TYPE = studyInfo$SAMPLE_TYPE)
+}
+
 
 ##
 # The main script, wrapped as a function.
@@ -547,8 +598,12 @@ main <- function(scriptArgs)
     errorRatesINV042 <-
         calculateErrorRatesINV042(offTargetErrorRatesList[['pre_filter']], layoutTable)
 
-    errorRateSummary(errorRatesINV042) %>%
+    calculateErrorRateSummary(errorRatesINV042) %>%
         write_csv("error_rate_summary.csv")
+
+    sizeCharacterisationSummary <-
+        calculateSizeCharacterisationSummary(sizeCharacterisationTable, layoutTable,
+                                             study = scriptArgs$STUDY, roundTo = 5L)
 
     ## Creating and saving plots.
 
@@ -623,9 +678,14 @@ main <- function(scriptArgs)
 
     ## Fragment size per cohort, with different levels of error-suppression
 
-
-    ggsave(plot = fragmentSizePerCohortPlot(sizeCharacterisationTable, layoutTable, study = scriptArgs$STUDY),
+    ggsave(plot = fragmentSizePerCohortPlot(sizeCharacterisationSummary, study = scriptArgs$STUDY),
            filename = "p11_size_comparison.pdf",
+           width = 6, height = 5)
+
+    ## Enrichment level
+
+    ggsave(plot = enrichmentLevelPlot(sizeCharacterisationSummary, study = scriptArgs$STUDY),
+           filename = "p12_enrichment_ratios.pdf",
            width = 6, height = 5)
 }
 
