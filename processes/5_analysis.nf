@@ -43,8 +43,9 @@ workflow analysis
         invarScoresChannel
 
     main:
-        analysisAndReport(osMutationsChannel, layoutChannel, onTargetErrorRatesChannel, offTargetErrorRatesChannel,
-                          sizeCharacterisationFile, invarScoresChannel)
+        analysisAndReport(osMutationsChannel, layoutChannel,
+                          onTargetErrorRatesChannel, offTargetErrorRatesChannel,
+                          sizeCharacterisationChannel, invarScoresChannel)
 
     emit:
         plots = analysisAndReport.out.plots

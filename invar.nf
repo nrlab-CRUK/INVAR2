@@ -50,5 +50,6 @@ workflow
              layoutChannel,
              parse.out.onTargetErrorRatesFile,
              parse.out.offTargetErrorRatesNoCosmic,
+             outlierSuppression.out.sizeCharacterisationFile,
              detection.out.invarScores)
 }
