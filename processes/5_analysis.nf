@@ -9,6 +9,7 @@ process analysisAndReport
         path layoutFile
         path onTargetErrorRatesFile
         path offTargetErrorRatesFile
+        path sizeCharacterisationFile
         path invarScoresFile
 
     output:
@@ -21,6 +22,7 @@ process analysisAndReport
             --layout="!{layoutFile}" \
             --error-rates="!{onTargetErrorRatesFile}" \
             --off-target-error-rates="!{offTargetErrorRatesFile}" \
+            --size-characterisation="!{sizeCharacterisationFile}" \
             --invar-scores="!{invarScoresFile}" \
             --study="!{params.STUDY}" \
             --error-suppression="!{params.ERROR_SUPPRESSION_NAME}" \
@@ -37,10 +39,12 @@ workflow analysis
         layoutChannel
         onTargetErrorRatesChannel
         offTargetErrorRatesChannel
+        sizeCharacterisationChannel
         invarScoresChannel
 
     main:
-        analysisAndReport(osMutationsChannel, layoutChannel, onTargetErrorRatesChannel, offTargetErrorRatesChannel, invarScoresChannel)
+        analysisAndReport(osMutationsChannel, layoutChannel, onTargetErrorRatesChannel, offTargetErrorRatesChannel,
+                          sizeCharacterisationFile, invarScoresChannel)
 
     emit:
         plots = analysisAndReport.out.plots

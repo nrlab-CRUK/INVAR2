@@ -30,8 +30,11 @@ parseOptions <- function()
         make_option(c("--off-target-error-rates"), type="character", metavar="file",
                     dest="OFF_TARGET_ERROR_RATES_FILE", help="The off target error rates.",
                     default=defaultMarker),
+        make_option(c("--size-characterisation"), type="character", metavar="file",
+                    dest="SIZE_CHARACTERISATION_FILE", help="The size characterisation file.",
+                    default=defaultMarker),
         make_option(c("--invar-scores"), type="character", metavar="file",
-                    dest="INVAR_SCORES_FILE", help="The mutations table file (RDS) created by part one of the pipeline",
+                    dest="INVAR_SCORES_FILE", help="The INVAR scores file.",
                     default=defaultMarker),
         make_option(c("--study"), type="character", metavar="string",
                     dest="STUDY", help="The study name",
@@ -74,9 +77,10 @@ richTestOptions <- function()
 
     list(
         MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.with_outliers.rds'),
-        INVAR_SCORES_FILE = str_c(base, 'invar_scores.rds'),
         ERROR_RATES_FILE = str_c(base, 'background_error_rates.rds'),
         OFF_TARGET_ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
+        SIZE_CHARACTERISATION_FILE = str_c(base, 'size_characterisation.rds'),
+        INVAR_SCORES_FILE = str_c(base, 'invar_scores.rds'),
         LAYOUT_FILE = str_c(testhome, 'source_files/combined.SLX_table_with_controls_031220.csv'),
         STUDY = 'PARADIGM',
         ERROR_SUPPRESSION = 'f0.9_s2',
@@ -351,7 +355,7 @@ tumourAFInLociPlot <- function(mutationsTable, study)
         filter(OUTLIER.PASS & BOTH_STRANDS & CONTAMINATION_RISK.PASS & LOCUS_NOISE.PASS &
                POOL_BARCODE %in% samplesToKeep$POOL_BARCODE) %>%
         mutate(IN_PLASMA = ifelse(AF > 0, "Yes", "No"),
-               COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Controls")))
+               COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Non-Patient Specific")))
 
     plot <- mutationsTable.filtered %>%
         ggplot(aes(x = COHORT, y = TUMOUR_AF, fill = IN_PLASMA)) +
@@ -368,6 +372,51 @@ tumourAFInLociPlot <- function(mutationsTable, study)
             stat_compare_means(method = "t.test",
                                method.args = list(alternative = "greater"),
                                aes(label = str_c("p = ", ..p.format..)))
+
+    plot
+}
+
+## Fragment size per cohort, with different levels of error-suppression
+
+fragmentSizePerCohortPlot <- function(sizeCharacterisationTable, layoutTable, study)
+{
+    studyInfo <- layoutTable %>%
+        filter(STUDY == study) %>%
+        distinct(STUDY, SAMPLE_TYPE)
+
+    assert_that(nrow(studyInfo) == 1, msg = str_c("Different samples types in ", study))
+
+    roundTo <- 5
+
+    summary <- sizeCharacterisationTable %>%
+        mutate(STUDY = study,
+               SIZE.ROUNDED = plyr::round_any(SIZE, accuracy = roundTo)) %>%
+        group_by(STUDY, PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE.ROUNDED) %>%
+        summarise(COUNT = sum(COUNT), .groups = "drop_last") %>%
+        mutate(TOTAL = sum(COUNT)) %>%
+        ungroup() %>%
+        mutate(PROPORTION = COUNT / TOTAL,
+               SAMPLE_TYPE = studyInfo$SAMPLE_TYPE)
+
+    plot <- summary %>%
+        filter(PATIENT_SPECIFIC) %>%
+        mutate(MUTANT_LABEL = as.factor(ifelse(MUTANT, "Yes", "No"))) %>%
+        ggplot(aes(x = SIZE.ROUNDED, y = PROPORTION, fill = MUTANT_LABEL)) +
+            geom_bar(stat = "identity", position = "dodge") +
+            labs(x = "Fragment size in bp",
+                 y = "Proportion",
+                 fill = "Mutant",
+                 title = str_c(study, ": Fragment size vs. error suppression")) +
+            theme_classic() +
+            theme(axis.text = element_text(size = 12),
+                  axis.title = element_text(size = 14, face = "bold"),
+                  legend.text = element_text(size = 12),
+                  legend.title = element_text(size = 12, face = "bold")) +
+            scale_x_continuous(limits = c(0, 500)) +
+            facet_grid(STUDY~., scales = "free_y") +
+            geom_vline(xintercept = c(166, 166*2), linetype = "dashed", alpha = 0.5) +
+            annotate("text", x = 200, y = 0.15, label = "166bp", alpha = 0.5) +
+            annotate("text", x = 370, y = 0.15, label = "332bp", alpha = 0.5)
 
     plot
 }
@@ -470,6 +519,8 @@ main <- function(scriptArgs)
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
 
+    sizeCharacterisationTable <- readRDS(scriptArgs$SIZE_CHARACTERISATION_FILE)
+
     invarScoresTable <- readRDS(scriptArgs$INVAR_SCORES_FILE)
 
     errorRatesTable <- readRDS(scriptArgs$ERROR_RATES_FILE) %>%
@@ -569,6 +620,13 @@ main <- function(scriptArgs)
     ggsave(plot = tumourAFInLociPlot(mutationsTable, study = scriptArgs$STUDY),
            filename = "p10_tumour_AF_for_observed_non_observed_loci.pdf",
            width = 5, height = 4)
+
+    ## Fragment size per cohort, with different levels of error-suppression
+
+
+    ggsave(plot = fragmentSizePerCohortPlot(sizeCharacterisationTable, layoutTable, study = scriptArgs$STUDY),
+           filename = "p11_size_comparison.pdf",
+           width = 6, height = 5)
 }
 
 # Launch it.
