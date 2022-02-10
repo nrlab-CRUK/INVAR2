@@ -366,7 +366,7 @@ main <- function(scriptArgs)
 
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        select(SAMPLE_NAME, PATIENT, SAMPLE_TYPE, CASE_OR_CONTROL, POOL_BARCODE)
+        select(SAMPLE_NAME, PATIENT, CASE_OR_CONTROL, POOL_BARCODE)
 
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%

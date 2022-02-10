@@ -52,7 +52,7 @@ parseArgs <- function(args)
 desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'REF_R', 'ALT_R', 'MQSB',
                  'POOL', 'BARCODE', 'COSMIC_MUTATIONS', 'COSMIC_SNP', '1KG_AF', 'TRINUCLEOTIDE',
                  'AF', 'COSMIC', 'SNP', 'ON_TARGET',
-                 'SAMPLE_NAME', 'PATIENT', 'SAMPLE_TYPE', 'CASE_OR_CONTROL',
+                 'SAMPLE_NAME', 'PATIENT', 'CASE_OR_CONTROL',
                  'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO',
                  'BACKGROUND_MUTATION_SUM', 'BACKGROUND_DP', 'BACKGROUND_AF',
                  "LOCUS_NOISE.PASS", "BOTH_STRANDS", "CONTAMINATION_RISK.PASS",

@@ -90,9 +90,9 @@ richTestOptions <- function()
 # Plot functions.
 #
 
-cohortMutationContextPlot <- function(contextMutationsTable)
+cohortMutationContextPlot <- function(contextMutationsTable, study)
 {
-    study = getStudy(contextMutationsTable)
+    assert_that(is.character(study), msg = "Study is expected to be a string")
 
     plot <- contextMutationsTable %>%
         ggplot(aes(x = as.character(TRINUCLEOTIDE), fill = MUTATION_CLASS)) +
@@ -110,12 +110,12 @@ cohortMutationContextPlot <- function(contextMutationsTable)
     plot
 }
 
-cohortMutationAFByClassPlot <- function(contextMutationsTable, layoutTable)
+cohortMutationAFByClassPlot <- function(contextMutationsTable, layoutTable, study)
 {
+    assert_that(is.character(study), msg = "Study is expected to be a string")
+
     contextMutationsTable <- contextMutationsTable %>%
         filter(TUMOUR_AF > 0)
-
-    study = getStudy(contextMutationsTable)
 
     plot <- contextMutationsTable %>%
         ggplot(aes(x = TUMOUR_AF, fill = MUTATION_CLASS)) +
@@ -129,9 +129,9 @@ cohortMutationAFByClassPlot <- function(contextMutationsTable, layoutTable)
     plot
 }
 
-mutationsPerPatientPlot <- function(patientSummaryTable)
+mutationsPerPatientPlot <- function(patientSummaryTable, study)
 {
-    study = getStudy(patientSummaryTable)
+    assert_that(is.character(study), msg = "Study is expected to be a string")
 
     plot <- patientSummaryTable %>%
         ggplot(aes(x = PATIENT, y = MUTATIONS)) +
@@ -144,10 +144,8 @@ mutationsPerPatientPlot <- function(patientSummaryTable)
     plot
 }
 
-mutationClassByCohortPlot <- function(contextMutationsTable)
+mutationClassByCohortPlot <- function(contextMutationsTable, study)
 {
-    study = getStudy(contextMutationsTable)
-
     contextMutationsClassSummary <- contextMutationsTable %>%
         group_by(STUDY) %>%
         mutate(TOTAL_MUTATIONS = n()) %>%
@@ -258,6 +256,8 @@ filteringComparisonPlot <- function(errorRatesTable, study, familySize)
 
 backgroundErrorCaseControlPlot <- function(errorRatesINV042, study)
 {
+    assert_that(is.character(study), msg = "Study is expected to be a string")
+
     errorRatesINV042 %>%
         ggplot(aes(x = MUTATION_CLASS, y = BACKGROUND_AF, colour = CASE_OR_CONTROL)) +
             geom_boxplot()+
@@ -279,9 +279,9 @@ backgroundErrorCaseControlPlot <- function(errorRatesINV042, study)
                                aes(label = str_c("p = ", ..p.format..)))
 }
 
-summaryCohortPlot <- function(mutationsTable)
+summaryCohortPlot <- function(mutationsTable, study)
 {
-    study = getStudy(mutationsTable)
+    assert_that(is.character(study), msg = "Study is expected to be a string")
 
     cohortSummary <- mutationsTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS & CONTAMINATION_RISK.PASS &
@@ -307,9 +307,9 @@ summaryCohortPlot <- function(mutationsTable)
     plot
 }
 
-backgroundPolishingPlot <- function(mutationsTable, errorSuppression, outlierSuppression)
+backgroundPolishingPlot <- function(mutationsTable, study, errorSuppression, outlierSuppression)
 {
-    study = getStudy(mutationsTable)
+    assert_that(is.character(study), msg = "Study is expected to be a string")
 
     # SAMPLE_NAME in original now has the patient mutation belongs to as part of it.
     # That might need to be done here too.
@@ -335,9 +335,9 @@ backgroundPolishingPlot <- function(mutationsTable, errorSuppression, outlierSup
     plot
 }
 
-tumourAFInLociPlot <- function(mutationsTable)
+tumourAFInLociPlot <- function(mutationsTable, study)
 {
-    study = getStudy(mutationsTable)
+    assert_that(is.character(study), msg = "Study is expected to be a string")
 
     # recalculate average to exclude high level samples
 
@@ -375,14 +375,6 @@ tumourAFInLociPlot <- function(mutationsTable)
 ##
 # Calculation functions.
 #
-
-getStudy <- function(table)
-{
-    assert_that('STUDY' %in% colnames(table), msg = "Table doesn't contain a STUDY column.")
-    study = unique(table$STUDY)
-    assert_that(length(study) == 1, msg = "Table doesn't contain unique study values.")
-    study
-}
 
 ##
 # Complement the MUTATION_CLASS columns for reference alleles
@@ -472,12 +464,11 @@ main <- function(scriptArgs)
 {
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        select(STUDY, POOL, BARCODE, CASE_OR_CONTROL, TIMEPOINT)
+        select(STUDY, POOL, BARCODE, SAMPLE_TYPE, CASE_OR_CONTROL, TIMEPOINT)
 
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
-        addMutationTableDerivedColumns() %>%
-        left_join(layoutTable, by = c('STUDY', 'POOL', 'BARCODE'))
+        addMutationTableDerivedColumns()
 
     invarScoresTable <- readRDS(scriptArgs$INVAR_SCORES_FILE)
 
@@ -512,25 +503,25 @@ main <- function(scriptArgs)
 
     # plotting 3bp context
 
-    ggsave(plot = cohortMutationContextPlot(contextMutationsTable),
+    ggsave(plot = cohortMutationContextPlot(contextMutationsTable, study = scriptArgs$STUDY),
            filename = "p1_cohort_mut_context.pdf",
            width = 6, height = 5)
 
     # plot the AF by mutation class
 
-    ggsave(plot = cohortMutationAFByClassPlot(contextMutationsTable),
+    ggsave(plot = cohortMutationAFByClassPlot(contextMutationsTable, study = scriptArgs$STUDY),
            filename = "p2_cohort_mut_AF_by_class.pdf",
            width = 6, height = 7)
 
     # plot mutations per patient captured and passing pipeline filters
 
-    ggsave(plot = mutationsPerPatientPlot(patientSummaryTable),
+    ggsave(plot = mutationsPerPatientPlot(patientSummaryTable, study = scriptArgs$STUDY),
            filename = "p3_cohort_mut_count_tumour.pdf",
            width = 6, height = 7)
 
     # plot mutation class distribution by cohort
 
-    ggsave(plot = mutationClassByCohortPlot(contextMutationsTable),
+    ggsave(plot = mutationClassByCohortPlot(contextMutationsTable, study = scriptArgs$STUDY),
            filename = "p4_cohort_mut_class.pdf",
            width = 6, height = 5)
 
@@ -565,17 +556,17 @@ main <- function(scriptArgs)
 
     ## Outlier suppression plots
 
-    ggsave(plot = summaryCohortPlot(mutationsTable),
+    ggsave(plot = summaryCohortPlot(mutationsTable, study = scriptArgs$STUDY),
            filename = "p6_os_data_retained.pdf",
            width = 5, height = 6)
 
-    ggsave(plot = backgroundPolishingPlot(mutationsTable, errorSuppression = scriptArgs$ERROR_SUPPRESSION, outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION),
+    ggsave(plot = backgroundPolishingPlot(mutationsTable, study = scriptArgs$STUDY, errorSuppression = scriptArgs$ERROR_SUPPRESSION, outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION),
            filename = "p8_background_polishing.pdf",
            width = 15, height = 12)
 
     ## Tumour AF in observed and unobserved loci.
 
-    ggsave(plot = tumourAFInLociPlot(mutationsTable),
+    ggsave(plot = tumourAFInLociPlot(mutationsTable, study = scriptArgs$STUDY),
            filename = "p10_tumour_AF_for_observed_non_observed_loci.pdf",
            width = 5, height = 4)
 }

@@ -33,7 +33,7 @@ parseArg <- function(arg)
 }
 
 desiredOrder = c('POOL', 'BARCODE', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
-                 'SAMPLE_TYPE', 'CASE_OR_CONTROL', 'PATIENT_SPECIFIC', 'MUTANT', 'SIZE', 'TOTAL' )
+                 'CASE_OR_CONTROL', 'PATIENT_SPECIFIC', 'MUTANT', 'SIZE', 'TOTAL' )
 
 orderByColumns = c('POOL', 'BARCODE', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO', 'MUTANT', 'SIZE')
 

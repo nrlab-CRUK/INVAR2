@@ -75,7 +75,7 @@ calculateSizeCharacteristics <- function(mutationTableFileName)
 
     sizeCharacteristicsTable <- mutationTable %>%
         filter(OUTLIER.PASS & BOTH_STRANDS & LOCUS_NOISE.PASS) %>%
-        group_by(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, SAMPLE_TYPE, CASE_OR_CONTROL, PATIENT_SPECIFIC, MUTANT, SIZE) %>%
+        group_by(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, CASE_OR_CONTROL, PATIENT_SPECIFIC, MUTANT, SIZE) %>%
         summarise(TOTAL = n(), .groups = "drop")
 
     sizeCharacteristicsTable

@@ -1,9 +1,8 @@
 This one is a little tricky, as the createOnTargetMutationsTable.R
 script isn't an end point in INVAR4.R. The output is the data frame
 at the end of the parse() method. INVAR4.R was modified to write out
-the data frame at that point to create the reference. It also needed
-a modification to keep the "case_or_control" column in the data frame
-(lines 371 and 380 of TAPAS_functions.R). Also added a line in parse()
+the data frame at that point to create the reference.
+Also added a line in parse()
 to export the background error rate table as a file (~line 464),
 which gives the PARADIGM.background_error_rates.rds
 
