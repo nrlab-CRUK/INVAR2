@@ -48,7 +48,7 @@ workflow
 
     analysis(outlierSuppression.out.mutationsFile,
              layoutChannel,
-             parse.out.onTargetErrorRatesFile,
+             parse.out.backgroundErrorRatesFile,
              parse.out.offTargetErrorRatesNoCosmic,
              outlierSuppression.out.sizeCharacterisationFile,
              detection.out.invarScores)

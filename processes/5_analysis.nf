@@ -37,14 +37,14 @@ workflow analysis
     take:
         osMutationsChannel
         layoutChannel
-        onTargetErrorRatesChannel
+        backgroundErrorRatesChannel
         offTargetErrorRatesChannel
         sizeCharacterisationChannel
         invarScoresChannel
 
     main:
         analysisAndReport(osMutationsChannel, layoutChannel,
-                          onTargetErrorRatesChannel, offTargetErrorRatesChannel,
+                          backgroundErrorRatesChannel, offTargetErrorRatesChannel,
                           sizeCharacterisationChannel, invarScoresChannel)
 
     emit:
