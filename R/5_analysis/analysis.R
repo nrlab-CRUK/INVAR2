@@ -3,6 +3,7 @@ suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ggpubr))
 suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(plotROC))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 
@@ -42,8 +43,8 @@ parseOptions <- function()
         make_option(c("--error-suppression"), type="character", metavar="string",
                     dest="ERROR_SUPPRESSION", help="The error suppression string",
                     default=defaultMarker),
-        make_option(c("--family-size"), type="character", metavar="string",
-                    dest="FAMILY_SIZE", help="The family size string",
+        make_option(c("--family-size"), type="integer", metavar="integer",
+                    dest="FAMILY_SIZE", help="The family size",
                     default=defaultMarker),
         make_option(c("--outlier-suppression"), type="double", metavar="number",
                     dest="OUTLIER_SUPPRESSION", help="The outlier suppression threshold",
@@ -84,7 +85,7 @@ richTestOptions <- function()
         LAYOUT_FILE = str_c(testhome, 'source_files/combined.SLX_table_with_controls_031220.csv'),
         STUDY = 'PARADIGM',
         ERROR_SUPPRESSION = 'f0.9_s2',
-        FAMILY_SIZE = 'fam_2',
+        FAMILY_SIZE = 2L,
         OUTLIER_SUPPRESSION = 0.05
     )
 }
@@ -114,7 +115,7 @@ cohortMutationContextPlot <- function(contextMutationsTable, study)
     plot
 }
 
-cohortMutationAFByClassPlot <- function(contextMutationsTable, layoutTable, study)
+cohortMutationAFByClassPlot <- function(contextMutationsTable, study)
 {
     assert_that(is.character(study), msg = "Study is expected to be a string")
 
@@ -194,7 +195,7 @@ backgroundErrorRatesPlot <- function(errorRatesTable, study, familySize)
             scale_y_log10(breaks = c(1e-7, 1e-6, 1e-5, 1e-4)) +
             labs(x = "Trinucleotide context",
                  y = "Background error rate",
-                 title = str_c("Background error rates for", study, familySize, sep = ' '),
+                 title = str_c("Background error rates for ", study, " fam_", familySize),
                  subtitle = "Using cases only") +
             guides(fill = 'none') +
             annotation_logticks(sides = "l")
@@ -253,7 +254,7 @@ filteringComparisonPlot <- function(errorRatesTable, study, familySize)
             labs(x = "Mutation class",
                  y = "Background AF",
                  fill = "Error rate type",
-                 title = str_c("Background error filtering steps\n", study, ' ', familySize))
+                 title = str_c("Background error filtering steps\n", study, ' fam_', familySize))
 
     plot
 }
@@ -450,6 +451,62 @@ enrichmentLevelPlot <- function(sizeCharacterisationSummary, study)
     plot
 }
 
+receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, study, familySize)
+{
+    adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable) %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS & OUTLIER.PASS)
+
+    scaledInvarTable <- scaleInvarScores(adjustedScoresTable)
+
+    # specificGLRT <- scaledInvarTable$PATIENT_SPECIFIC
+
+    rocPatientControl <- scaledInvarTable$CUT_OFF.WITH_SIZE$ROC
+    patientControlSpecificity <- scaledInvarTable$CUT_OFF.WITH_SIZE$QUANTILE_SPECIFICITY
+    patientControlCutOff <- scaledInvarTable$CUT_OFF.WITH_SIZE$INVAR_SCORE_THRESHOLD
+
+    if (any(adjustedScoresTable$CASE_OR_CONTROL == "control_negative"))
+    {
+        # Data has healthy controls. Continue with analysis.
+
+        invarScoresForHealthy <- adjustedScoresTable %>%
+            filter(PATIENT_SPECIFIC | CASE_OR_CONTROL == "control_negative") %>%
+            mutate(CASE_OR_CONTROL = 'case')
+
+        healthyControlScores <- scaleInvarScores(invarScoresForHealthy)
+
+        rocHealthyControl <- healthyControlScores$CUT_OFF.WITH_SIZE$ROC
+        healthyControlSpecificity <- healthyControlScores$CUT_OFF.WITH_SIZE$QUANTILE_SPECIFICITY
+        healthyControlCutOff <- healthyControlScores$CUT_OFF.WITH_SIZE$INVAR_SCORE_THRESHOLD
+
+        plot <- rocPatientControl %>%
+            ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE.WITH_SIZE)) +
+                geom_roc(data = rocHealthyControl, cutoffs.at = healthyControlCutOff,
+                         labels = FALSE, pointsize = 0.75, color = "red") + # to get rid of numbers on the ROC curve
+                geom_roc(cutoffs.at = patientControlCutOff, labels = FALSE, pointsize = 0.75) + # to get rid of numbers on the ROC curve
+                theme_classic() +
+                labs(title = str_c(study, ", fam_", familySize),
+                     x = "False positive fraction",
+                     y = "True positive fraction",
+                    subtitle = str_c("Specificity patients = ", patientControlSpecificity, "%\nSpecificity healthy = ", healthyControlSpecificity, "%"))
+    }
+    else
+    {
+        # This data does not have healthy controls, will compute the ROC curve from case data only
+
+        plot <- rocPatientControl %>%
+            ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE.WITH_SIZE)) +
+                geom_roc(cutoffs.at = patientControlCutOff, labels = FALSE, pointsize = 0.75) + # to get rid of numbers on the ROC curve
+                theme_classic() +
+                labs(title = str_c(study, ", fam_", familySize),
+                     x = "False positive fraction",
+                     y = "True positive fraction",
+                     subtitle = str_c("Specificity patients = ", patientControlSpecificity, "%"))
+
+    }
+
+    plot
+}
+
 ##
 # Calculation functions.
 #
@@ -555,6 +612,184 @@ calculateSizeCharacterisationSummary <- function(sizeCharacterisationTable, layo
                SAMPLE_TYPE = studyInfo$SAMPLE_TYPE)
 }
 
+##
+# Originally get.INVAR_score in TAPAS_functions.R
+#
+
+adjustInvarScores <- function(invarScoresTable, layoutTable)
+{
+    adjustThreshold <- function(row, conditions, adjustedScoresTable, scoreSpecificity)
+    {
+        condition <- slice(conditions, n = row)
+
+        scores <- adjustedScoresTable %>%
+            filter(USING_SIZE == condition$USING_SIZE &
+                   LOCUS_NOISE.PASS == condition$LOCUS_NOISE.PASS &
+                   BOTH_STRANDS == condition$BOTH_STRANDS &
+                   OUTLIER.PASS == condition$OUTLIER.PASS) %>%
+            filter(PATIENT_SPECIFIC | CONTAMINATION_RISK.PASS)
+
+        scores.general <- scores %>%
+            filter(!PATIENT_SPECIFIC) %>%
+            arrange(ADJUSTED_INVAR_SCORE)
+
+        percentilePosition = floor(nrow(scores.general) * scoreSpecificity)
+
+        threshold <- scores.general$ADJUSTED_INVAR_SCORE[percentilePosition]
+
+        scores %>%
+            mutate(DETECTION = ADJUSTED_INVAR_SCORE > threshold)
+    }
+
+    layoutTable <- layoutTable %>%
+        select(POOL, BARCODE, CASE_OR_CONTROL, SAMPLE_TYPE, DATA_TYPE, TIMEPOINT)
+
+    assert_that(!any(invarScoresTable$DP < 0), msg = "Have negative DP.")
+
+    # setting ctDNA level to 1/# molecules where p_mle (AF_P) < 1/# molecules (last mutate)
+
+    adjustedScoresTable <- invarScoresTable %>%
+        left_join(layoutTable, by = c('POOL', 'BARCODE')) %>%
+        mutate(ADJUSTED_INVAR_SCORE = ifelse(MUTANT_READS_PRESENT, INVAR_SCORE, 0),
+               ADJUSTED_IMAF = ifelse(MUTANT_READS_PRESENT, IMAF, 0)) %>%
+        mutate(ADJUSTED_IMAF = ifelse(ADJUSTED_IMAF < 1 / DP, 1 / DP, ADJUSTED_IMAF))
+
+    uniqueConditions <- invarScoresTable %>%
+        distinct(USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS)
+
+    adjustedList <- lapply(1:nrow(uniqueConditions), adjustThreshold,
+                           uniqueConditions, adjustedScoresTable, scoreSpecificity = 0.95)
+
+    adjustedScoresTable <-
+        bind_rows(adjustedList) %>%
+        arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
+                ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS)
+}
+
+##
+# Originally scale_INVAR_size in functions.R
+#
+
+scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 20000)
+{
+    assert_that(is.numeric(lowSensitivityThreshold), msg = "lowSensitivityThreshold my be a number")
+
+    specific <- adjustedScoresTable %>%
+        filter(PATIENT_SPECIFIC)
+
+    contaminationRiskSamples <- specific %>%
+        filter(!USING_SIZE & ADJUSTED_IMAF > 0.01)
+
+    nonSpecific <- adjustedScoresTable %>%
+        filter(!PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case' &
+               !POOL_BARCODE %in% contaminationRiskSamples$POOL_BARCODE)
+
+    joinColumns <- c('POOL', 'BARCODE', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO')
+    joinSuffix <- c('.NO_SIZE', '.WITH_SIZE')
+
+    nonSpecific.noSize <- nonSpecific %>%
+        filter(!USING_SIZE) %>%
+        select(all_of(joinColumns), ADJUSTED_INVAR_SCORE, DP)
+
+    nonSpecific.withSize <- nonSpecific %>%
+        filter(USING_SIZE) %>%
+        select(all_of(joinColumns), ADJUSTED_INVAR_SCORE, IMAF, ADJUSTED_IMAF)
+
+    beforeAfter.nonSpecific <- nonSpecific.noSize %>%
+        left_join(nonSpecific.withSize, joinColumns, suffix = joinSuffix) %>%
+        mutate(ADJUSTED_INVAR_SCORE.WITH_SIZE = ifelse(is.na(ADJUSTED_INVAR_SCORE.WITH_SIZE), 0, ADJUSTED_INVAR_SCORE.WITH_SIZE)) %>%
+        filter(DP > lowSensitivityThreshold)
+
+    joinColumns <- c('POOL', 'BARCODE')
+
+    specific.noSize <- specific %>%
+        filter(!USING_SIZE) %>%
+        select(all_of(joinColumns), PATIENT, PATIENT_MUTATION_BELONGS_TO, ADJUSTED_INVAR_SCORE, DP, MUTATION_SUM, TIMEPOINT)
+
+    specific.withSize <- specific %>%
+        filter(USING_SIZE) %>%
+        select(all_of(joinColumns), IMAF, ADJUSTED_INVAR_SCORE, ADJUSTED_IMAF)
+
+    beforeAfter.specific <- specific.noSize %>%
+        left_join(specific.withSize, joinColumns, suffix = joinSuffix)
+
+    cutPointInfo.withSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, TRUE, lowSensitivityThreshold)
+
+    cutPointInfo.noSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, FALSE, lowSensitivityThreshold)
+
+    beforeAfter.nonSpecific <- beforeAfter.nonSpecific %>%
+        mutate(DETECTED.NO_SIZE = ADJUSTED_INVAR_SCORE.NO_SIZE >= cutPointInfo.noSize$INVAR_SCORE_THRESHOLD,
+               DETECTED.WITH_SIZE = ADJUSTED_INVAR_SCORE.WITH_SIZE >= cutPointInfo.withSize$INVAR_SCORE_THRESHOLD)
+
+    beforeAfter.specific <- beforeAfter.specific %>%
+        mutate(DETECTED.NO_SIZE = ADJUSTED_INVAR_SCORE.NO_SIZE >= cutPointInfo.noSize$INVAR_SCORE_THRESHOLD,
+               DETECTED.WITH_SIZE = ADJUSTED_INVAR_SCORE.WITH_SIZE >= cutPointInfo.withSize$INVAR_SCORE_THRESHOLD)
+
+    beforeAfter.nonSpecific.N <- nrow(beforeAfter.nonSpecific)
+
+    beforeAfter.specific <- beforeAfter.specific %>%
+        rowwise() %>%
+        mutate(SPECIFICITY.WITH_SIZE =
+                   sum(ADJUSTED_INVAR_SCORE.WITH_SIZE > beforeAfter.nonSpecific$ADJUSTED_INVAR_SCORE.WITH_SIZE) /
+                   beforeAfter.nonSpecific.N) %>%
+        mutate(SPECIFICITY.NO_SIZE =
+                   sum(ADJUSTED_INVAR_SCORE.NO_SIZE > beforeAfter.nonSpecific$ADJUSTED_INVAR_SCORE.NO_SIZE) /
+                   beforeAfter.nonSpecific.N) %>%
+        ungroup()
+
+    list(PATIENT_SPECIFIC = beforeAfter.specific,
+         NON_SPECIFIC = beforeAfter.nonSpecific,
+         CUT_OFF.WITH_SIZE = cutPointInfo.withSize,
+         CUT_OFF.NO_SIZE = cutPointInfo.noSize)
+}
+
+##
+# Originally cut_point_GLRT_no_size & cut_point_GLRT in functions.R
+#
+
+cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, lowSensitivityThreshold)
+{
+    assert_that(is.logical(useSize), msg = "useSize must be a logical.")
+    assert_that(is.numeric(lowSensitivityThreshold), msg = "lowSensitivityThreshold my be a number")
+
+    invarScoreColumn <- ifelse(useSize, 'ADJUSTED_INVAR_SCORE.WITH_SIZE', 'ADJUSTED_INVAR_SCORE.NO_SIZE')
+    useColumns <- c('POOL', 'BARCODE', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', invarScoreColumn, 'DP')
+
+    minimumSpecificDP <- min(specificInvarScores$DP)
+
+    # low sensitivity threshold based on lowest patient sample
+
+    roc <- bind_rows(specificInvarScores, nonSpecificInvarScores) %>%
+        select(all_of(useColumns)) %>%
+        mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO) %>%
+        filter(DP >= minimumSpecificDP)
+
+    # Does not like a tibble!
+
+    cutPointInfo <-
+        OptimalCutpoints::optimal.cutpoints(data = as.data.frame(roc), X = invarScoreColumn,
+                                            status = "PATIENT_SPECIFIC", tag.healthy = FALSE,
+                                            methods = "MaxSpSe", direction = "<")
+
+    sizeCutOff <- cutPointInfo$MaxSpSe$Global$optimal.cutoff$cutoff
+    maximumSpecificity <- max(cutPointInfo$MaxSpSe$Global$optimal.cutoff$Sp)
+
+    scoresForQuantile <- nonSpecificInvarScores  %>%
+        filter(DP >= minimumSpecificDP) %>%
+        select({{ invarScoreColumn }})
+
+    quantileResult <- quantile(scoresForQuantile[[1]], probs = maximumSpecificity)
+    quantileLabel <- round(as.double(str_replace(names(quantileResult), '%', '')), digits = 1)
+    invarScoreThreshold <- unname(quantileResult)
+
+    # Original code changed the test to > 0 if the threshold is zero.
+    # This minor adjustment saves the separate test and additional code by
+    # setting the threshold to a tiny number above zero.
+
+    list(SIZE_CUT_OFF = sizeCutOff, MAXIMUM_SPECIFICITY = maximumSpecificity, ROC = roc,
+         QUANTILE_SPECIFICITY = quantileLabel,
+         INVAR_SCORE_THRESHOLD = ifelse(invarScoreThreshold == 0, 1e-31, invarScoreThreshold))
+}
 
 ##
 # The main script, wrapped as a function.
@@ -563,21 +798,22 @@ calculateSizeCharacterisationSummary <- function(sizeCharacterisationTable, layo
 main <- function(scriptArgs)
 {
     layoutTable <-
-        loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        select(STUDY, POOL, BARCODE, SAMPLE_TYPE, CASE_OR_CONTROL, TIMEPOINT)
+        loadLayoutTable(scriptArgs$LAYOUT_FILE)
 
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
 
-    sizeCharacterisationTable <- readRDS(scriptArgs$SIZE_CHARACTERISATION_FILE)
-
-    invarScoresTable <- readRDS(scriptArgs$INVAR_SCORES_FILE)
-
     errorRatesTable <- readRDS(scriptArgs$ERROR_RATES_FILE) %>%
         mutate(MUTATION_CLASS = str_c(REF, ALT, sep = '/'))
 
     offTargetErrorRatesList <- readRDS(scriptArgs$OFF_TARGET_ERROR_RATES_FILE)
+
+    sizeCharacterisationTable <- readRDS(scriptArgs$SIZE_CHARACTERISATION_FILE)
+
+    invarScoresTable <- readRDS(scriptArgs$INVAR_SCORES_FILE) %>%
+        mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO,
+               POOL_BARCODE = str_c(POOL, BARCODE, sep = "_"))
 
     # Manipulation and further calculations.
 
@@ -630,7 +866,6 @@ main <- function(scriptArgs)
     ggsave(plot = mutationClassByCohortPlot(contextMutationsTable, study = scriptArgs$STUDY),
            filename = "p4_cohort_mut_class.pdf",
            width = 6, height = 5)
-
 
     ## Case vs control error rates.
 
@@ -687,6 +922,14 @@ main <- function(scriptArgs)
     ggsave(plot = enrichmentLevelPlot(sizeCharacterisationSummary, study = scriptArgs$STUDY),
            filename = "p12_enrichment_ratios.pdf",
            width = 6, height = 5)
+
+    ## Receiver Operating Characteristic Plot
+
+    ggsave(plot = receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
+                                                      study = scriptArgs$STUDY,
+                                                      familySize = scriptArgs$FAMILY_SIZE),
+           filename = "p13_receiver_operating_characteristic.pdf",
+           width = 4, height = 3)
 }
 
 # Launch it.
