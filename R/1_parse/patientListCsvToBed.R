@@ -1,5 +1,8 @@
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(readr))
+suppressPackageStartupMessages(library(stringr))
+
+source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
 
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -11,8 +14,7 @@ if (length(args) != 2)
 csvFile <- args[1]
 bedFile <- args[2]
 
-read_csv(csvFile, col_names = TRUE, show_col_types = FALSE) %>%
-select(CHROM = chr, POS = pos, REF, ALT) %>%
-mutate(POS = as.integer(POS)) %>%
+loadTumourMutationsTable(csvFile) %>%
+select(CHROM, POS, REF, ALT) %>%
 mutate(START = POS - 1, .before = POS) %>%
 write_tsv(file = bedFile, col_names = FALSE)

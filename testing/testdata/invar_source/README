@@ -1,0 +1,17 @@
+Convert layout table with:
+
+read_csv(file = 'combined.SLX_table_with_controls_031220.csv', col_names = TRUE) %>%
+rename_with(str_to_upper) %>%
+rename_with(str_trim) %>%
+rename(POOL = SLX_ID) %>%
+write_csv('combined.SLX_table_with_controls_031220.v2.csv', na = '')
+
+
+Convert tumour mutations with:
+
+read_csv('PARADIGM_mutation_list_full_cohort_hg19.csv', col_types = 'ciccd') %>%
+select(-contains('uniq'), -any_of('mut')) %>%
+rename_with(str_to_upper) %>%
+rename(CHROM = CHR) %>%
+write_csv('PARADIGM_mutation_list_full_cohort_hg19.v2.csv', na = '')
+
