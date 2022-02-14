@@ -553,6 +553,41 @@ depthToIMAFPlot <- function(ifPatientData)
     plot
 }
 
+detectableWaterfallPlot <- function(patientSpecificGLRT, layoutTable, study)
+{
+    layoutTable <- layoutTable %>%
+        select(POOL, BARCODE, STUDY, INPUT_INTO_LIBRARY_NG, QUANTIFICATION_METHOD) %>%
+        mutate_at(vars(INPUT_INTO_LIBRARY_NG), as.double)
+
+    patientSpecificGLRT.annotated <- patientSpecificGLRT %>%
+        left_join(layoutTable, by = c('POOL', 'BARCODE')) %>%
+        mutate(NOT_DETECTABLE_DPCR = ADJUSTED_IMAF < 3.3 / INPUT_INTO_LIBRARY_NG,
+               CTDNA_PLOTTING = ifelse(!DETECTED.WITH_SIZE, 1e-7, ifelse(DP < 20000, 1e-8, ADJUSTED_IMAF)),
+               LS_FILTER = ifelse(DETECTED.WITH_SIZE | DP >= 20000 , "Pass", "Fail"),
+               LOLLIPOP = ifelse(DETECTED.WITH_SIZE & NOT_DETECTABLE_DPCR, "non_dPCR", LS_FILTER)) %>%
+        mutate_at(vars(LS_FILTER, LOLLIPOP), as.factor)
+
+    plot <- patientSpecificGLRT.annotated %>%
+        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep = " ")) %>%
+        ggplot(aes(x = reorder(POOL_BARCODE, CTDNA_PLOTTING), y = (7.2 + log10(CTDNA_PLOTTING)))) +
+            geom_bar(stat =  "identity", width = 0.5, colour = "white") +
+            scale_fill_manual(values = "chocolate1") +
+            geom_point(aes(shape = LOLLIPOP), size = 3) +
+            scale_shape_manual(name = "",
+                               limits = c("Fail", "non_dPCR"),
+                               labels = c("Low sensitivity", "Non dPCR"),
+                               values = c(1, 19)) +
+            scale_y_continuous(breaks = c(-0.8, 0.2, 1.2, 2.2, 3.2, 4.2, 5.2, 6.2),
+                               labels = c("ND", "ND", 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1)) +
+            theme_classic() +
+            labs(x = "Sample",
+                 y = "IMAF",
+                 title = str_c(study, ": All IMAFs")) +
+            theme(axis.text.x=element_blank())
+
+    plot
+}
+
 ##
 # Calculation functions.
 #
@@ -1037,6 +1072,14 @@ main <- function(scriptArgs)
     ggsave(plot = depthToIMAFPlot(ifPatientData$IF_PATIENT_DATA),
            filename = "p14_IR_vs_IMAF.pdf",
            width = 6, height = 4)
+
+    ## Waterfall plot with detectable vs non detectable using dPCR
+
+    ggsave(plot = detectableWaterfallPlot(ifPatientData$PATIENT_SPECIFIC_GLRT,
+                                          layoutTable,
+                                          study = scriptArgs$STUDY),
+           filename = "p15_waterfall_IMAF.pdf",
+           width = 10, height = 5)
 }
 
 # Launch it.
