@@ -6,6 +6,7 @@ suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(plotROC))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(tidyr))
 
 source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
 
@@ -82,7 +83,7 @@ richTestOptions <- function()
         OFF_TARGET_ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
         SIZE_CHARACTERISATION_FILE = str_c(base, 'size_characterisation.rds'),
         INVAR_SCORES_FILE = str_c(base, 'invar_scores.rds'),
-        LAYOUT_FILE = str_c(testhome, 'source_files/combined.SLX_table_with_controls_031220.csv'),
+        LAYOUT_FILE = str_c(testhome, 'invar_source/combined.SLX_table_with_controls_031220.v2.csv'),
         STUDY = 'PARADIGM',
         ERROR_SUPPRESSION = 'f0.9_s2',
         FAMILY_SIZE = 2L,
@@ -518,6 +519,40 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, w
     plot
 }
 
+depthToIMAFPlot <- function(ifPatientData)
+{
+    tmp_20k <- tibble(X = c(5e3,5e3,20000,20000), Y = c(0, 2e-04, 5e-05, 0))
+
+    tmp_66k <- tibble(X = c(20000,20000, 66666, 66666), Y = c(0,5e-05, 1.5e-5, 0))
+
+    tmp_1m <- tibble(X = c(1e6,1e6, 5e6, 5e6), Y = c(1e-06, 3e-1, 3e-1, 2e-07))
+
+    senseLine <- tibble(DP = c(5e3, 5e4, 5e5, 5e6), IMAF = 1 / DP)
+
+    plot <- ifPatientData %>%
+        mutate(LOGABLE_INVAR = ifelse(IMAF == 0, 1e-7, ADJUSTED_IMAF)) %>%
+        mutate(DETECTED_LABEL = as.factor(ifelse(DETECTED.WITH_SIZE, "Yes", "No"))) %>%
+        ggplot(aes(x = DP, y = LOGABLE_INVAR)) +
+            geom_polygon(data = tmp_20k, aes(x = X, y = Y), alpha = 0.2, fill = "darkslategray4") +
+            geom_polygon(data = tmp_66k, aes(x = X, y = Y), alpha = 0.2, fill = "darkslategray3") +
+            geom_polygon(data = tmp_1m, aes(x = X, y = Y), alpha = 0.3, fill = "#F59C20") +
+            geom_vline(xintercept = 20000, linetype = "dotted") +
+            geom_vline(xintercept = 66666, linetype = "dotted") +
+            geom_vline(xintercept = 1e6, linetype = "dotted") +
+            geom_point(aes(colour = DETECTED_LABEL)) +
+            geom_line(data = senseLine, aes(x = DP, y = IMAF), linetype = "longdash") +
+            scale_x_log10(limits = c(5e3, 5e6)) +
+            scale_y_log10(breaks = c(1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1),
+                          labels = c("ND", "1e-6", "1e-5", "1e-4", "1e-3", "1e-2", "1e-1")) +
+            theme_classic() +
+            labs(x = "IR",
+                 y = "IMAF",
+                 colour = "Detected with size",
+                 title = "PBCP IR vs IMAF plot")
+
+    plot
+}
+
 ##
 # Calculation functions.
 #
@@ -805,6 +840,45 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
          INVAR_SCORE_THRESHOLD = ifelse(invarScoreThreshold == 0, 1e-31, invarScoreThreshold))
 }
 
+getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable)
+{
+    adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable) %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS)
+
+    scaledInvarResultsList <- adjustedScoresTable %>%
+        scaleInvarScores()
+
+    patientSpecificGLRT <- scaledInvarResultsList$PATIENT_SPECIFIC %>%
+        arrange(POOL, BARCODE, PATIENT, PATIENT_MUTATION_BELONGS_TO)
+
+    ifPatientData <- patientSpecificGLRT %>%
+        left_join(patientSummaryTable, by = 'PATIENT') %>%
+        mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
+               NG_ON_SEQ = UNIQUE_MOLECULES / 300,
+               LOW_SENSITIVITY = DP < 20000 & !DETECTED.WITH_SIZE) %>%
+        arrange(POOL, BARCODE, PATIENT, PATIENT_MUTATION_BELONGS_TO)
+
+    thresholds <- as_tibble(c(0,20000,66666)) %>%
+        rename(THRESHOLD = 1)
+
+    thresholdEffects <- patientSpecificGLRT %>%
+        crossing(thresholds) %>%
+        group_by(THRESHOLD) %>%
+        summarise(CASES = sum(DP >= THRESHOLD),
+                  DETECTED = sum(DP >= THRESHOLD & DETECTED.WITH_SIZE),
+                  NOT_DETECTED = sum(DP >= THRESHOLD & !DETECTED.WITH_SIZE),
+                  DISCARDED = sum(DP < THRESHOLD),
+                  .groups = "drop") %>%
+        mutate(ALL_CASES = nrow(patientSpecificGLRT),
+               ALL_DETECTED = sum(patientSpecificGLRT$DETECTED.WITH_SIZE),
+               DETECTION_RATE_HARSH = DETECTED / CASES,
+               DETECTION_RATE_SOFT = ALL_DETECTED / (ALL_DETECTED + NOT_DETECTED))
+
+    list(PATIENT_SPECIFIC_GLRT = patientSpecificGLRT,
+         IF_PATIENT_DATA = ifPatientData,
+         THRESHOLD_EFFECTS = thresholdEffects)
+}
+
 ##
 # The main script, wrapped as a function.
 #
@@ -854,6 +928,13 @@ main <- function(scriptArgs)
     sizeCharacterisationSummary <-
         calculateSizeCharacterisationSummary(sizeCharacterisationTable, layoutTable,
                                              study = scriptArgs$STUDY, roundTo = 5L)
+
+    ifPatientData <-
+        getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable)
+
+    exportCSV(ifPatientData$PATIENT_SPECIFIC_GLRT, 'patient_specific_GLRT.csv')
+    exportCSV(ifPatientData$IF_PATIENT_DATA, 'IF_patient_data.csv')
+    exportCSV(ifPatientData$THRESHOLD_EFFECTS, 'IR_threshold_effects.csv')
 
     ## Creating and saving plots.
 
@@ -950,6 +1031,12 @@ main <- function(scriptArgs)
                                                       familySize = scriptArgs$FAMILY_SIZE),
            filename = "p13b_receiver_operating_characteristic.no_size.pdf",
            width = 4, height = 3)
+
+    ## IR (depth) to IMAF plot
+
+    ggsave(plot = depthToIMAFPlot(ifPatientData$IF_PATIENT_DATA),
+           filename = "p14_IR_vs_IMAF.pdf",
+           width = 6, height = 4)
 }
 
 # Launch it.

@@ -109,6 +109,22 @@ exportTSV <- function(t, file)
     t
 }
 
+# As exportTSV, but write CSV.
+exportCSV <- function(t, file)
+{
+    toChar <- function(x)
+    {
+        ifelse(x, 'T', 'F')
+    }
+
+    t %>%
+        mutate_if(is.logical, toChar) %>%
+        mutate_if(is.double, signif, digits = 6) %>%
+        write_csv(file)
+
+    t
+}
+
 # Converts a string so it is safe to use in a file name.
 # Replaces all white space with a single underscore, and removes
 # all characters that are not word characters (letter, number, underscore).
