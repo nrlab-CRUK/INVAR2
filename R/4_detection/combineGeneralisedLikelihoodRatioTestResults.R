@@ -52,7 +52,7 @@ main <- function(scriptArgs)
     glrtTable <-
         bind_rows(glrtResultsList) %>%
         arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
-                LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS, ITERATION, USING_SIZE)
+                LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, ITERATION, USING_SIZE)
 
     saveRDS(glrtTable, 'invar_scores.rds')
     exportTSV(glrtTable, 'invar_scores.tsv')

@@ -152,9 +152,8 @@ mutationsPerPatientPlot <- function(patientSummaryTable, study)
 mutationClassByCohortPlot <- function(contextMutationsTable, study)
 {
     contextMutationsClassSummary <- contextMutationsTable %>%
-        group_by(STUDY) %>%
         mutate(TOTAL_MUTATIONS = n()) %>%
-        group_by(STUDY, MUTATION_CLASS) %>%
+        group_by(MUTATION_CLASS) %>%
         summarise(MUTATIONS = n(),
                   TOTAL_MUTATIONS = unique(TOTAL_MUTATIONS),
                   .groups = "drop") %>%
@@ -289,13 +288,14 @@ summaryCohortPlot <- function(mutationsTable, study)
     assert_that(is.character(study), msg = "Study is expected to be a string")
 
     cohortSummary <- mutationsTable %>%
-        filter(LOCUS_NOISE.PASS & BOTH_STRANDS & CONTAMINATION_RISK.PASS &
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS &
                AF > 0 & AF < 0.25 & MUTATION_SUM < 10) %>%
-        group_by(STUDY, PATIENT_SPECIFIC) %>%
+        group_by(PATIENT_SPECIFIC) %>%
         summarise(PROPORTION = sum(OUTLIER.PASS) / n(),
                   TOTAL_ROWS = n(),
                   .groups = "drop") %>%
-        mutate(COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Controls")))
+        mutate(COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Controls")),
+               STUDY = study)
 
     plot <- cohortSummary %>%
         ggplot(aes(x = COHORT, y = PROPORTION, fill = STUDY, label = round(PROPORTION, digits = 2))) +
@@ -320,10 +320,11 @@ backgroundPolishingPlot <- function(mutationsTable, study, errorSuppression, out
     # That might need to be done here too.
 
     plot <- mutationsTable %>%
-        filter(LOCUS_NOISE.PASS & BOTH_STRANDS & CONTAMINATION_RISK.PASS &
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS &
                AF > 0 & AF < 0.25 & MUTATION_SUM < 10) %>%
         mutate(COMBINED_SAMPLE_NAME = str_c(SAMPLE_NAME, " (", PATIENT_MUTATION_BELONGS_TO, ")"),
                PASS = ifelse(OUTLIER.PASS, "Yes", "No"),
+               STUDY = study,
                COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Controls"))) %>%
         ggplot(aes(x = COMBINED_SAMPLE_NAME, y = AF, colour = PASS)) +
             geom_point() +
@@ -353,7 +354,7 @@ tumourAFInLociPlot <- function(mutationsTable, study)
         distinct(POOL_BARCODE)
 
     mutationsTable.filtered <- mutationsTable %>%
-        filter(OUTLIER.PASS & BOTH_STRANDS & CONTAMINATION_RISK.PASS & LOCUS_NOISE.PASS &
+        filter(OUTLIER.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & LOCUS_NOISE.PASS &
                POOL_BARCODE %in% samplesToKeep$POOL_BARCODE) %>%
         mutate(IN_PLASMA = ifelse(AF > 0, "Yes", "No"),
                COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Non-Patient Specific")))
@@ -458,7 +459,7 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, w
     cutoffName <- ifelse(withSizes, 'CUT_OFF.WITH_SIZE', 'CUT_OFF.NO_SIZE')
 
     adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable) %>%
-        filter(LOCUS_NOISE.PASS & BOTH_STRANDS & OUTLIER.PASS)
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS)
 
     scaledInvarResultsList <- adjustedScoresTable %>%
         scaleInvarScores()
@@ -635,7 +636,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable)
         scores <- adjustedScoresTable %>%
             filter(USING_SIZE == condition$USING_SIZE &
                    LOCUS_NOISE.PASS == condition$LOCUS_NOISE.PASS &
-                   BOTH_STRANDS == condition$BOTH_STRANDS &
+                   BOTH_STRANDS.PASS == condition$BOTH_STRANDS.PASS &
                    OUTLIER.PASS == condition$OUTLIER.PASS) %>%
             filter(PATIENT_SPECIFIC | CONTAMINATION_RISK.PASS)
 
@@ -665,7 +666,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable)
         mutate(ADJUSTED_IMAF = ifelse(ADJUSTED_IMAF < 1 / DP, 1 / DP, ADJUSTED_IMAF))
 
     uniqueConditions <- invarScoresTable %>%
-        distinct(USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS)
+        distinct(USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 
     adjustedList <- lapply(1:nrow(uniqueConditions), adjustThreshold,
                            uniqueConditions, adjustedScoresTable, scoreSpecificity = 0.95)
@@ -673,7 +674,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable)
     adjustedScoresTable <-
         bind_rows(adjustedList) %>%
         arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
-                ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS)
+                ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 }
 
 ##
@@ -831,14 +832,14 @@ main <- function(scriptArgs)
     # Manipulation and further calculations.
 
     contextMutationsTable <- mutationsTable %>%
-        filter(PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS & OUTLIER.PASS) %>%
+        filter(PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS) %>%
         group_by(PATIENT, UNIQUE_POS) %>%
         slice_head(n = 1) %>%
         ungroup()
 
     patientSummaryTable <- contextMutationsTable %>%
-        group_by(STUDY, PATIENT) %>%
-        summarise(MUTATIONS = n_distinct(STUDY, PATIENT, UNIQUE_POS), .groups = "drop") %>%
+        group_by(PATIENT) %>%
+        summarise(MUTATIONS = n_distinct(PATIENT, UNIQUE_POS), .groups = "drop") %>%
         arrange(PATIENT, MUTATIONS)
 
     patientSummaryTable %>%

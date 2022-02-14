@@ -99,7 +99,7 @@ calculateIMAFv2 <- function(mutationsTable, bloodspot)
     assert_that(is.logical(bloodspot), msg = "bloodspot argument must be a logical")
 
     mutationsTable.flat <- mutationsTable %>%
-        filter(LOCUS_NOISE.PASS, BOTH_STRANDS) %>%
+        filter(LOCUS_NOISE.PASS, BOTH_STRANDS.PASS) %>%
         select(-SIZE, -MUTANT) %>%
         distinct()
 
@@ -316,10 +316,10 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         mutationsTable <- mutationsTable %>%
             filter(LOCUS_NOISE.PASS)
     }
-    if (criteria$BOTH_STRANDS)
+    if (criteria$BOTH_STRANDS.PASS)
     {
         mutationsTable <- mutationsTable %>%
-            filter(BOTH_STRANDS)
+            filter(BOTH_STRANDS.PASS)
     }
     if (criteria$OUTLIER.PASS)
     {
@@ -423,7 +423,7 @@ main <- function(scriptArgs)
     allFilterCombinations <-
         crossing(OUTLIER.PASS = c(TRUE, FALSE),
                  LOCUS_NOISE.PASS = TRUE,
-                 BOTH_STRANDS = TRUE)
+                 BOTH_STRANDS.PASS = TRUE)
 
     slicer <- function(n, table) { slice(table, n) }
 
@@ -440,11 +440,11 @@ main <- function(scriptArgs)
         full_join(mutationsInfo, by = character()) %>%
         select(POOL, BARCODE, SAMPLE_NAME, PATIENT, PATIENT_MUTATION_BELONGS_TO,
                ITERATION, USING_SIZE,
-               LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
+               LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
                INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
                DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
         arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
-                ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS, OUTLIER.PASS)
+                ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 
     outputName <- str_c("invar_scores", mutationsInfo$POOL, mutationsInfo$BARCODE,
                         makeSafeForFileName(mutationsInfo$PATIENT_MUTATION_BELONGS_TO), "rds", sep = ".")

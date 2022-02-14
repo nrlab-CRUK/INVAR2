@@ -1,9 +1,19 @@
 Invar scores parsed from PARADIGM.f0.9_s2.BQ_20.MQ_40.INVAR_scores.210706.txt
 from Emma's run using the reorganiseInvarScores.sh script.
 
+../../reorganiseInvarScores.sh \
+    PARADIGM.f0.9_s2.BQ_20.MQ_40.INVAR_scores.210706.txt \
+    ../../source_files/combined.SLX_table_with_controls_031220.csv 
+mv REFERENCE_invar_scores.rds invar_scores.rds
+mv REFERENCE_invar_scores.tsv invar_scores.tsv
+
 Mutation table with outlier suppression flags converted from
 PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.os_0.05.rds using the
 reorganiseMutationTable.R script.
+
+Rscript ../../reorganiseMutationTable.R \
+    PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.os_0.05.rds \
+    mutation_table.with_outliers.rds
 
 The error rate file is the RDS version of the reference generated
 for onTargetErrorRatesAndFilter. The Rdata file is converted and

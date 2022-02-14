@@ -55,7 +55,7 @@ desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'R
                  'SAMPLE_NAME', 'PATIENT', 'CASE_OR_CONTROL',
                  'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO',
                  'BACKGROUND_MUTATION_SUM', 'BACKGROUND_DP', 'BACKGROUND_AF',
-                 "LOCUS_NOISE.PASS", "BOTH_STRANDS", "CONTAMINATION_RISK.PASS",
+                 "LOCUS_NOISE.PASS", "BOTH_STRANDS.PASS", "CONTAMINATION_RISK.PASS",
                  "SIZE", "MUTANT", "OUTLIER.PASS")
 
 orderByColumns = c('POOL', 'BARCODE', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
@@ -77,6 +77,11 @@ t <- as_tibble(table) %>%
     rename(`1KG_AF` = X1KG_AF, POOL = SLX) %>%
     mutate_if(is.factor, as.character) %>%
     mutate(COSMIC_SNP = as.logical(COSMIC_SNP))
+
+if ('BOTH_STRANDS' %in% colnames(t)) {
+    t <- t %>%
+        rename(BOTH_STRANDS.PASS = BOTH_STRANDS)
+}
 
 if ('BACKGROUND.MUT_SUM' %in% colnames(t)) {
     t <- t %>%

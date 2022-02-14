@@ -154,7 +154,7 @@ addLocusNoisePass <- function(mutationTable, errorRateTable)
 
     mutationTable %>%
         mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% passed.loci$UNIQUE_POS,
-               BOTH_STRANDS = (ALT_R > 0 & ALT_F > 0) | AF == 0)
+               BOTH_STRANDS.PASS = (ALT_R > 0 & ALT_F > 0) | AF == 0)
 }
 
 
@@ -186,13 +186,13 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
     # both strands
 
     bothStrands <- mutationTable.off_target %>%
-        filter(BOTH_STRANDS) %>%
+        filter(BOTH_STRANDS.PASS) %>%
         groupAndSummarizeForErrorRate()
 
     # locus noise AND both strands
 
     bothFilters <- mutationTable.off_target %>%
-        filter(LOCUS_NOISE.PASS & BOTH_STRANDS) %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS) %>%
         groupAndSummarizeForErrorRate()
 
     # Save these as a combined RDS file in a list.

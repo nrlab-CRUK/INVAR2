@@ -79,7 +79,7 @@ repolish <- function(mutationsTable, outlierSuppressionThreshold)
     }
 
     mutationsTable.forPEstimate <- mutationsTable %>%
-        filter(LOCUS_NOISE.PASS & BOTH_STRANDS & AF < 0.25 & MUTATION_SUM < 10 & TUMOUR_AF > 0) %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & AF < 0.25 & MUTATION_SUM < 10 & TUMOUR_AF > 0) %>%
         mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF == 0, 1 / BACKGROUND_DP, BACKGROUND_AF),
                DP = 1) %>%
         summarise(P_THRESHOLD = outlierSuppressionThreshold / n_distinct(UNIQUE_POS),
