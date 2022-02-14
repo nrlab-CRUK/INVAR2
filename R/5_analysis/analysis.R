@@ -553,21 +553,9 @@ depthToIMAFPlot <- function(ifPatientData)
     plot
 }
 
-detectableWaterfallPlot <- function(patientSpecificGLRT, layoutTable, study)
+detectableWaterfallPlot <- function(patientSpecificGLRT, layoutTable, patientSummaryTable, study)
 {
-    layoutTable <- layoutTable %>%
-        select(POOL, BARCODE, STUDY, INPUT_INTO_LIBRARY_NG, QUANTIFICATION_METHOD) %>%
-        mutate_at(vars(INPUT_INTO_LIBRARY_NG), as.double)
-
-    patientSpecificGLRT.annotated <- patientSpecificGLRT %>%
-        left_join(layoutTable, by = c('POOL', 'BARCODE')) %>%
-        mutate(NOT_DETECTABLE_DPCR = ADJUSTED_IMAF < 3.3 / INPUT_INTO_LIBRARY_NG,
-               CTDNA_PLOTTING = ifelse(!DETECTED.WITH_SIZE, 1e-7, ifelse(DP < 20000, 1e-8, ADJUSTED_IMAF)),
-               LS_FILTER = ifelse(DETECTED.WITH_SIZE | DP >= 20000 , "Pass", "Fail"),
-               LOLLIPOP = ifelse(DETECTED.WITH_SIZE & NOT_DETECTABLE_DPCR, "non_dPCR", LS_FILTER)) %>%
-        mutate_at(vars(LS_FILTER, LOLLIPOP), as.factor)
-
-    plot <- patientSpecificGLRT.annotated %>%
+    plot <- annotatePatientSpecificGLRT(patientSpecificGLRT, layoutTable, patientSummaryTable) %>%
         mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep = " ")) %>%
         ggplot(aes(x = reorder(POOL_BARCODE, CTDNA_PLOTTING), y = (7.2 + log10(CTDNA_PLOTTING)))) +
             geom_bar(stat =  "identity", width = 0.5, colour = "white") +
@@ -584,6 +572,23 @@ detectableWaterfallPlot <- function(patientSpecificGLRT, layoutTable, study)
                  y = "IMAF",
                  title = str_c(study, ": All IMAFs")) +
             theme(axis.text.x=element_blank())
+
+    plot
+}
+
+cancerGenomesWaterfallPlot <- function(patientSpecificGLRT, layoutTable, patientSummaryTable, study)
+{
+    plot <- annotatePatientSpecificGLRT(patientSpecificGLRT, layoutTable, patientSummaryTable) %>%
+        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep = " ")) %>%
+        ggplot(aes(x = reorder(POOL_BARCODE, CTDNA_PLOTTING), y = CANCER_GENOMES_FRACTION)) +
+           geom_bar(stat =  "identity", width = 0.7, colour = "white") +
+           scale_fill_manual(values = "chocolate1") +
+           scale_y_log10(breaks = c(1e-4,1e-3,1e-2,1e-1,1,2,10,100),
+                         labels = c(1e-4,1e-3,1e-2,1e-1,1,"ND",10,100)) +
+           theme_classic() +
+           labs(x = "Samples, ordered by IMAF",
+                y = "Cancer genomes in sample") +
+           theme(axis.text.x=element_blank())
 
     plot
 }
@@ -914,6 +919,25 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable)
          THRESHOLD_EFFECTS = thresholdEffects)
 }
 
+annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patientSummaryTable)
+{
+    layoutTable <- layoutTable %>%
+        select(POOL, BARCODE, STUDY, INPUT_INTO_LIBRARY_NG, QUANTIFICATION_METHOD) %>%
+        mutate_at(vars(INPUT_INTO_LIBRARY_NG), as.double)
+
+    patientSpecificGLRT.annotated <- patientSpecificGLRT %>%
+        left_join(layoutTable, by = c('POOL', 'BARCODE')) %>%
+        mutate(NOT_DETECTABLE_DPCR = ADJUSTED_IMAF < 3.3 / INPUT_INTO_LIBRARY_NG,
+               CTDNA_PLOTTING = ifelse(!DETECTED.WITH_SIZE, 1e-7, ifelse(DP < 20000, 1e-8, ADJUSTED_IMAF)),
+               LS_FILTER = ifelse(DETECTED.WITH_SIZE | DP >= 20000 , "Pass", "Fail"),
+               LOLLIPOP = ifelse(DETECTED.WITH_SIZE & NOT_DETECTABLE_DPCR, "non_dPCR", LS_FILTER)) %>%
+        mutate_at(vars(LS_FILTER, LOLLIPOP), as.factor) %>%
+        left_join(patientSummaryTable, by = 'PATIENT') %>%
+        mutate(CANCER_GENOMES_FRACTION = ifelse(DETECTED.WITH_SIZE, MUTATION_SUM / MUTATIONS, 2))
+
+    patientSpecificGLRT.annotated
+}
+
 ##
 # The main script, wrapped as a function.
 #
@@ -1077,8 +1101,18 @@ main <- function(scriptArgs)
 
     ggsave(plot = detectableWaterfallPlot(ifPatientData$PATIENT_SPECIFIC_GLRT,
                                           layoutTable,
+                                          patientSummaryTable,
                                           study = scriptArgs$STUDY),
            filename = "p15_waterfall_IMAF.pdf",
+           width = 10, height = 5)
+
+    ## Waterfall plot of cancer genomes
+
+    ggsave(plot = cancerGenomesWaterfallPlot(ifPatientData$PATIENT_SPECIFIC_GLRT,
+                                             layoutTable,
+                                             patientSummaryTable,
+                                             study = scriptArgs$STUDY),
+           filename = "p16_waterfall_cancer_genomes.pdf",
            width = 10, height = 5)
 }
 
