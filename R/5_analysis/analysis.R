@@ -451,35 +451,45 @@ enrichmentLevelPlot <- function(sizeCharacterisationSummary, study)
     plot
 }
 
-receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, study, familySize)
+receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize)
 {
+    assert_that(is.logical(withSizes), msg = "withSizes must be a logical")
+
+    cutoffName <- ifelse(withSizes, 'CUT_OFF.WITH_SIZE', 'CUT_OFF.NO_SIZE')
+
     adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable) %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS & OUTLIER.PASS)
 
-    scaledInvarTable <- scaleInvarScores(adjustedScoresTable)
+    scaledInvarResultsList <- adjustedScoresTable %>%
+        scaleInvarScores()
 
-    # specificGLRT <- scaledInvarTable$PATIENT_SPECIFIC
+    patientControlCutOffInfo <- scaledInvarResultsList[[cutoffName]]
 
-    rocPatientControl <- scaledInvarTable$CUT_OFF.WITH_SIZE$ROC
-    patientControlSpecificity <- scaledInvarTable$CUT_OFF.WITH_SIZE$QUANTILE_SPECIFICITY
-    patientControlCutOff <- scaledInvarTable$CUT_OFF.WITH_SIZE$INVAR_SCORE_THRESHOLD
+    rocPatientControl <- patientControlCutOffInfo$ROC %>%
+        mutate_at(vars(PATIENT_SPECIFIC), as.integer)
+
+    patientControlSpecificity <- patientControlCutOffInfo$QUANTILE_SPECIFICITY
+    patientControlCutOff <- patientControlCutOffInfo$INVAR_SCORE_THRESHOLD
 
     if (any(adjustedScoresTable$CASE_OR_CONTROL == "control_negative"))
     {
         # Data has healthy controls. Continue with analysis.
 
-        invarScoresForHealthy <- adjustedScoresTable %>%
+        healthyControlResultsList <- adjustedScoresTable %>%
             filter(PATIENT_SPECIFIC | CASE_OR_CONTROL == "control_negative") %>%
-            mutate(CASE_OR_CONTROL = 'case')
+            mutate(CASE_OR_CONTROL = 'case') %>%
+            scaleInvarScores()
 
-        healthyControlScores <- scaleInvarScores(invarScoresForHealthy)
+        healthyCutOffInfo <- healthyControlResultsList[[cutoffName]]
 
-        rocHealthyControl <- healthyControlScores$CUT_OFF.WITH_SIZE$ROC
-        healthyControlSpecificity <- healthyControlScores$CUT_OFF.WITH_SIZE$QUANTILE_SPECIFICITY
-        healthyControlCutOff <- healthyControlScores$CUT_OFF.WITH_SIZE$INVAR_SCORE_THRESHOLD
+        rocHealthyControl <- healthyCutOffInfo$ROC %>%
+            mutate_at(vars(PATIENT_SPECIFIC), as.integer)
+
+        healthyControlSpecificity <- healthyCutOffInfo$QUANTILE_SPECIFICITY
+        healthyControlCutOff <- healthyCutOffInfo$INVAR_SCORE_THRESHOLD
 
         plot <- rocPatientControl %>%
-            ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE.WITH_SIZE)) +
+            ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE)) +
                 geom_roc(data = rocHealthyControl, cutoffs.at = healthyControlCutOff,
                          labels = FALSE, pointsize = 0.75, color = "red") + # to get rid of numbers on the ROC curve
                 geom_roc(cutoffs.at = patientControlCutOff, labels = FALSE, pointsize = 0.75) + # to get rid of numbers on the ROC curve
@@ -494,7 +504,7 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, s
         # This data does not have healthy controls, will compute the ROC curve from case data only
 
         plot <- rocPatientControl %>%
-            ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE.WITH_SIZE)) +
+            ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE)) +
                 geom_roc(cutoffs.at = patientControlCutOff, labels = FALSE, pointsize = 0.75) + # to get rid of numbers on the ROC curve
                 theme_classic() +
                 labs(title = str_c(study, ", fam_", familySize),
@@ -762,12 +772,13 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
     roc <- bind_rows(specificInvarScores, nonSpecificInvarScores) %>%
         select(all_of(useColumns)) %>%
         mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO) %>%
+        rename(ADJUSTED_INVAR_SCORE = {{ invarScoreColumn }}) %>%
         filter(DP >= minimumSpecificDP)
 
-    # Does not like a tibble!
+    # optimal.cutpoints does not like a tibble!
 
     cutPointInfo <-
-        OptimalCutpoints::optimal.cutpoints(data = as.data.frame(roc), X = invarScoreColumn,
+        OptimalCutpoints::optimal.cutpoints(data = as.data.frame(roc), X = 'ADJUSTED_INVAR_SCORE',
                                             status = "PATIENT_SPECIFIC", tag.healthy = FALSE,
                                             methods = "MaxSpSe", direction = "<")
 
@@ -786,7 +797,9 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
     # This minor adjustment saves the separate test and additional code by
     # setting the threshold to a tiny number above zero.
 
-    list(SIZE_CUT_OFF = sizeCutOff, MAXIMUM_SPECIFICITY = maximumSpecificity, ROC = roc,
+    list(SIZE_CUT_OFF = sizeCutOff,
+         MAXIMUM_SPECIFICITY = maximumSpecificity,
+         ROC = roc,
          QUANTILE_SPECIFICITY = quantileLabel,
          INVAR_SCORE_THRESHOLD = ifelse(invarScoreThreshold == 0, 1e-31, invarScoreThreshold))
 }
@@ -923,12 +936,18 @@ main <- function(scriptArgs)
            filename = "p12_enrichment_ratios.pdf",
            width = 6, height = 5)
 
-    ## Receiver Operating Characteristic Plot
+    ## Receiver Operating Characteristic Plots
 
-    ggsave(plot = receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
+    ggsave(plot = receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable, TRUE,
                                                       study = scriptArgs$STUDY,
                                                       familySize = scriptArgs$FAMILY_SIZE),
-           filename = "p13_receiver_operating_characteristic.pdf",
+           filename = "p13a_receiver_operating_characteristic.pdf",
+           width = 4, height = 3)
+
+    ggsave(plot = receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable, FALSE,
+                                                      study = scriptArgs$STUDY,
+                                                      familySize = scriptArgs$FAMILY_SIZE),
+           filename = "p13b_receiver_operating_characteristic.no_size.pdf",
            width = 4, height = 3)
 }
 
