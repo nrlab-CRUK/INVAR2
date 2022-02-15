@@ -628,6 +628,9 @@ convertComplementaryMutations <- function(backgroundErrorTable)
 
 calculateErrorRatesINV042 <- function(errorRatesTable, layoutTable)
 {
+    assert_that(!is.null(errorRatesTable), msg = "errorRatesTable cannot be null")
+    assert_that(!is.null(layoutTable), msg = "layoutTable cannot be null")
+
     layoutTable <- layoutTable %>%
         select(POOL, BARCODE, CASE_OR_CONTROL)
 
@@ -962,6 +965,10 @@ main <- function(scriptArgs)
         mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO,
                POOL_BARCODE = str_c(POOL, BARCODE, sep = "_"))
 
+    assert_that(length(offTargetErrorRatesList) == 4 && all(names(offTargetErrorRatesList) %in% c('ONE_READ', 'LOCUS_NOISE', 'BOTH_READS', 'LOCUS_NOISE.BOTH_READS')),
+                msg = "Off target error rates list does not contain the tables expected.")
+
+
     # Manipulation and further calculations.
 
     contextMutationsTable <- mutationsTable %>%
@@ -979,7 +986,7 @@ main <- function(scriptArgs)
         write_csv("tumour_mutation_per_patient.csv")
 
     errorRatesINV042 <-
-        calculateErrorRatesINV042(offTargetErrorRatesList[['pre_filter']], layoutTable)
+        calculateErrorRatesINV042(offTargetErrorRatesList[['ONE_READ']], layoutTable)
 
     calculateErrorRateSummary(errorRatesINV042) %>%
         write_csv("error_rate_summary.csv")
