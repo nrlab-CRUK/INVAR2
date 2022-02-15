@@ -1127,7 +1127,7 @@ main <- function(scriptArgs)
 
 if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
     # Rich's machine
-    setwd('/home/data/INVAR')
+    setwd('/home/data/INVAR/analysis')
     invisible(main(richTestOptions()))
 } else {
     invisible(main(parseOptions()))

@@ -64,9 +64,12 @@ parseOptions <- function()
 
 richTestOptions <- function()
 {
+    testhome <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/')
+    base <- str_c(testhome, 'createMutationsTable/source/')
+
     list(
-        MUTATIONS_FILE = 'EMMA/output_gz/PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv',
-        TUMOUR_MUTATIONS_FILE = 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv',
+        MUTATIONS_FILE = str_c(base, 'PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv'),
+        TUMOUR_MUTATIONS_FILE = str_c(testhome, 'invar_source/PARADIGM_mutation_list_full_cohort_hg19.v2.csv'),
         COSMIC_THRESHOLD = 0L,
         MQSB_THRESHOLD = 0.01,
         MAX_DEPTH = 2000L,

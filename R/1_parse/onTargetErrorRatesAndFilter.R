@@ -65,8 +65,11 @@ parseOptions <- function()
 
 richTestOptions <- function()
 {
+    testhome <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/')
+    base <- str_c(testhome, 'onTargetErrorRatesAndFilter/source/')
+
     list(
-        MUTATIONS_TABLE_FILE = 'on_target/mutation_table.on_target.all.rds',
+        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.on_target.all.rds'),
         STUDY = 'PARADIGM',
         TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         CONTROL_PROPORTION = 0.1,
