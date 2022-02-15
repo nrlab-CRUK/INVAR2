@@ -2,6 +2,7 @@ suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ggpubr))
+suppressPackageStartupMessages(library(knitr))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(plotROC))
 suppressPackageStartupMessages(library(readr))
@@ -135,14 +136,8 @@ main <- function(scriptArgs)
         summarise(MUTATIONS = n_distinct(PATIENT, UNIQUE_POS), .groups = "drop") %>%
         arrange(PATIENT, MUTATIONS)
 
-    patientSummaryTable %>%
-        exportCSV("tumour_mutation_per_patient.csv")
-
     errorRatesINV042 <-
         calculateErrorRatesINV042(offTargetErrorRatesList[['PREFILTER']], layoutTable)
-
-    calculateErrorRateSummary(errorRatesINV042) %>%
-        exportCSV("error_rate_summary.csv")
 
     sizeCharacterisationSummary <-
         calculateSizeCharacterisationSummary(sizeCharacterisationTable, layoutTable,
@@ -151,135 +146,17 @@ main <- function(scriptArgs)
     ifPatientData <-
         getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable)
 
-    exportCSV(ifPatientData$PATIENT_SPECIFIC_GLRT, 'patient_specific_GLRT.csv')
-    exportCSV(ifPatientData$IF_PATIENT_DATA, 'IF_patient_data.csv')
-    exportCSV(ifPatientData$THRESHOLD_EFFECTS, 'IR_threshold_effects.csv')
-
     annotatedPatientSpecificGLRT <-
         annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable)
 
-    ## Creating and saving plots.
+    ## Create the report.
 
-    # plotting 3bp context
-
-    ggsave(plot = cohortMutationContextPlot(contextMutationsTable, study = scriptArgs$STUDY),
-           filename = "p1_cohort_mut_context.pdf",
-           width = 6, height = 5)
-
-    # plot the AF by mutation class
-
-    ggsave(plot = cohortMutationAFByClassPlot(contextMutationsTable, study = scriptArgs$STUDY),
-           filename = "p2_cohort_mut_AF_by_class.pdf",
-           width = 6, height = 7)
-
-    # plot mutations per patient captured and passing pipeline filters
-
-    ggsave(plot = mutationsPerPatientPlot(patientSummaryTable, study = scriptArgs$STUDY),
-           filename = "p3_cohort_mut_count_tumour.pdf",
-           width = 6, height = 7)
-
-    # plot mutation class distribution by cohort
-
-    ggsave(plot = mutationClassByCohortPlot(contextMutationsTable, study = scriptArgs$STUDY),
-           filename = "p4_cohort_mut_class.pdf",
-           width = 6, height = 5)
-
-    ## Case vs control error rates.
-
-    ggsave(plot = backgroundErrorCaseControlPlot(errorRatesINV042, study = scriptArgs$STUDY),
-           filename = "p5_background_error_comparison.case_vs_control.pdf",
-           width = 6, height = 4)
-
-    ## Summary plots
-
-    ggsave(plot = backgroundErrorRatesPlot(errorRatesTable, study = scriptArgs$STUDY, familySize = scriptArgs$FAMILY_SIZE),
-           filename = "p7_background_error_rates.pdf",
-           width = 8, height = 4)
-
-    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "both_strands"),
-           filename = "p9_error_rate_comparison.both_strands.pdf",
-           width = 6, height = 3)
-
-    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise"),
-           filename = "p9_error_rate_comparison.locus_noise.pdf",
-           width = 6, height = 3)
-
-    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise.both_strands"),
-           filename = "p9_error_rate_comparison.locus_noise_both_strands.pdf",
-           width = 6, height = 3)
-
-    ggsave(plot = filteringComparisonPlot(errorRatesTable, study = scriptArgs$STUDY, familySize = scriptArgs$FAMILY_SIZE),
-           filename = "p20_filtering_comparison.pdf",
-           width = 6, height = 4)
-
-    ## Outlier suppression plots
-
-    ggsave(plot = summaryCohortPlot(mutationsTable, study = scriptArgs$STUDY),
-           filename = "p6_os_data_retained.pdf",
-           width = 5, height = 6)
-
-    ggsave(plot = backgroundPolishingPlot(mutationsTable, study = scriptArgs$STUDY, errorSuppression = scriptArgs$ERROR_SUPPRESSION, outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION),
-           filename = "p8_background_polishing.pdf",
-           width = 15, height = 12)
-
-    ## Tumour AF in observed and unobserved loci.
-
-    ggsave(plot = tumourAFInLociPlot(mutationsTable, study = scriptArgs$STUDY),
-           filename = "p10_tumour_AF_for_observed_non_observed_loci.pdf",
-           width = 5, height = 4)
-
-    ## Fragment size per cohort, with different levels of error-suppression
-
-    ggsave(plot = fragmentSizePerCohortPlot(sizeCharacterisationSummary, study = scriptArgs$STUDY),
-           filename = "p11_size_comparison.pdf",
-           width = 6, height = 5)
-
-    ## Enrichment level
-
-    ggsave(plot = enrichmentLevelPlot(sizeCharacterisationSummary, study = scriptArgs$STUDY),
-           filename = "p12_enrichment_ratios.pdf",
-           width = 6, height = 5)
-
-    ## Receiver Operating Characteristic Plots
-
-    ggsave(plot = receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable, TRUE,
-                                                      study = scriptArgs$STUDY,
-                                                      familySize = scriptArgs$FAMILY_SIZE),
-           filename = "p13a_receiver_operating_characteristic.pdf",
-           width = 4, height = 3)
-
-    ggsave(plot = receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable, FALSE,
-                                                      study = scriptArgs$STUDY,
-                                                      familySize = scriptArgs$FAMILY_SIZE),
-           filename = "p13b_receiver_operating_characteristic.no_size.pdf",
-           width = 4, height = 3)
-
-    ## IR (depth) to IMAF plot
-
-    ggsave(plot = depthToIMAFPlot(ifPatientData$IF_PATIENT_DATA),
-           filename = "p14_IR_vs_IMAF.pdf",
-           width = 6, height = 4)
-
-    ## Waterfall plot with detectable vs non detectable using dPCR
-
-    ggsave(plot = detectableWaterfallPlot(annotatedPatientSpecificGLRT,
-                                          study = scriptArgs$STUDY),
-           filename = "p15_waterfall_IMAF.pdf",
-           width = 10, height = 5)
-
-    ## Waterfall plot of cancer genomes
-
-    ggsave(plot = cancerGenomesWaterfallPlot(annotatedPatientSpecificGLRT,
-                                             study = scriptArgs$STUDY),
-           filename = "p16_waterfall_cancer_genomes.pdf",
-           width = 10, height = 5)
-
-    # dPCR comparision plot
-
-    ggsave(plot = dpcrComparisionPlot(annotatedPatientSpecificGLRT,
-                                      study = scriptArgs$STUDY),
-           filename = "p17_dPCR_comparison.pdf",
-           width = 8, height = 5)
+    rmarkdown::render(input = str_c(Sys.getenv('INVAR_HOME'), '/R/5_analysis/analysis.Rmd'),
+                      knit_root_dir = str_c(getwd(), '/knitting'),
+                      intermediates_dir = str_c(getwd(), '/intermediates'),
+                      output_format = rmarkdown::html_document(),
+                      output_dir = getwd(),
+                      output_file = str_c(study, "_invar2_analysis.html")
 }
 
 # Launch it.
