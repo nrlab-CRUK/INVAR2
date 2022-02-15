@@ -12,8 +12,6 @@ toChar <- function(v) { ifelse(v, 'T', 'F') }
 
 layoutTable <-
     suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
-    rename_with(str_to_upper) %>%
-    rename(POOL = SLX_ID) %>%
     select(POOL, BARCODE, PATIENT, SAMPLE_NAME)
 
 colTypes <- 'diddccllldcldddlciil'
