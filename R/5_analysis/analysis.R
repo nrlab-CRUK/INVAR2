@@ -94,7 +94,6 @@ richTestOptions <- function()
 }
 
 
-
 ##
 # The main script, wrapped as a function.
 #
@@ -155,6 +154,9 @@ main <- function(scriptArgs)
     exportCSV(ifPatientData$PATIENT_SPECIFIC_GLRT, 'patient_specific_GLRT.csv')
     exportCSV(ifPatientData$IF_PATIENT_DATA, 'IF_patient_data.csv')
     exportCSV(ifPatientData$THRESHOLD_EFFECTS, 'IR_threshold_effects.csv')
+
+    annotatedPatientSpecificGLRT <-
+        annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable)
 
     ## Creating and saving plots.
 
@@ -260,21 +262,24 @@ main <- function(scriptArgs)
 
     ## Waterfall plot with detectable vs non detectable using dPCR
 
-    ggsave(plot = detectableWaterfallPlot(ifPatientData$PATIENT_SPECIFIC_GLRT,
-                                          layoutTable,
-                                          patientSummaryTable,
+    ggsave(plot = detectableWaterfallPlot(annotatedPatientSpecificGLRT,
                                           study = scriptArgs$STUDY),
            filename = "p15_waterfall_IMAF.pdf",
            width = 10, height = 5)
 
     ## Waterfall plot of cancer genomes
 
-    ggsave(plot = cancerGenomesWaterfallPlot(ifPatientData$PATIENT_SPECIFIC_GLRT,
-                                             layoutTable,
-                                             patientSummaryTable,
+    ggsave(plot = cancerGenomesWaterfallPlot(annotatedPatientSpecificGLRT,
                                              study = scriptArgs$STUDY),
            filename = "p16_waterfall_cancer_genomes.pdf",
            width = 10, height = 5)
+
+    # dPCR comparision plot
+
+    ggsave(plot = dpcrComparisionPlot(annotatedPatientSpecificGLRT,
+                                      study = scriptArgs$STUDY),
+           filename = "p17_dPCR_comparison.pdf",
+           width = 8, height = 5)
 }
 
 # Launch it.

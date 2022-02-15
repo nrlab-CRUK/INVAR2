@@ -461,9 +461,9 @@ depthToIMAFPlot <- function(ifPatientData)
     plot
 }
 
-detectableWaterfallPlot <- function(patientSpecificGLRT, layoutTable, patientSummaryTable, study)
+detectableWaterfallPlot <- function(annotatedPatientSpecificGLRT, study)
 {
-    plot <- annotatePatientSpecificGLRT(patientSpecificGLRT, layoutTable, patientSummaryTable) %>%
+    plot <- annotatedPatientSpecificGLRT %>%
         mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep = " ")) %>%
         ggplot(aes(x = reorder(POOL_BARCODE, CTDNA_PLOTTING), y = (7.2 + log10(CTDNA_PLOTTING)))) +
             geom_bar(stat =  "identity", width = 0.5, colour = "white") +
@@ -484,9 +484,9 @@ detectableWaterfallPlot <- function(patientSpecificGLRT, layoutTable, patientSum
     plot
 }
 
-cancerGenomesWaterfallPlot <- function(patientSpecificGLRT, layoutTable, patientSummaryTable, study)
+cancerGenomesWaterfallPlot <- function(annotatedPatientSpecificGLRT, study)
 {
-    plot <- annotatePatientSpecificGLRT(patientSpecificGLRT, layoutTable, patientSummaryTable) %>%
+    plot <- annotatedPatientSpecificGLRT %>%
         mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep = " ")) %>%
         ggplot(aes(x = reorder(POOL_BARCODE, CTDNA_PLOTTING), y = CANCER_GENOMES_FRACTION)) +
            geom_bar(stat =  "identity", width = 0.7, colour = "white") +
@@ -497,6 +497,42 @@ cancerGenomesWaterfallPlot <- function(patientSpecificGLRT, layoutTable, patient
            labs(x = "Samples, ordered by IMAF",
                 y = "Cancer genomes in sample") +
            theme(axis.text.x=element_blank())
+
+    plot
+}
+
+dpcrComparisionPlot <- function(annotatedPatientSpecificGLRT, study)
+{
+    # 1ng = 300AC or 150GE
+    # we are assuming 50% library efficiency
+    # theoretical sensitivity with one locus assay would be 1/AC_input
+
+    ## whats the proportion of detected samples that would not be detected with dPCR
+
+    undetected <- annotatedPatientSpecificGLRT %>%
+        filter(DETECTED.WITH_SIZE) %>%
+        summarise(UNDETECTED = sum(NOT_DETECTABLE_DPCR) / n()) %>%
+        as.double()
+
+    cutoffLine <- tibble(NG_INPUT = 1:80) %>%
+        mutate(CUTOFF = 3.3 / (NG_INPUT * 300))
+
+    plot <- annotatedPatientSpecificGLRT %>%
+        filter(ADJUSTED_IMAF > 0 & DETECTED.WITH_SIZE) %>%
+        ggplot(aes(x = INPUT_INTO_LIBRARY_NG / 300, y = ADJUSTED_IMAF))+
+        geom_line(data = cutoffLine, aes(x = NG_INPUT, y = CUTOFF))+
+        geom_point(aes(color = NOT_DETECTABLE_DPCR)) +
+        theme_classic() +
+        labs(x = "Library input (ng)",
+             y = "IMAF",
+             title = str_c(study, ": ctDNA level of detected samples"),
+             subtitle = str_c("line = 3.3/AC input; ", undetected * 100, "% of samples undetected")) +
+        scale_y_log10(breaks=c(1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1)) +
+        xlim(0,80) +
+        scale_color_manual(breaks = c("FALSE", "TRUE"),
+                           labels = c("Detectable", "Not detectable"),
+                           name = "Detection with dPCR",
+                           values = c("dodgerblue", "brown2"))
 
     plot
 }
