@@ -342,7 +342,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
         mutate(MUTATION_CLASS = str_c(REF, ALT, sep = '/')) %>%
         rename(BACKGROUND_MUTATION_SUM = MUTATION_SUM_TOTAL,
                BACKGROUND_DP = TRINUCLEOTIDE_DEPTH) %>%
-        filter(CASE_OR_CONTROL == 'case' & ERROR_RATE_TYPE == 'locus_noise.both_reads') %>%
+        filter(CASE_OR_CONTROL == 'case' & ERROR_RATE_TYPE == 'locus_noise.both_strands') %>%
         select(TRINUCLEOTIDE, MUTATION_CLASS, starts_with('BACKGROUND_'))
 
     # Add background columns to mutation table.

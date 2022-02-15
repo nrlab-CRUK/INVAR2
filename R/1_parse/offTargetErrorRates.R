@@ -185,7 +185,7 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
 
     # both strands
 
-    bothStrands <- mutationTable.off_target %>%
+    bothStrandsPass <- mutationTable.off_target %>%
         filter(BOTH_STRANDS.PASS) %>%
         groupAndSummarizeForErrorRate()
 
@@ -198,10 +198,10 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
     # Save these as a combined RDS file in a list.
 
     allErrorRates = list(
-        ONE_READ = oneRead,
+        PREFILTER = oneRead,
         LOCUS_NOISE = locusNoisePass,
-        BOTH_READS = bothStrands,
-        LOCUS_NOISE.BOTH_READS = bothFilters
+        BOTH_STRANDS = bothStrandsPass,
+        LOCUS_NOISE.BOTH_STRANDS = bothFilters
     )
 
     saveRDS(allErrorRates, str_c('error_rates.off_target.', cosmicFilePart, '.rds'))

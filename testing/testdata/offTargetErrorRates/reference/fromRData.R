@@ -44,10 +44,10 @@ convertAndSave <- function(errorRateTable, tsvFile)
 }
 
 errorRateMapping <- list(
-    ONE_READ = 'pre_filter',
+    PREFILTER = 'pre_filter',
     LOCUS_NOISE = 'locus_noise_filter_only',
-    BOTH_READS = 'both_strands_only',
-    LOCUS_NOISE.BOTH_READS = 'locus_noise.both_strands')
+    BOTH_STRANDS = 'both_strands_only',
+    LOCUS_NOISE.BOTH_STRANDS = 'locus_noise.both_strands')
 
 for (cosmic in c(FALSE, TRUE))
 {
@@ -60,14 +60,14 @@ for (cosmic in c(FALSE, TRUE))
     cosmicc = ifelse(cosmic, 'cosmic', 'no_cosmic')
 
     converted <- lapply(errorRateList, convert)
-    names(converted) <- c('ONE_READ', 'LOCUS_NOISE', 'BOTH_READS', 'LOCUS_NOISE.BOTH_READS')
+    names(converted) <- names(errorRateMapping)
     saveRDS(converted, str_c('error_rates.off_target.', cosmicc, '.rds'))
 
     write_tsv(bind_rows(converted), str_c('REFERENCE_error_rates.off_target.', cosmicc, '.tsv'))
 
-    write_tsv(converted$ONE_READ, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.oneread.tsv'))
+    write_tsv(converted$PREFILTER, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.prefilter.tsv'))
     write_tsv(converted$LOCUS_NOISE, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.locusnoise.tsv'))
-    write_tsv(converted$BOTH_READS, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.bothreads.tsv'))
-    write_tsv(converted$LOCUS_NOISE.BOTH_READS, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.locusnoise_bothreads.tsv'))
+    write_tsv(converted$BOTH_STRANDS, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.bothstrands.tsv'))
+    write_tsv(converted$LOCUS_NOISE.BOTH_STRANDS, str_c('REFERENCE_error_rates.off_target.', cosmicc, '.locusnoise_bothstrands.tsv'))
 }
 

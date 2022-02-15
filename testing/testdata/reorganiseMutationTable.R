@@ -61,6 +61,9 @@ desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'R
 orderByColumns = c('POOL', 'BARCODE', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
                    'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
 
+controlBarcodes = c('SXTLI097','SXTLI098','SXTLI099','SXTLI100','SXTLI101','SXTLI102','SXTLI103','SXTLI104','SXTLI060','SXTLI059')
+
+
 args <- parseArgs(commandArgs(TRUE))
 
 invisible(assert_that(args$EXTENSION %in% names(loadingFunctions), msg = str_c("Unsupported file type: ", args$EXTENSION)))
@@ -116,7 +119,7 @@ if ('PASS' %in% colnames(t)) {
 
 if (!'CASE_OR_CONTROL' %in% colnames(t)) {
     t <- t %>%
-        mutate(CASE_OR_CONTROL = ifelse(str_detect(SAMPLE_NAME, "^EXP3079"), 'case', 'control_negative'))
+        mutate(CASE_OR_CONTROL = ifelse(BARCODE %in% controlBarcodes, 'control_negative', 'case'))
 }
 
 # See https://stackoverflow.com/questions/26497751/pass-a-vector-of-variable-names-to-arrange-in-dplyr

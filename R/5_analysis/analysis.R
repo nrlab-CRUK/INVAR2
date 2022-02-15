@@ -184,7 +184,7 @@ mutationClassByCohortPlot <- function(contextMutationsTable, study)
 backgroundErrorRatesPlot <- function(errorRatesTable, study, familySize)
 {
     plot <- errorRatesTable %>%
-        filter(CASE_OR_CONTROL == 'case' & ERROR_RATE_TYPE == 'locus_noise.both_reads') %>%
+        filter(CASE_OR_CONTROL == 'case' & ERROR_RATE_TYPE == 'locus_noise.both_strands') %>%
         mutate_at(vars('TRINUCLEOTIDE'), as.factor) %>%
         ggplot(aes(x = reorder(TRINUCLEOTIDE, BACKGROUND_AF),  y = BACKGROUND_AF, colour = MUTATION_CLASS)) +
             geom_point() +
@@ -206,8 +206,8 @@ backgroundErrorRatesPlot <- function(errorRatesTable, study, familySize)
 errorRatePolishingComparisonPlot <- function(errorRatesTable, errorPolishingSetting)
 {
     oneReadErrorRates <- errorRatesTable %>%
-        filter(ERROR_RATE_TYPE == "one_read") %>%
-        rename(BACKGROUND_AF.ONE_READ = BACKGROUND_AF)
+        filter(ERROR_RATE_TYPE == "prefilter") %>%
+        rename(BACKGROUND_AF.PREFILTER = BACKGROUND_AF)
 
     otherErrorRates <- errorRatesTable %>%
         filter(ERROR_RATE_TYPE == errorPolishingSetting) %>%
@@ -216,7 +216,7 @@ errorRatePolishingComparisonPlot <- function(errorRatesTable, errorPolishingSett
 
     errorRatesComparison <- oneReadErrorRates %>%
         inner_join(otherErrorRates, by = c('TRINUCLEOTIDE', 'ALT', 'CASE_OR_CONTROL')) %>%
-        mutate(RATIO = BACKGROUND_AF.OTHER / BACKGROUND_AF.ONE_READ)
+        mutate(RATIO = BACKGROUND_AF.OTHER / BACKGROUND_AF.PREFILTER)
 
     plotTitle <- errorPolishingSetting %>%
         str_replace_all('_', ' ') %>%
@@ -225,7 +225,7 @@ errorRatePolishingComparisonPlot <- function(errorRatesTable, errorPolishingSett
 
     plot <- errorRatesComparison %>%
         filter(CASE_OR_CONTROL == 'case') %>%
-        ggplot(aes(x = BACKGROUND_AF.ONE_READ, y = BACKGROUND_AF.OTHER, color = MUTATION_CLASS))+
+        ggplot(aes(x = BACKGROUND_AF.PREFILTER, y = BACKGROUND_AF.OTHER, color = MUTATION_CLASS))+
         geom_point() +
         scale_y_log10(limits = c(0.5e-7, 1e-2)) +
         scale_x_log10(limits = c(0.5e-7, 1e-2)) +
@@ -965,7 +965,7 @@ main <- function(scriptArgs)
         mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO,
                POOL_BARCODE = str_c(POOL, BARCODE, sep = "_"))
 
-    assert_that(length(offTargetErrorRatesList) == 4 && all(names(offTargetErrorRatesList) %in% c('ONE_READ', 'LOCUS_NOISE', 'BOTH_READS', 'LOCUS_NOISE.BOTH_READS')),
+    assert_that(length(offTargetErrorRatesList) == 4 && all(names(offTargetErrorRatesList) %in% c('PREFILTER', 'LOCUS_NOISE', 'BOTH_STRANDS', 'LOCUS_NOISE.BOTH_STRANDS')),
                 msg = "Off target error rates list does not contain the tables expected.")
 
 
@@ -986,7 +986,7 @@ main <- function(scriptArgs)
         write_csv("tumour_mutation_per_patient.csv")
 
     errorRatesINV042 <-
-        calculateErrorRatesINV042(offTargetErrorRatesList[['ONE_READ']], layoutTable)
+        calculateErrorRatesINV042(offTargetErrorRatesList[['PREFILTER']], layoutTable)
 
     calculateErrorRateSummary(errorRatesINV042) %>%
         write_csv("error_rate_summary.csv")
@@ -1040,16 +1040,16 @@ main <- function(scriptArgs)
            filename = "p7_background_error_rates.pdf",
            width = 8, height = 4)
 
-    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "both_reads"),
-           filename = "p9_error_rate_comparison.both_reads.pdf",
+    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "both_strands"),
+           filename = "p9_error_rate_comparison.both_strands.pdf",
            width = 6, height = 3)
 
     ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise"),
            filename = "p9_error_rate_comparison.locus_noise.pdf",
            width = 6, height = 3)
 
-    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise.both_reads"),
-           filename = "p9_error_rate_comparison.locus_noise_both_reads.pdf",
+    ggsave(plot = errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise.both_strands"),
+           filename = "p9_error_rate_comparison.locus_noise_both_strands.pdf",
            width = 6, height = 3)
 
     ggsave(plot = filteringComparisonPlot(errorRatesTable, study = scriptArgs$STUDY, familySize = scriptArgs$FAMILY_SIZE),

@@ -1,5 +1,4 @@
-This is a mutation table written by a verified execution
-of onTargetErrorRatesAndFilter.R.
+The mutation table is created by converting PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.rds.
 
 The inserts file is taken from the original run of the pipeline,
 originally named "SLX-19721_SXTLI001.FS_2.sort.filtered.bam.inserts_for_annotation.csv"

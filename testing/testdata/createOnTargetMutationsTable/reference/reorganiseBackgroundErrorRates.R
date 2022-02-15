@@ -11,6 +11,9 @@ t <- readRDS(args[1]) %>%
            MUTATION_CLASS = MUT_CLASS,
            MUTATION_SUM_TOTAL = BACKGROUND.MUT_SUM,
            TRINUCLEOTIDE_DEPTH = BACKGROUND.DP) %>%
+    mutate(ERROR_RATE_TYPE = ifelse(ERROR_RATE_TYPE == 'one_read', 'prefilter', ERROR_RATE_TYPE),
+           ERROR_RATE_TYPE = ifelse(ERROR_RATE_TYPE == 'both_reads', 'both_strands', ERROR_RATE_TYPE),
+           ERROR_RATE_TYPE = ifelse(ERROR_RATE_TYPE == 'locus_noise.both_reads', 'locus_noise.both_strands', ERROR_RATE_TYPE)) %>%
     arrange(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
     select(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE,
            MUTATION_SUM_TOTAL, TRINUCLEOTIDE_DEPTH, BACKGROUND_AF)
