@@ -1,5 +1,8 @@
 #!/bin/sh
 
-sudo docker build --tag "crukcibioinformatics/invar" --file Dockerfile .
+TAG="latest"
+REPO="crukcibioinformatics/invar2:$TAG"
 
-# docker push crukcibioinformatics/alignment:40
+sudo docker build --tag "$REPO" --file Dockerfile .
+sudo docker push "$REPO"
+
