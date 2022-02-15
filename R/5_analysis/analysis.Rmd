@@ -6,31 +6,31 @@ output: html_document
 ## Cohort by Mutant Context Plot
 
 ```{r fig.width = 6, fig.height = 5, echo = FALSE}
-cohortMutationContextPlot(contextMutationsTable, study = scriptArgs$STUDY)
+plots$P1
 ```
 
 ## AF by mutation class
 
 ```{r fig.width = 6, fig.height = 7, echo = FALSE}
-cohortMutationAFByClassPlot(contextMutationsTable, study = scriptArgs$STUDY)
+plots$P2
 ```
 
 ## Mutations per patient captured and passing pipeline filters
 
 ```{r fig.width = 6, fig.height = 7, echo = FALSE}
-mutationsPerPatientPlot(patientSummaryTable, study = scriptArgs$STUDY)
+plots$P3
 ```
 
 ## Mutation class distribution by cohort
 
 ```{r fig.width = 6, fig.height = 5, echo = FALSE}
-mutationClassByCohortPlot(contextMutationsTable, study = scriptArgs$STUDY)
+plots$P4
 ```
 
 ## Case vs control error rates
 
 ```{r fig.width = 8, fig.height = 4, echo = FALSE}
-backgroundErrorCaseControlPlot(errorRatesINV042, study = scriptArgs$STUDY)
+plots$P5
 ```
 
 # Summary Plots
@@ -38,31 +38,31 @@ backgroundErrorCaseControlPlot(errorRatesINV042, study = scriptArgs$STUDY)
 ## Background error rates
 
 ```{r fig.width = 8, fig.height = 4, echo = FALSE}
-backgroundErrorRatesPlot(errorRatesTable, study = scriptArgs$STUDY, familySize = scriptArgs$FAMILY_SIZE)
+plots$P7
 ```
 
 ## Error rate comparison - both strands
 
 ```{r fig.width = 6, fig.height = 3, echo = FALSE}
-errorRatePolishingComparisonPlot(errorRatesTable, "both_strands")
+plots$P9a
 ```
 
 ## Error rate comparison - locus noise
 
 ```{r fig.width = 6, fig.height = 3, echo = FALSE}
-errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise")
+plots$P9b
 ```
 
 ## Error rate comparison - locus noise &amp; both strands
 
 ```{r fig.width = 6, fig.height = 3, echo = FALSE}
-errorRatePolishingComparisonPlot(errorRatesTable, "locus_noise.both_strands")
+plots$P9c
 ```
 
 ## Filtering comparison
 
 ```{r fig.width = 6, fig.height = 4, echo = FALSE}
-filteringComparisonPlot(errorRatesTable, study = scriptArgs$STUDY, familySize = scriptArgs$FAMILY_SIZE)
+plots$P20
 ```
 
 # Outlier suppression plots
@@ -70,22 +70,19 @@ filteringComparisonPlot(errorRatesTable, study = scriptArgs$STUDY, familySize = 
 ## Data retained
 
 ```{r fig.width = 5, fig.height = 6, echo = FALSE}
-summaryCohortPlot(mutationsTable, study = scriptArgs$STUDY)
+plots$P6
 ```
 
 ## Background polishing
 
 ```{r fig.width = 15, fig.height = 12, echo = FALSE}
-backgroundPolishingPlot(mutationsTable,
-                        study = scriptArgs$STUDY,
-                        errorSuppression = scriptArgs$ERROR_SUPPRESSION,
-                        outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION)
+plots$P8
 ```
 
 # Tumour AF in observed and unobserved loci.
 
 ```{r fig.width = 5, fig.height = 4, echo = FALSE}
-tumourAFInLociPlot(mutationsTable, study = scriptArgs$STUDY)
+plots$P10
 ```
 
 # Fragment size per cohort
@@ -93,13 +90,13 @@ tumourAFInLociPlot(mutationsTable, study = scriptArgs$STUDY)
 With different levels of error-suppression.
 
 ```{r fig.width = 6, fig.height = 5, echo = FALSE}
-fragmentSizePerCohortPlot(sizeCharacterisationSummary, study = scriptArgs$STUDY)
+plots$P11
 ```
 
 # Enrichment level
 
 ```{r fig.width = 6, fig.height = 5, echo = FALSE}
-enrichmentLevelPlot(sizeCharacterisationSummary, study = scriptArgs$STUDY)
+plots$P12
 ```
 
 # Receiver Operating Characteristic (ROC) Plots
@@ -107,23 +104,19 @@ enrichmentLevelPlot(sizeCharacterisationSummary, study = scriptArgs$STUDY)
 With size:
 
 ```{r fig.width = 4, fig.height = 3, echo = FALSE}
-receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable, TRUE,
-                                    study = scriptArgs$STUDY,
-                                    familySize = scriptArgs$FAMILY_SIZE)
+plots$P13a
 ```
 
 Without size:
 
 ```{r fig.width = 4, fig.height = 3, echo = FALSE}
-receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable, FALSE,
-                                    study = scriptArgs$STUDY,
-                                    familySize = scriptArgs$FAMILY_SIZE)
+plots$P13b
 ```
 
 # IR (depth) to IMAF
 
 ```{r fig.width = 6, fig.height = 4, echo = FALSE}
-depthToIMAFPlot(ifPatientData$IF_PATIENT_DATA)
+plots$P14
 ```
 
 # Waterfall Plots
@@ -131,17 +124,17 @@ depthToIMAFPlot(ifPatientData$IF_PATIENT_DATA)
 ## Detectable vs non detectable using dPCR
 
 ```{r fig.width = 10, fig.height = 5, echo = FALSE}
-detectableWaterfallPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+plots$P15
 ```
 
 ## Cancer genomes
 
 ```{r fig.width = 10, fig.height = 5, echo = FALSE}
-cancerGenomesWaterfallPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+plots$P16
 ```
 
 # dPCR comparision plot
 
 ```{r fig.width = 8, fig.height = 5, echo = FALSE}
-dpcrComparisionPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+plots$P17
 ```
