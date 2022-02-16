@@ -345,3 +345,62 @@ annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patien
 
     patientSpecificGLRT.annotated
 }
+
+##
+# From Emma's track_n_mut_v2.R script, translated for the new tibble structures.
+#
+
+mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, invarScoresTable)
+{
+    assert_that("PATIENT_SPECIFIC" %in% colnames(invarScoresTable),
+                msg = "invarScoresTable lacking derived PATIENT_SPECIFIC column.")
+
+    layoutTableTimepoint <- layoutTable %>%
+        select(POOL, BARCODE, TIMEPOINT)
+
+    tumourMutationTableSummary <- tumourMutationsTable %>%
+        group_by(PATIENT) %>%
+        summarise(INITIAL_MUTATIONS = n(), .groups = "drop")
+
+    mutationsTable <- mutationsTable %>%
+        mutate(UNIQUE_PATIENT_POS = str_c(UNIQUE_POS, UNIQUE_ALT, sep = '_'))
+
+    # Only interested in patient specific rows from INVAR scores.
+    # LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS are all true for the current
+    # set up, so they don't need to be included in this table.
+
+    invarScoresTable <- invarScoresTable %>%
+        adjustInvarScores(layoutTable) %>%
+        filter(PATIENT_SPECIFIC) %>%
+        select(POOL, BARCODE, PATIENT, USING_SIZE, OUTLIER.PASS, DETECTION)
+
+    mutationTracking <- mutationsTable %>%
+        mutate(UNIQUE_IF_MUTANT_SPECIFIC = ifelse(MUTANT & PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
+               UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA)) %>%
+        group_by(POOL, BARCODE, PATIENT, CASE_OR_CONTROL) %>%
+        summarise(LOCUS_NOISE.PASS = sum(LOCUS_NOISE.PASS & PATIENT_SPECIFIC),
+                  MUTANTS_PATIENT_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
+                  MUTANTS_NON_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
+                  SPECIFIC_OUTLIER.PASS = sum(PATIENT_SPECIFIC & OUTLIER.PASS),
+                  SPECIFIC.PASS = sum(PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0),
+                  NON_SPECIFIC.PASS = sum(!PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0),
+                  .groups = "drop") %>%
+        left_join(layoutTableTimepoint, by = c("POOL", "BARCODE")) %>%
+        left_join(tumourMutationTableSummary, by = "PATIENT") %>%
+        full_join(invarScoresTable, by = c('POOL', 'BARCODE', 'PATIENT')) %>%
+        # mutate(INITIAL_MUTATIONS = ifelse(CASE_OR_CONTROL == 'case', INITIAL_MUTATIONS, 0)) %>%
+        mutate(USING_SIZE = ifelse(USING_SIZE, 'WITH_SIZE', 'NO_SIZE'),
+               OUTLIER.PASS = ifelse(OUTLIER.PASS, 'PASS', 'FAIL')) %>%
+        pivot_wider(names_from = c(USING_SIZE, OUTLIER.PASS),
+                    names_glue = "{USING_SIZE}.OUTLIER_{OUTLIER.PASS}",
+                    values_from = DETECTION) %>%
+        select(POOL, BARCODE, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
+               INITIAL_MUTATIONS, LOCUS_NOISE.PASS,
+               MUTANTS_PATIENT_SPECIFIC, MUTANTS_NON_SPECIFIC,
+               SPECIFIC_OUTLIER.PASS, SPECIFIC.PASS, NON_SPECIFIC.PASS,
+               WITH_SIZE.OUTLIER_PASS, NO_SIZE.OUTLIER_PASS,
+               WITH_SIZE.OUTLIER_FAIL, NO_SIZE.OUTLIER_FAIL) %>%
+        arrange(POOL, BARCODE, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
+
+    mutationTracking
+}

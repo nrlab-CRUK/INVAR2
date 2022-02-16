@@ -2,6 +2,7 @@ suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(ggpubr))
+suppressPackageStartupMessages(library(knitr))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(plotROC))
 suppressPackageStartupMessages(library(readr))
@@ -24,6 +25,9 @@ parseOptions <- function()
     options_list <- list(
         make_option(c("--mutations"), type="character", metavar="file",
                     dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) with outlier suppression flags",
+                    default=defaultMarker),
+        make_option(c("--tumour-mutations"), type="character", metavar="file",
+                    dest="TUMOUR_MUTATIONS_FILE", help="The source patient mutations file",
                     default=defaultMarker),
         make_option(c("--layout"), type="character", metavar="file",
                     dest="LAYOUT_FILE", help="The sequencing layout file",
@@ -77,7 +81,7 @@ parseOptions <- function()
 richTestOptions <- function()
 {
     testhome <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/')
-    base <- str_c(testhome, 'analysis/source/')
+    base <- str_c(testhome, 'runAnalysis/source/')
 
     list(
         MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.rds'),
@@ -85,6 +89,7 @@ richTestOptions <- function()
         OFF_TARGET_ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
         SIZE_CHARACTERISATION_FILE = str_c(base, 'size_characterisation.rds'),
         INVAR_SCORES_FILE = str_c(base, 'invar_scores.rds'),
+        TUMOUR_MUTATIONS_FILE = str_c(testhome, 'invar_source/PARADIGM_mutation_list_full_cohort_hg19.v2.csv'),
         LAYOUT_FILE = str_c(testhome, 'invar_source/combined.SLX_table_with_controls_031220.v2.csv'),
         STUDY = 'PARADIGM',
         ERROR_SUPPRESSION = 'f0.9_s2',
@@ -100,8 +105,19 @@ richTestOptions <- function()
 
 main <- function(scriptArgs)
 {
+    assert_that(file.exists(scriptArgs$LAYOUT_FILE), msg = str_c(scriptArgs$LAYOUT_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$TUMOUR_MUTATIONS_FILE), msg = str_c(scriptArgs$TUMOUR_MUTATIONS_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$MUTATIONS_TABLE_FILE), msg = str_c(scriptArgs$MUTATIONS_TABLE_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$ERROR_RATES_FILE), msg = str_c(scriptArgs$ERROR_RATES_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$OFF_TARGET_ERROR_RATES_FILE), msg = str_c(scriptArgs$OFF_TARGET_ERROR_RATES_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$SIZE_CHARACTERISATION_FILE), msg = str_c(scriptArgs$SIZE_CHARACTERISATION_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$INVAR_SCORES_FILE), msg = str_c(scriptArgs$INVAR_SCORES_FILE, " does not exist."))
+
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE)
+
+    tumourMutationsTable <-
+        loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
 
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
@@ -148,6 +164,9 @@ main <- function(scriptArgs)
     annotatedPatientSpecificGLRT <-
         annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable)
 
+    mutationTrackingTable <-
+        mutationTracking(mutationsTable, layoutTable, tumourMutationsTable, invarScoresTable)
+
     ## Saving some tables as part of analysis.
 
     exportCSV(patientSummaryTable, "tumour_mutation_per_patient.csv")
@@ -158,6 +177,9 @@ main <- function(scriptArgs)
     exportCSV(ifPatientData$IF_PATIENT_DATA, 'IF_patient_data.csv')
     exportCSV(ifPatientData$THRESHOLD_EFFECTS, 'IR_threshold_effects.csv')
 
+    mutationTrackingTable %>%
+        arrangeMutationTableForExport() %>%
+        exportCSV('mutations_tracking.csv')
 
     ## Creating plots.
 

@@ -1,6 +1,11 @@
 ---
 title: "INVAR2 Analysis"
-output: html_document
+output:
+  html_document:
+    dev: 'svg'
+    df_print: 'tibble'
+    toc: TRUE
+    toc_float: TRUE
 ---
 
 ## Cohort by Mutant Context Plot
@@ -137,4 +142,13 @@ plots$P16
 
 ```{r fig.width = 8, fig.height = 5, echo = FALSE}
 plots$P17
+```
+
+# Mutation Tracking
+
+```{r, echo = FALSE}
+toYesNo <- function(v) { ifelse(v, 'Yes', 'No' ) }
+mutationTrackingTable %>%
+    mutate_if(is.logical, toYesNo) %>%
+    kable()
 ```

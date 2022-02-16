@@ -7,6 +7,7 @@ process runAnalysis
 
     input:
         path osMutationsFile
+        path tumourMutationsFile
         path layoutFile
         path onTargetErrorRatesFile
         path offTargetErrorRatesFile
@@ -16,11 +17,13 @@ process runAnalysis
     output:
         path "*.pdf", emit: "plots"
         path "${params.STUDY}_invar2_analysis.html", emit: "report"
+        path "mutations_tracking.csv", emit: "mutationsTracking"
 
     shell:
         """
         Rscript --vanilla "!{params.projectHome}/R/5_analysis/analysis.R" \
             --mutations="!{osMutationsFile}" \
+            --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
             --error-rates="!{onTargetErrorRatesFile}" \
             --off-target-error-rates="!{offTargetErrorRatesFile}" \
@@ -38,6 +41,7 @@ workflow analysis
 {
     take:
         osMutationsChannel
+        tumourMutationsChannel
         layoutChannel
         backgroundErrorRatesChannel
         offTargetErrorRatesChannel
@@ -45,7 +49,7 @@ workflow analysis
         invarScoresChannel
 
     main:
-        runAnalysis(osMutationsChannel, layoutChannel,
+        runAnalysis(osMutationsChannel, tumourMutationsChannel, layoutChannel,
                     backgroundErrorRatesChannel, offTargetErrorRatesChannel,
                     sizeCharacterisationChannel, invarScoresChannel)
 

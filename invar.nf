@@ -47,6 +47,7 @@ workflow
     detection(outlierSuppression.out.perSampleMutationsFiles, outlierSuppression.out.sizeCharacterisationFile)
 
     analysis(outlierSuppression.out.mutationsFile,
+             tumourMutationsChannel,
              layoutChannel,
              parse.out.backgroundErrorRatesFile,
              parse.out.offTargetErrorRatesNoCosmic,

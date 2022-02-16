@@ -12,9 +12,10 @@ include { annotateMutationsWithFragmentSize ; combineIndexFileWithMutationsFiles
 include { markOutliers; sizeCharacterisation; annotateMutationsWithOutlierSuppression } from '../processes/3_outlier_suppression'
 include { generalisedLikelihoodRatioTest as generalisedLikelihoodRatioTestSpecific;
           generalisedLikelihoodRatioTest as generalisedLikelihoodRatioTestNonSpecific } from '../processes/4_detection'
+include { runAnalysis } from '../processes/5_analysis'
 
 include { rdsDiff as diff1; rdsDiff as diff2; rdsDiff as diff3; rdsDiff as diff4; rdsDiff as diff5; rdsDiff as diff6;
-          rdsDiff as diff7; rdsDiff as diff8; rdsDiff as diff9; rdsDiff as diff10 } from './diff'
+          rdsDiff as diff7; rdsDiff as diff8; rdsDiff as diff9; rdsDiff as diff10; diff as diff11 } from './diff'
 
 def dumpParams(logger, params)
 {
@@ -29,7 +30,7 @@ def mapForDiff(pname, channel)
 {
     channel.map
     {
-        tuple pname, it, file("testdata/${pname}/reference/REFERENCE_${it.baseName}.tsv", checkIfExists: true)
+        tuple pname, it, file("testdata/${pname}/reference/REFERENCE_${it.baseName}.?sv", checkIfExists: true)
     }
 }
 
@@ -61,7 +62,7 @@ workflow
 
     tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
     layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
-
+/*
     // createMutationsTable
 
     createMutationsTable(channel.fromPath('testdata/createMutationsTable/source/mutation_table.tsv'),
@@ -165,4 +166,16 @@ workflow
 
     mapForDiff('generalisedLikelihoodRatioTest', generalisedLikelihoodRatioTestSpecific.out.invarScores.map { p, b, pt, f -> f }) | diff9
     mapForDiff('generalisedLikelihoodRatioTest', trimGLRT.out.trimmedGLRT) | diff10
+*/
+    // Mutation tracking (part of analysis)
+    
+    runAnalysis(channel.fromPath("testdata/runAnalysis/source/mutation_table.outliersuppressed.rds"),
+                tumourMutationsChannel,
+                layoutChannel,
+                channel.fromPath("testdata/runAnalysis/source/background_error_rates.rds"),
+                channel.fromPath("testdata/runAnalysis/source/error_rates.off_target.no_cosmic.rds"),
+                channel.fromPath("testdata/runAnalysis/source/size_characterisation.rds"),
+                channel.fromPath("testdata/runAnalysis/source/invar_scores.rds"))
+    
+    mapForDiff('runAnalysis', runAnalysis.out.mutationsTracking) | diff11
 }
