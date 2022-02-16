@@ -376,14 +376,15 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
 
     mutationTracking <- mutationsTable %>%
         mutate(UNIQUE_IF_MUTANT_SPECIFIC = ifelse(MUTANT & PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
-               UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA)) %>%
+               UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
+               PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0) %>%
         group_by(POOL, BARCODE, PATIENT, CASE_OR_CONTROL) %>%
         summarise(LOCUS_NOISE.PASS = sum(LOCUS_NOISE.PASS & PATIENT_SPECIFIC),
                   MUTANTS_PATIENT_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
                   MUTANTS_NON_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
-                  SPECIFIC_OUTLIER.PASS = sum(PATIENT_SPECIFIC & OUTLIER.PASS),
-                  SPECIFIC.PASS = sum(PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0),
-                  NON_SPECIFIC.PASS = sum(!PATIENT_SPECIFIC & LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0),
+                  SPECIFIC_OUTLIER.PASS = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC) & OUTLIER.PASS),
+                  SPECIFIC.PASS = sum(PATIENT_SPECIFIC & PASS_ALL),
+                  NON_SPECIFIC.PASS = sum(!PATIENT_SPECIFIC & PASS_ALL),
                   .groups = "drop") %>%
         left_join(layoutTableTimepoint, by = c("POOL", "BARCODE")) %>%
         left_join(tumourMutationTableSummary, by = "PATIENT") %>%
