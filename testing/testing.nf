@@ -62,7 +62,7 @@ workflow
 
     tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
     layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
-/*
+
     // createMutationsTable
 
     createMutationsTable(channel.fromPath('testdata/createMutationsTable/source/mutation_table.tsv'),
@@ -166,9 +166,9 @@ workflow
 
     mapForDiff('generalisedLikelihoodRatioTest', generalisedLikelihoodRatioTestSpecific.out.invarScores.map { p, b, pt, f -> f }) | diff9
     mapForDiff('generalisedLikelihoodRatioTest', trimGLRT.out.trimmedGLRT) | diff10
-*/
+
     // Mutation tracking (part of analysis)
-    
+
     runAnalysis(channel.fromPath("testdata/runAnalysis/source/mutation_table.outliersuppressed.rds"),
                 tumourMutationsChannel,
                 layoutChannel,
@@ -176,6 +176,6 @@ workflow
                 channel.fromPath("testdata/runAnalysis/source/error_rates.off_target.no_cosmic.rds"),
                 channel.fromPath("testdata/runAnalysis/source/size_characterisation.rds"),
                 channel.fromPath("testdata/runAnalysis/source/invar_scores.rds"))
-    
+
     mapForDiff('runAnalysis', runAnalysis.out.mutationsTracking) | diff11
 }
