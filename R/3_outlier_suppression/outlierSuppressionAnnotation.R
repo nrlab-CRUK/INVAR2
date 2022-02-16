@@ -119,13 +119,14 @@ main <- function(scriptArgs)
         exportTSV("outlierflags.pass.tsv")
 
     # Join tables with the outlier flag tables. Where a row doesn't match it will
-    # have NA as the value. These can be changed to TRUE.
+    # have NA as the value. These can be changed to MUTANT = FALSE and OUTLIER.PASS = TRUE.
     # I suppose those rows that have no match are not found to be outliers, so the
     # default of passing is sensible.
 
     mutationTable.withOutlier <- mutationTable %>%
         left_join(outlierFlagTable, by = c('POOL', 'BARCODE', 'CHROM', 'POS')) %>%
-        mutate(OUTLIER.PASS = ifelse(is.na(OUTLIER.PASS), TRUE, OUTLIER.PASS))
+        mutate(MUTANT = !is.na(OUTLIER.PASS),
+               OUTLIER.PASS = ifelse(is.na(OUTLIER.PASS), TRUE, OUTLIER.PASS))
 
     mutationTable.withOutlier %>%
         arrangeMutationTableForExport() %>%

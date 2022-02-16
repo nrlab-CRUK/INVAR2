@@ -133,7 +133,7 @@ plots$P15
 plots$P16
 ```
 
-# dPCR comparision plot
+# dPCR comparison plot
 
 ```{r fig.width = 8, fig.height = 5, echo = FALSE}
 plots$P17
