@@ -125,8 +125,8 @@ main <- function(scriptArgs)
 
     mutationTable.withOutlier <- mutationTable %>%
         left_join(outlierFlagTable, by = c('POOL', 'BARCODE', 'CHROM', 'POS')) %>%
-        mutate(MUTANT = !is.na(OUTLIER.PASS),
-               OUTLIER.PASS = ifelse(is.na(OUTLIER.PASS), TRUE, OUTLIER.PASS))
+        mutate(MUTANT = !is.na(OUTLIER.PASS), .before = OUTLIER.PASS) %>%
+        mutate(OUTLIER.PASS = ifelse(is.na(OUTLIER.PASS), TRUE, OUTLIER.PASS))
 
     mutationTable.withOutlier %>%
         arrangeMutationTableForExport() %>%
