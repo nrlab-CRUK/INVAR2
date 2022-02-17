@@ -93,7 +93,7 @@ links that point outside the regular file structure may not be visible to the pi
 tasks. This can cause errors that might surprise, as outside of Singularity those files
 will be accessible.
 
-### @to_run.csv@
+### `to_run.csv`
 
 This file is a summary of the BAM files. It needs to list the pool, barcode and file name
 for each BAM that should be part of the analysis. Files can be removed from this list

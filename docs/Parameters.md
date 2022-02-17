@@ -47,8 +47,7 @@ Types are strings unless indicated by [i] integer, [d] decimal or [b] boolean (t
 | Parameter [type]          | Description/Purpose                                        |
 |---------------------------|------------------------------------------------------------|
 | STUDY                     | The name of the study being processed.                     |
-| ERROR_SUPPRESSION_NAME    | Setting giving the description of the error suppression    |
-|                           | mechanism used in processing the BAM files. e.g. "f0.9_s2" |
+| ERROR_SUPPRESSION_NAME    | Setting giving the description of the error suppression mechanism used in processing the BAM files. e.g. "f0.9_s2" |
 | FAMILY_SIZE [i]           | The family size.                                           |
 | LAYOUT_TABLE              | The path to the layout table file.                         |
 | TUMOUR_MUTATIONS_CSV      | The path to the patient tumour mutations file.             |
@@ -66,20 +65,15 @@ Types are strings unless indicated by [i] integer, [d] decimal or [b] boolean (t
 
 | Parameter [type]               | Default                   | Description/Purpose                                       |
 |--------------------------------|---------------------------|-----------------------------------------------------------|
-| INPUT_FILES                    | "${launchDir}/to_run.csv" | Path to the `to_run.csv` file listing source BAM files   |
-|                                |                           | to include in the analysis. If you wish to name this file |
-|                                |                           | something else, or have it in a different location,       |
-|                                |                           | you can change this parameter.                            |
+| INPUT_FILES                    | "${launchDir}/to_run.csv" | Path to the `to_run.csv` file listing source BAM files
+to include in the analysis. If you wish to name this file something else, or have it in a different location, you can change this parameter. |
 | MAPPING_QUALITY [i]            | 40                        | Minimum mapping quality threshold.                        |
 | BASE_QUALITY    [i]            | 20                        | Minimum base quality threshold.                           |
-| MPILEUP_MINIMUM_DEPTH [i]      | 2                         | Minimumin depth to consider for mpileup.                  |
-|                                |                           | Set to 1 for sWGS samples.                                |
+| MPILEUP_MINIMUM_DEPTH [i]      | 2                         | Minimumin depth to consider for mpileup. Set to 1 for sWGS samples. |
 | MPILEUP_MAXIMUM_DEPTH [i]      | 100000                    | Maximum depth for mpileup.                                |
-| SLOP_BASES [i]                 | 10                        | How many bases either side of the target base to assess   |
-|                                |                           | for the background error rate.                            |
-| REMOVE_DUPLICATES [b]          | true                      | Whether to remove duplicates in pile ups.                 |
-| MAXIMUM_DEPTH [i]              | 1500                      | Omit data points with uncharacteristially high unique     |
-|                                |                           | depth given the input mass used.                          |
+| SLOP_BASES [i]                 | 10                        | How many bases either side of the target base to assess for the background error rate. |
+| REMOVE_DUPLICATES [b]          | `true`                    | Whether to remove duplicates in pile ups.                 |
+| MAXIMUM_DEPTH [i]              | 1500                      | Omit data points with uncharacteristially high unique depth given the input mass used. |
 | MINIMUM_REFERENCE_DEPTH [i]    | 5                         | Here we require at least 5 reference reads at a locus.    |
 |                                |                           | Set to 0 for sWGS.                                        |
 | MQSB_THRESHOLD [d]             | 0.01                      | Exclude data points due to poor MQ and SB.                |
@@ -93,6 +87,5 @@ Types are strings unless indicated by [i] integer, [d] decimal or [b] boolean (t
 | MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY [d] | 0.01        | Filter loci with a background allele frequency in         |
 |                                              |             | controls greater than this value.                         |
 | ALLELE_FREQUENCY_THRESHOLD [d] | 0.01                      | Maximum allele frequency value for acceptable samples.    |
-| IS_BLOODSPOT [b]               | false                     | Only change to true if you are running blood spot data through the pipeline. |
-|                                |                           | This omits outlier-suppression on samples with deduplicated depth of &lt;5x  |
-|                                |                           | because high AF loci cannot be reliably identified with low depth.           |
+| IS_BLOODSPOT [b]               | `false`                   | Only change to true if you are running blood spot data through the pipeline.
+This omits outlier-suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
