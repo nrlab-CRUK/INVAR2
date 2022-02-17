@@ -42,10 +42,10 @@ object to their presence.
 
 These parameters must be defined in the project specific `nextflow.config`
 file as there is no possible default for them. Parameters are all upper case.
-Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (true/false).
+Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (`true`/`false`).
 
 | Parameter                 | Type | Description/Purpose                                        |
-|---------------------------|-------------------------------------------------------------------|
+|---------------------------|------|------------------------------------------------------------|
 | STUDY                     |      | The name of the study being processed.                     |
 | ERROR_SUPPRESSION_NAME    |      | Setting giving the description of the error suppression mechanism used in processing the BAM files. e.g. "f0.9_s2" |
 | FAMILY_SIZE               | int  | The family size.                                           |
@@ -61,7 +61,7 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 These parameters all have defaults defined in the `nextflow.config` file in the
 pipeline's source directory. Any redefined in your project's `nextflow.config`
 file will take precedence over the defaults.
-Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (true/false).
+Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (`true`/`false`).
 
 | Parameter                      | Type | Default                   | Description/Purpose                                       |
 |--------------------------------|------|---------------------------|-----------------------------------------------------------|
