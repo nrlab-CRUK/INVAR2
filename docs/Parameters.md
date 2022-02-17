@@ -66,6 +66,8 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | Parameter                      | Type | Default                   | Description/Purpose                                       |
 |--------------------------------|------|---------------------------|-----------------------------------------------------------|
 | INPUT_FILES                    |      | "${launchDir}/to_run.csv" | Path to the `to_run.csv` file listing source BAM files to include in the analysis. If you wish to name this file something else, or have it in a different location, you can change this parameter. |
+| RESULTS_DIR                    |      | "${launchDir}/results"    | The directory to write results (R _RDS_ files) to.        |
+| ANALYSIS_DIR                   |      | "${launchDir}/analysis"   | The directory to write analysis plots and report to.      |
 | MAPPING_QUALITY                | int  | 40                        | Minimum mapping quality threshold.                        |
 | BASE_QUALITY                   | int  | 20                        | Minimum base quality threshold.                           |
 | MPILEUP_MINIMUM_DEPTH          | int  | 2                         | Minimumin depth to consider for mpileup. Set to 1 for sWGS samples. |
@@ -82,3 +84,8 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY | num | 0.01             | Filter loci with a background allele frequency in controls greater than this value. |
 | ALLELE_FREQUENCY_THRESHOLD     | num  | 0.01                      | Maximum allele frequency value for acceptable samples.    |
 | IS_BLOODSPOT                   | bool | `false`                   | Only change to true if you are running blood spot data through the pipeline. This omits outlier-suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
+| OUTLIER_SUPPRESSION_THRESHOLD  | num  | 0.05                      | Outlier suppression threshold.                            |
+| MINIMUM_FRAGMENT_LENGTH        | int  | 60                        | Minimum fragment length.                                  |
+| MAXIMUM_FRAGMENT_LENGTH        | int  | 300                       | Maximum fragment length.                                  |
+| SMOOTHING                      | num  | 0.25                      | Smoothing function for size profile (width of smoothing). |
+| ONLY_WEIGH_MUTANTS             | bool | `true`                    | Only weigh ctDNA signal based on mutant fragments.        |
