@@ -65,8 +65,7 @@ Types are strings unless indicated by [i] integer, [d] decimal or [b] boolean (t
 
 | Parameter [type]               | Default                   | Description/Purpose                                       |
 |--------------------------------|---------------------------|-----------------------------------------------------------|
-| INPUT_FILES                    | "${launchDir}/to_run.csv" | Path to the `to_run.csv` file listing source BAM files
-to include in the analysis. If you wish to name this file something else, or have it in a different location, you can change this parameter. |
+| INPUT_FILES                    | "${launchDir}/to_run.csv" | Path to the `to_run.csv` file listing source BAM files to include in the analysis. If you wish to name this file something else, or have it in a different location, you can change this parameter. |
 | MAPPING_QUALITY [i]            | 40                        | Minimum mapping quality threshold.                        |
 | BASE_QUALITY    [i]            | 20                        | Minimum base quality threshold.                           |
 | MPILEUP_MINIMUM_DEPTH [i]      | 2                         | Minimumin depth to consider for mpileup. Set to 1 for sWGS samples. |
@@ -74,8 +73,7 @@ to include in the analysis. If you wish to name this file something else, or hav
 | SLOP_BASES [i]                 | 10                        | How many bases either side of the target base to assess for the background error rate. |
 | REMOVE_DUPLICATES [b]          | `true`                    | Whether to remove duplicates in pile ups.                 |
 | MAXIMUM_DEPTH [i]              | 1500                      | Omit data points with uncharacteristially high unique depth given the input mass used. |
-| MINIMUM_REFERENCE_DEPTH [i]    | 5                         | Here we require at least 5 reference reads at a locus.    |
-|                                |                           | Set to 0 for sWGS.                                        |
+| MINIMUM_REFERENCE_DEPTH [i]    | 5                         | Here we require at least 5 reference reads at a locus. Set to 0 for sWGS. |
 | MQSB_THRESHOLD [d]             | 0.01                      | Exclude data points due to poor MQ and SB.                |
 | ALT_ALLELES_THRESHOLD [i]      | 3                         | Blacklist loci with &ge; N separate alternate alleles.    |
 | MINOR_ALT_ALLELE_THRESHOLD [i] | 2                         | Blacklist multiallelic loci with a mutant read count of   |
@@ -87,5 +85,4 @@ to include in the analysis. If you wish to name this file something else, or hav
 | MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY [d] | 0.01        | Filter loci with a background allele frequency in         |
 |                                              |             | controls greater than this value.                         |
 | ALLELE_FREQUENCY_THRESHOLD [d] | 0.01                      | Maximum allele frequency value for acceptable samples.    |
-| IS_BLOODSPOT [b]               | `false`                   | Only change to true if you are running blood spot data through the pipeline.
-This omits outlier-suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
+| IS_BLOODSPOT [b]               | `false`                   | Only change to true if you are running blood spot data through the pipeline. This omits outlier-suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
