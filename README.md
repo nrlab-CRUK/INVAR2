@@ -1,4 +1,9 @@
 # INVAR2
 
-Restructured version of invar based on Nextflow.
+A Nextflow based pipeline to do stuff.
+
+## Documentation
+
+1. [Setting up the INVAR2 pipeline.](docs/SettingUp.md)
+2. [INVAR2 parameters.](docs/Parameters.md)
 
