@@ -42,47 +42,43 @@ object to their presence.
 
 These parameters must be defined in the project specific `nextflow.config`
 file as there is no possible default for them. Parameters are all upper case.
-Types are strings unless indicated by [i] integer, [d] decimal or [b] boolean (true/false).
+Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (true/false).
 
-| Parameter [type]          | Description/Purpose                                        |
-|---------------------------|------------------------------------------------------------|
-| STUDY                     | The name of the study being processed.                     |
-| ERROR_SUPPRESSION_NAME    | Setting giving the description of the error suppression mechanism used in processing the BAM files. e.g. "f0.9_s2" |
-| FAMILY_SIZE [i]           | The family size.                                           |
-| LAYOUT_TABLE              | The path to the layout table file.                         |
-| TUMOUR_MUTATIONS_CSV      | The path to the patient tumour mutations file.             |
-| HG19_GENOME               | Path to the hg19 genome index file.                        |
-| FASTA_REFERENCE           | Path to the hg19 FASTQ reference file.                     |
-| THOUSAND_GENOMES_DATABASE | Path to the 1,000 genomes SNP file (VCF).                  |
-| COSMIC_DATABASE           | Path to the COSMIC variants file (VCF).                    |
+| Parameter                 | Type | Description/Purpose                                        |
+|---------------------------|-------------------------------------------------------------------|
+| STUDY                     |      | The name of the study being processed.                     |
+| ERROR_SUPPRESSION_NAME    |      | Setting giving the description of the error suppression mechanism used in processing the BAM files. e.g. "f0.9_s2" |
+| FAMILY_SIZE               | int  | The family size.                                           |
+| LAYOUT_TABLE              |      | The path to the layout table file.                         |
+| TUMOUR_MUTATIONS_CSV      |      | The path to the patient tumour mutations file.             |
+| HG19_GENOME               |      | Path to the hg19 genome index file.                        |
+| FASTA_REFERENCE           |      | Path to the hg19 FASTQ reference file.                     |
+| THOUSAND_GENOMES_DATABASE |      | Path to the 1,000 genomes SNP file (VCF).                  |
+| COSMIC_DATABASE           |      | Path to the COSMIC variants file (VCF).                    |
 
 ## Optional Parameters
 
 These parameters all have defaults defined in the `nextflow.config` file in the
 pipeline's source directory. Any redefined in your project's `nextflow.config`
 file will take precedence over the defaults.
-Types are strings unless indicated by [i] integer, [d] decimal or [b] boolean (true/false).
+Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (true/false).
 
-| Parameter [type]               | Default                   | Description/Purpose                                       |
-|--------------------------------|---------------------------|-----------------------------------------------------------|
-| INPUT_FILES                    | "${launchDir}/to_run.csv" | Path to the `to_run.csv` file listing source BAM files to include in the analysis. If you wish to name this file something else, or have it in a different location, you can change this parameter. |
-| MAPPING_QUALITY [i]            | 40                        | Minimum mapping quality threshold.                        |
-| BASE_QUALITY    [i]            | 20                        | Minimum base quality threshold.                           |
-| MPILEUP_MINIMUM_DEPTH [i]      | 2                         | Minimumin depth to consider for mpileup. Set to 1 for sWGS samples. |
-| MPILEUP_MAXIMUM_DEPTH [i]      | 100000                    | Maximum depth for mpileup.                                |
-| SLOP_BASES [i]                 | 10                        | How many bases either side of the target base to assess for the background error rate. |
-| REMOVE_DUPLICATES [b]          | `true`                    | Whether to remove duplicates in pile ups.                 |
-| MAXIMUM_DEPTH [i]              | 1500                      | Omit data points with uncharacteristially high unique depth given the input mass used. |
-| MINIMUM_REFERENCE_DEPTH [i]    | 5                         | Here we require at least 5 reference reads at a locus. Set to 0 for sWGS. |
-| MQSB_THRESHOLD [d]             | 0.01                      | Exclude data points due to poor MQ and SB.                |
-| ALT_ALLELES_THRESHOLD [i]      | 3                         | Blacklist loci with &ge; N separate alternate alleles.    |
-| MINOR_ALT_ALLELE_THRESHOLD [i] | 2                         | Blacklist multiallelic loci with a mutant read count of   |
-|                                |                           | &ge; N in the minor mutant allele.                        |
-| COSMIC_THRESHOLD [i]           | 0                         | Loci with &gt; N entries in COSMIC are considered as      |
-|                                |                           | COSMIC mutations.                                         |
-| PROPORTION_OF_CONTROLS [d]     | 0.1                       | Blacklist loci that have signal in &gt; P of the          |
-|                                |                           | non-patient specific samples.                             |
-| MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY [d] | 0.01        | Filter loci with a background allele frequency in         |
-|                                              |             | controls greater than this value.                         |
-| ALLELE_FREQUENCY_THRESHOLD [d] | 0.01                      | Maximum allele frequency value for acceptable samples.    |
-| IS_BLOODSPOT [b]               | `false`                   | Only change to true if you are running blood spot data through the pipeline. This omits outlier-suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
+| Parameter                      | Type | Default                   | Description/Purpose                                       |
+|--------------------------------|------|---------------------------|-----------------------------------------------------------|
+| INPUT_FILES                    |      | "${launchDir}/to_run.csv" | Path to the `to_run.csv` file listing source BAM files to include in the analysis. If you wish to name this file something else, or have it in a different location, you can change this parameter. |
+| MAPPING_QUALITY                | int  | 40                        | Minimum mapping quality threshold.                        |
+| BASE_QUALITY                   | int  | 20                        | Minimum base quality threshold.                           |
+| MPILEUP_MINIMUM_DEPTH          | int  | 2                         | Minimumin depth to consider for mpileup. Set to 1 for sWGS samples. |
+| MPILEUP_MAXIMUM_DEPTH          | int  | 100000                    | Maximum depth for mpileup.                                |
+| SLOP_BASES                     | int  | 10                        | How many bases either side of the target base to assess for the background error rate. |
+| REMOVE_DUPLICATES              | bool | `true`                    | Whether to remove duplicates in pile ups.                 |
+| MAXIMUM_DEPTH                  | int  | 1500                      | Omit data points with uncharacteristially high unique depth given the input mass used. |
+| MINIMUM_REFERENCE_DEPTH        | int  | 5                         | Here we require at least 5 reference reads at a locus. Set to 0 for sWGS. |
+| MQSB_THRESHOLD                 | num  | 0.01                      | Exclude data points due to poor MQ and SB.                |
+| ALT_ALLELES_THRESHOLD          | int  | 3                         | Blacklist loci with &ge; N separate alternate alleles.    |
+| MINOR_ALT_ALLELE_THRESHOLD     | int  | 2                         | Blacklist multiallelic loci with a mutant read count of &ge; N in the minor mutant allele. |
+| COSMIC_THRESHOLD               | int  | 0                         | Loci with &gt; N entries in COSMIC are considered as COSMIC mutations. |
+| PROPORTION_OF_CONTROLS         | num  | 0.1                       | Blacklist loci that have signal in &gt; P of the non-patient specific samples. |
+| MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY | num | 0.01             | Filter loci with a background allele frequency in controls greater than this value. |
+| ALLELE_FREQUENCY_THRESHOLD     | num  | 0.01                      | Maximum allele frequency value for acceptable samples.    |
+| IS_BLOODSPOT                   | bool | `false`                   | Only change to true if you are running blood spot data through the pipeline. This omits outlier-suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
