@@ -153,11 +153,11 @@ print(f"Have {len(trinucleotideData)} positions for trinucleotides.", file = sys
 first = True
 
 with open(mutationFile, 'r') as fp1:
-    csv = csv.DictReader(fp1, delimiter = '\t')
+    tsv = csv.DictReader(fp1, delimiter = '\t')
 
     fp2 = open(annotatedFile, 'w') if annotatedFile else sys.stdout
     try:
-        for mutation in csv:
+        for mutation in tsv:
             addCosmicInfo(mutation, cosmicData)
             addSnpInfo(mutation, snpData)
             addTrinucleotideInfo(mutation, trinucleotideData)

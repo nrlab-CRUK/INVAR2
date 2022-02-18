@@ -1,6 +1,7 @@
 suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
 suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
 
@@ -16,9 +17,6 @@ parseOptions <- function()
     defaultMarker <- "<REQUIRED>"
 
     options_list <- list(
-        make_option(c("--mutations"), type="character", metavar="file",
-                    dest="MUTATIONS_FILE", help="The calculated mutations file",
-                    default=defaultMarker),
         make_option(c("--tumour-mutations"), type="character", metavar="file",
                     dest="TUMOUR_MUTATIONS_FILE", help="The source patient mutations file",
                     default=defaultMarker),
@@ -39,7 +37,10 @@ parseOptions <- function()
                     default=3L),
         make_option(c("--minor-alt-allele-threshold"), type="integer", metavar="int",
                     dest="MINOR_ALT_ALLELES_THRESHOLD", help="Blacklist multiallelic loci with a mutant read count of >= N in the minor mutant allele",
-                    default=2L))
+                    default=2L),
+        make_option(c("--threads"), type="integer", metavar="integer",
+                    dest="THREADS", help="The number of cores to use to process the input files.",
+                    default=1L))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -51,7 +52,12 @@ parseOptions <- function()
         stop(str_c("ERROR: One or more required arguments have not been provided: ", str_c(missing, collapse = ' ')))
     }
 
-    scriptOptions <- list()
+    if (length(opts$args) < 1)
+    {
+        stop("ERROR: Need at least one mutations TSV file.")
+    }
+
+    scriptOptions <- list(MUTATIONS_FILES = opts$args)
     for (v in names(opts$options))
     {
         scriptOptions[v] = opts$options[v]
@@ -68,14 +74,15 @@ richTestOptions <- function()
     base <- str_c(testhome, 'createMutationsTable/source/')
 
     list(
-        MUTATIONS_FILE = str_c(base, 'PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv'),
+        MUTATIONS_FILES = str_c(base, 'mutation_table.tsv'),
         TUMOUR_MUTATIONS_FILE = str_c(testhome, 'invar_source/PARADIGM_mutation_list_full_cohort_hg19.v2.csv'),
         COSMIC_THRESHOLD = 0L,
         MQSB_THRESHOLD = 0.01,
         MAX_DEPTH = 2000L,
         MIN_REF_DEPTH = 10L,
         ALT_ALLELES_THRESHOLD = 3L,
-        MINOR_ALT_ALLELES_THRESHOLD = 2L
+        MINOR_ALT_ALLELES_THRESHOLD = 2L,
+        THREADS = 1L
     )
 }
 
@@ -92,7 +99,7 @@ loadMutationsTable <- function(mutationsFile, tumourMutationsTable, cosmicThresh
 
     # Remove soft-masked repeats, identified by lowercase.
     # Add columns of derived values and combined identifiers.
-    read_tsv(mutationsFile, col_types = 'cicciciiiidccildc') %>%
+    read_tsv(mutationsFile, col_types = 'cicciciiiidccildc', progress = FALSE) %>%
         filter(!(str_detect(REF, '[acgt]') | str_detect(ALT, '[acgt]'))) %>%
         addMutationTableDerivedColumns() %>%
         mutate(AF = (ALT_F + ALT_R) / DP,
@@ -148,14 +155,16 @@ createMultiallelicBlacklist <- function(mutationTable,
 
 main <- function(scriptArgs)
 {
-    print(scriptArgs)
-
     tumourMutationTable <-
         loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
 
-    mutationTable.all <- loadMutationsTable(scriptArgs$MUTATIONS_FILE,
-                                            tumourMutationTable,
-                                            cosmicThreshold = scriptArgs$COSMIC_THRESHOLD)
+    mutationTable.all <-
+        mclapply(scriptArgs$MUTATIONS_FILES,
+                 loadMutationsTable,
+                 tumourMutationTable,
+                 cosmicThreshold = scriptArgs$COSMIC_THRESHOLD,
+                 mc.cores = scriptArgs$THREADS) %>%
+        bind_rows()
 
     message("Number of mutations at start = ", nrow(mutationTable.all))
 

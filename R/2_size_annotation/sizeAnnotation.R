@@ -34,7 +34,7 @@ parseOptions <- function()
                     default=0.05),
         make_option(c("--threads"), type="integer", metavar="integer",
                     dest="THREADS", help="The number of cores to use to process the input files.",
-                    default=1),
+                    default=1L),
         make_option(c("--sampling-seed"), type="integer", metavar="number",
                     dest="SAMPLING_SEED", help="The seed for random sampling. Only use in testing.",
                     default=NA))
@@ -71,7 +71,7 @@ richTestOptions <- function()
         BARCODE = 'SXTLI001',
         OUTLIER_SUPPRESSION = 0.05,
         SAMPLING_SEED = 1024L,
-        THREADS = 2
+        THREADS = 2L
     )
 }
 

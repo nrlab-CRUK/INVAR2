@@ -24,7 +24,7 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--threads"), type="integer", metavar="integer",
                     dest="THREADS", help="The number of cores to use to process the input files.",
-                    default=1))
+                    default=1L))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -61,7 +61,7 @@ richTestOptions <- function()
     list(
         MUTATIONS_TABLE_FILE = str_c(base, '/mutation_table.on_target.rds'),
         MUTATIONS_TABLE_FILES = files,
-        THREADS = 4
+        THREADS = 4L
     )
 }
 

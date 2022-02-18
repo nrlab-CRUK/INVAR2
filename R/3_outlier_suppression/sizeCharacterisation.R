@@ -21,7 +21,7 @@ parseOptions <- function()
     options_list <- list(
         make_option(c("--threads"), type="integer", metavar="integer",
                     dest="THREADS", help="The number of cores to use to process the input files.",
-                    default=1))
+                    default=1L))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -56,7 +56,7 @@ richTestOptions <- function()
 
     list(
         MUTATIONS_TABLE_FILES = files,
-        THREADS = 1
+        THREADS = 1L
     )
 }
 
@@ -89,8 +89,7 @@ calculateSizeCharacteristics <- function(mutationTableFileName)
 main <- function(scriptArgs)
 {
     sizeTables <-
-        #mclapply(scriptArgs$MUTATIONS_TABLE_FILES, calculateSizeCharacteristics, mc.cores = scriptArgs$THREADS)
-        lapply(scriptArgs$MUTATIONS_TABLE_FILES, calculateSizeCharacteristics)
+        mclapply(scriptArgs$MUTATIONS_TABLE_FILES, calculateSizeCharacteristics, mc.cores = scriptArgs$THREADS)
 
     sizeCharacteristicsTable <-
         bind_rows(sizeTables) %>%

@@ -143,29 +143,13 @@ process annotateMutation
         """
 }
 
-process combineCSV
-{
-    executor 'local'
-    memory '32m'
-
-    input:
-        path(csvFiles)
-
-    output:
-        path(combinedFile)
-
-    shell:
-        combinedFile = "mutation_table.tsv"
-
-        template "1_parse/catCSV.sh"
-}
-
 process createMutationsTable
 {
     memory '8g'
+    cpus   { Math.min(params.MAX_CORES, mutationsFiles.size()) }
 
     input:
-        path mutationsFile
+        path mutationsFiles
         path tumourMutationsFile
 
     output:
@@ -174,14 +158,15 @@ process createMutationsTable
     shell:
         """
         Rscript --vanilla "!{params.projectHome}/R/1_parse/createMutationsTable.R" \
-            --mutations="!{mutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --cosmic-threshold=!{params.COSMIC_THRESHOLD} \
             --mqsb-threshold=!{params.MQSB_THRESHOLD} \
             --max-depth=!{params.MAXIMUM_DEPTH} \
             --min-ref-depth=!{params.MINIMUM_REFERENCE_DEPTH} \
             --alt-alleles-threshold=!{params.ALT_ALLELES_THRESHOLD} \
-            --minor-alt-allele-threshold=!{params.MINOR_ALT_ALLELE_THRESHOLD}
+            --minor-alt-allele-threshold=!{params.MINOR_ALT_ALLELE_THRESHOLD} \
+            --threads=!{task.cpus} \
+            !{mutationsFiles}
         """
 }
 
@@ -296,14 +281,12 @@ workflow parse
             .join(tabixCosmic.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
             .join(trinucleotide.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
 
-        allMutationsList =
+        mutationsFiles =
             annotateMutation(byBamMutationChannel)
                 .map { pool, barcode, file -> file }
-                .toSortedList( { f1, f2 -> f1.name <=> f2.name } )
+                .collect()
 
-        combineCSV(allMutationsList)
-
-        createMutationsTable(combineCSV.out, tumourMutationsChannel)
+        createMutationsTable(mutationsFiles, tumourMutationsChannel)
 
         offTargetErrorRates(createMutationsTable.out.filteredMutationsFile, layoutChannel)
 
@@ -316,7 +299,6 @@ workflow parse
         onTargetErrorRatesAndFilter(createOnTargetMutationsTable.out.onTargetMutationsFile,
                                     tumourMutationsChannel)
     emit:
-        mutationsFile = combineCSV.out
         onTargetMutationsFile = onTargetErrorRatesAndFilter.out.onTargetMutationsFile
         onTargetLocusErrorRatesFile = onTargetErrorRatesAndFilter.out.locusErrorRates
         backgroundErrorRatesFile = createOnTargetMutationsTable.out.backgroundErrorRates
