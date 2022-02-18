@@ -50,6 +50,7 @@ workflow
              tumourMutationsChannel,
              layoutChannel,
              parse.out.backgroundErrorRatesFile,
+             parse.out.onTargetLocusErrorRatesFile,
              parse.out.offTargetErrorRatesNoCosmic,
              outlierSuppression.out.sizeCharacterisationFile,
              detection.out.invarScores)

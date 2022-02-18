@@ -35,6 +35,9 @@ parseOptions <- function()
         make_option(c("--error-rates"), type="character", metavar="file",
                     dest="ERROR_RATES_FILE", help="The on target background error rates.",
                     default=defaultMarker),
+        make_option(c("--on-target-locus-error-rates"), type="character", metavar="file",
+                    dest="ON_TARGET_LOCUS_ERROR_RATES_FILE", help="The on target locus error rates.",
+                    default=defaultMarker),
         make_option(c("--off-target-error-rates"), type="character", metavar="file",
                     dest="OFF_TARGET_ERROR_RATES_FILE", help="The off target error rates.",
                     default=defaultMarker),
@@ -46,6 +49,9 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--study"), type="character", metavar="string",
                     dest="STUDY", help="The study name",
+                    default=defaultMarker),
+        make_option(c("--tapas"), type="character", metavar="string",
+                    dest="TAPAS_SETTING", help="The TAPAS setting",
                     default=defaultMarker),
         make_option(c("--error-suppression"), type="character", metavar="string",
                     dest="ERROR_SUPPRESSION", help="The error suppression string",
@@ -86,12 +92,14 @@ richTestOptions <- function()
     list(
         MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.rds'),
         ERROR_RATES_FILE = str_c(base, 'background_error_rates.rds'),
+        ON_TARGET_LOCUS_ERROR_RATES_FILE = str_c(base, 'locus_error_rates.on_target.rds'),
         OFF_TARGET_ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
         SIZE_CHARACTERISATION_FILE = str_c(base, 'size_characterisation.rds'),
         INVAR_SCORES_FILE = str_c(base, 'invar_scores.rds'),
         TUMOUR_MUTATIONS_FILE = str_c(testhome, 'invar_source/PARADIGM_mutation_list_full_cohort_hg19.v2.csv'),
         LAYOUT_FILE = str_c(testhome, 'invar_source/combined.SLX_table_with_controls_031220.v2.csv'),
         STUDY = 'PARADIGM',
+        TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         ERROR_SUPPRESSION = 'f0.9_s2',
         FAMILY_SIZE = 2L,
         OUTLIER_SUPPRESSION = 0.05
@@ -125,6 +133,8 @@ main <- function(scriptArgs)
 
     errorRatesTable <- readRDS(scriptArgs$ERROR_RATES_FILE) %>%
         mutate(MUTATION_CLASS = str_c(REF, ALT, sep = '/'))
+
+    onTargetLocusErrorRatesTable <- readRDS(scriptArgs$ON_TARGET_LOCUS_ERROR_RATES_FILE)
 
     offTargetErrorRatesList <- readRDS(scriptArgs$OFF_TARGET_ERROR_RATES_FILE)
 
@@ -184,6 +194,11 @@ main <- function(scriptArgs)
     ## Creating plots.
 
     plots <- list()
+
+    # On target locus error rates.
+    plots$P0 <- onTargetLocusErrorRatePlot(onTargetLocusErrorRatesTable,
+                                           study = scriptArgs$STUDY,
+                                           tapasSetting = scriptArgs$TAPAS_SETTING)
 
     # plotting 3bp context
     plots$P1 <- cohortMutationContextPlot(contextMutationsTable, study = scriptArgs$STUDY)
@@ -276,6 +291,10 @@ main <- function(scriptArgs)
 
 
     ## Save the plots as individual files.
+
+    ggsave(plot = plots$P0,
+           filename = "p0_on_target_locus_error_rates.pdf",
+           width = 11, height = 7)
 
     ggsave(plot = plots$P1,
            filename = "p1_cohort_mut_context.pdf",

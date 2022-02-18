@@ -55,7 +55,6 @@ main <- function(scriptArgs)
                 LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, ITERATION, USING_SIZE)
 
     saveRDS(glrtTable, 'invar_scores.rds')
-    exportTSV(glrtTable, 'invar_scores.tsv')
 }
 
 # Launch it.

@@ -240,7 +240,7 @@ process onTargetErrorRatesAndFilter
 {
     memory '4g'
 
-    publishDir params.RESULTS_DIR, mode: 'link', overwrite: true
+    publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: "locus_error_rates*"
 
     input:
         path mutationsFile
@@ -252,13 +252,10 @@ process onTargetErrorRatesAndFilter
         path 'mutation_table.on_target.rds', emit: "onTargetMutationsFile"
 
     shell:
-        tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASE_QUALITY}.MQ_${params.MAPPING_QUALITY}"
-
         """
         Rscript --vanilla "!{params.projectHome}/R/1_parse/onTargetErrorRatesAndFilter.R" \
             --mutations="!{mutationsFile}" \
             --study="!{params.STUDY}" \
-            --tapas="!{tapasSetting}" \
             --cosmic-threshold=!{params.COSMIC_THRESHOLD} \
             --control-proportion=!{params.PROPORTION_OF_CONTROLS} \
             --max-background-allele-frequency=!{params.MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY} \
@@ -321,7 +318,7 @@ workflow parse
     emit:
         mutationsFile = combineCSV.out
         onTargetMutationsFile = onTargetErrorRatesAndFilter.out.onTargetMutationsFile
-        onTargetErrorRatesFile = onTargetErrorRatesAndFilter.out.locusErrorRates
+        onTargetLocusErrorRatesFile = onTargetErrorRatesAndFilter.out.locusErrorRates
         backgroundErrorRatesFile = createOnTargetMutationsTable.out.backgroundErrorRates
         offTargetErrorRatesWithCosmic = offTargetErrorRates.out.cosmicErrorRates
         offTargetErrorRatesNoCosmic = offTargetErrorRates.out.noCosmicErrorRates

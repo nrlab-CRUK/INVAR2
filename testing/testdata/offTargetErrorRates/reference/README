@@ -2,8 +2,12 @@ The original source file from Emma's run for the off target error rate
 output from INVAR3 is
 output_R/locus_error_rates.off_target.Rdata
 
+The function annotate_with_locus_error_rate in TAPAS_functions.R
+had to be tweaked to do the creation of the LOCUS_NOISE.PASS
+column before saving the table.
+
 The file here is created by running this file through
-reorganiseErrorRateTable.R with no other changes.
+reorganiseLocusErrorRateTable.R with no other changes.
 
 ----------
 

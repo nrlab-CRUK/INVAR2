@@ -9,7 +9,8 @@ process runAnalysis
         path osMutationsFile
         path tumourMutationsFile
         path layoutFile
-        path onTargetErrorRatesFile
+        path backgroundErrorRatesFile
+        path onTargetLocusErrorRatesFile
         path offTargetErrorRatesFile
         path sizeCharacterisationFile
         path invarScoresFile
@@ -20,16 +21,20 @@ process runAnalysis
         path "mutations_tracking.csv", emit: "mutationsTracking"
 
     shell:
+        tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASE_QUALITY}.MQ_${params.MAPPING_QUALITY}"
+
         """
         Rscript --vanilla "!{params.projectHome}/R/5_analysis/analysis.R" \
             --mutations="!{osMutationsFile}" \
             --tumour-mutations="!{tumourMutationsFile}" \
             --layout="!{layoutFile}" \
-            --error-rates="!{onTargetErrorRatesFile}" \
+            --error-rates="!{backgroundErrorRatesFile}" \
+            --on-target-locus-error-rates="!{onTargetLocusErrorRatesFile}" \
             --off-target-error-rates="!{offTargetErrorRatesFile}" \
             --size-characterisation="!{sizeCharacterisationFile}" \
             --invar-scores="!{invarScoresFile}" \
             --study="!{params.STUDY}" \
+            --tapas="!{tapasSetting}" \
             --error-suppression="!{params.ERROR_SUPPRESSION_NAME}" \
             --family-size="!{params.FAMILY_SIZE}" \
             --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD}
@@ -44,15 +49,14 @@ workflow analysis
         tumourMutationsChannel
         layoutChannel
         backgroundErrorRatesChannel
+        onTargetLocusErrorRatesChannel
         offTargetErrorRatesChannel
         sizeCharacterisationChannel
         invarScoresChannel
 
     main:
         runAnalysis(osMutationsChannel, tumourMutationsChannel, layoutChannel,
-                    backgroundErrorRatesChannel, offTargetErrorRatesChannel,
+                    backgroundErrorRatesChannel, onTargetLocusErrorRatesChannel,
+                    offTargetErrorRatesChannel,
                     sizeCharacterisationChannel, invarScoresChannel)
-
-    emit:
-        plots = runAnalysis.out.plots
 }

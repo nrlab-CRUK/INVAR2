@@ -2,6 +2,41 @@
 # Plot functions for analysis.
 #
 
+# onTargetLocusErrorRatePlot isn't in analysis.R, but was from TAPAS_functions.R
+# embedded in the annotate_with_locus_error_rate function. It was the case that
+# this plot was a side effect of doing the calculations. It's better to have it
+# here with the other plots and include it in the analysis report.
+
+onTargetLocusErrorRatePlot <- function(errorRateTable, study, tapasSetting)
+{
+    nonZeroLoci <- errorRateTable %>%
+        summarise(F = sum(BACKGROUND_AF > 0) / n())
+
+    nonZeroLociPercentage <- signif(nonZeroLoci$F[1] * 100, digits = 3)
+
+    locusNoiseFail <- errorRateTable %>%
+        summarise(F = sum(!LOCUS_NOISE.PASS) / n())
+
+    locusNoiseFailPercentage <- signif(locusNoiseFail$F[1] * 100, digits = 3)
+
+    plot <- errorRateTable %>%
+        ggplot(aes(x = BACKGROUND_AF, fill = LOCUS_NOISE.PASS)) +
+        geom_histogram(bins = 100, position = "dodge") +
+        scale_colour_discrete(name = "Locus noise pass") +
+        scale_x_log10(breaks = c(1e-4, 1e-3, 1e-2, 1e-1)) +
+        theme_bw() +
+        labs(x = "Background plasma AF across all samples",
+             y = "Frequency",
+             title = str_c(study, tapasSetting, "on-target, non-patient specific data", sep=" "),
+             subtitle = str_c("Blacklisting of non-zero AF loci (representing ", nonZeroLociPercentage,
+                              "% of data)\nBlacklisted loci (LOCUS_NOISE.FAIL) = ", locusNoiseFailPercentage,
+                              "%\nsplit by COSMIC mutation status")) +
+        facet_wrap(~COSMIC, scales = "free_y")
+
+    plot
+}
+
+
 cohortMutationContextPlot <- function(contextMutationsTable, study)
 {
     assert_that(is.character(study), msg = "Study is expected to be a string")
@@ -133,18 +168,18 @@ errorRatePolishingComparisonPlot <- function(errorRatesTable, errorPolishingSett
     plot <- errorRatesComparison %>%
         filter(CASE_OR_CONTROL == 'case') %>%
         ggplot(aes(x = BACKGROUND_AF.PREFILTER, y = BACKGROUND_AF.OTHER, color = MUTATION_CLASS))+
-        geom_point() +
-        scale_y_log10(limits = c(0.5e-7, 1e-2)) +
-        scale_x_log10(limits = c(0.5e-7, 1e-2)) +
-        geom_abline(slope = 1, linetype = "dashed") +
-        labs(x = "Error rate pre-filter",
-             y = "Error rate post-filter",
-             color = "Mutation class",
-             title = plotTitle) +
-        theme_classic()+
-        guides(fill = 'none') +
-        theme(axis.text = element_text(size = 12),
-              axis.title = element_text(size = 14))
+            geom_point() +
+            scale_y_log10(limits = c(0.5e-7, 1e-2)) +
+            scale_x_log10(limits = c(0.5e-7, 1e-2)) +
+            geom_abline(slope = 1, linetype = "dashed") +
+            labs(x = "Error rate pre-filter",
+                 y = "Error rate post-filter",
+                 color = "Mutation class",
+                 title = plotTitle) +
+            theme_classic()+
+            guides(fill = 'none') +
+            theme(axis.text = element_text(size = 12),
+                  axis.title = element_text(size = 14))
 
     plot
 }

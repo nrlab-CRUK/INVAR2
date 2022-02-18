@@ -47,7 +47,7 @@ parseArgs <- function(args)
 }
 
 desiredOrder = c('CHROM', 'POS', 'MUTATION_CLASS', 'TRINUCLEOTIDE', 'PATIENT_MUTATION_BELONGS_TO', 'COSMIC',
-                 'BACKGROUND_AF', 'MUTATION_SUM', 'DP_SUM', 'N_SAMPLES', 'N_SAMPLES_WITH_SIGNAL')
+                 'BACKGROUND_AF', 'MUTATION_SUM', 'DP_SUM', 'N_SAMPLES', 'N_SAMPLES_WITH_SIGNAL', 'LOCUS_NOISE.PASS')
 
 args <- parseArgs(commandArgs(TRUE))
 

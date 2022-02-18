@@ -48,7 +48,6 @@ process combineGeneralisedLikelihoodRatioTestResults
 
     output:
         path 'invar_scores.rds', emit: 'invarScores'
-        path 'invar_scores.tsv', emit: 'invarScoresTSV'
 
     shell:
         """

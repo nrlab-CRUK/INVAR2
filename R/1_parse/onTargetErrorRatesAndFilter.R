@@ -1,6 +1,5 @@
 suppressPackageStartupMessages(library(assertthat))
 suppressPackageStartupMessages(library(dplyr, warn.conflicts = FALSE))
-suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
@@ -20,9 +19,6 @@ parseOptions <- function()
     options_list <- list(
         make_option(c("--study"), type="character", metavar="string",
                     dest="STUDY", help="The study name",
-                    default=defaultMarker),
-        make_option(c("--tapas"), type="character", metavar="string",
-                    dest="TAPAS_SETTING", help="The TAPAS setting",
                     default=defaultMarker),
         make_option(c("--mutations"), type="character", metavar="file",
                     dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) created by createOnTargetMutationsTable.R",
@@ -71,7 +67,6 @@ richTestOptions <- function()
     list(
         MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.on_target.all.rds'),
         STUDY = 'PARADIGM',
-        TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
         CONTROL_PROPORTION = 0.1,
         MAX_BACKGROUND_ALLELE_FREQUENCY = 0.01,
         ALLELE_FREQUENCY_THRESHOLD = 0.01,
@@ -121,36 +116,6 @@ createLociErrorRateTable <- function(mutationTable,
                                   BACKGROUND_AF < max_background_mean_AF)
 
     errorRateTable
-}
-
-
-createLociErrorRatePlot <- function(errorRateTable, study, tapasSetting)
-{
-    nonZeroLoci <- errorRateTable %>%
-        summarise(F = sum(BACKGROUND_AF > 0) / n())
-
-    nonZeroLociPercentage <- signif(nonZeroLoci$F[1] * 100, digits = 3)
-
-    locusNoiseFail <- errorRateTable %>%
-        summarise(F = sum(!LOCUS_NOISE.PASS) / n())
-
-    locusNoiseFailPercentage <- signif(locusNoiseFail$F[1] * 100, digits = 3)
-
-    plot <- errorRateTable %>%
-        ggplot(aes(x = BACKGROUND_AF, fill = LOCUS_NOISE.PASS)) +
-        geom_histogram(bins = 100, position = "dodge") +
-        scale_colour_discrete(name = "Locus noise pass") +
-        scale_x_log10(breaks = c(1e-4, 1e-3, 1e-2, 1e-1)) +
-        theme_bw() +
-        labs(x = "Background plasma AF across all samples",
-             y = "Frequency",
-             title = str_c(study, tapasSetting, "on-target, non-patient specific data", sep=" "),
-             subtitle = str_c("Blacklisting of non-zero AF loci (representing ", nonZeroLociPercentage,
-                              "% of data)\nBlacklisted loci (LOCUS_NOISE.FAIL) = ", locusNoiseFailPercentage,
-                              "%\nsplit by COSMIC mutation status")) +
-        facet_wrap(~COSMIC, scales = "free_y")
-
-    plot
 }
 
 
@@ -211,11 +176,6 @@ main <- function(scriptArgs)
     lociErrorRateTable %>%
         select(-UNIQUE_POS) %>%
         saveRDS('locus_error_rates.on_target.rds')
-
-    lociErrorRatePlot <- lociErrorRateTable %>%
-        createLociErrorRatePlot(study = scriptArgs$STUDY, tapasSetting = scriptArgs$TAPAS_SETTING)
-
-    suppressWarnings(ggsave(lociErrorRatePlot, filename = 'locus_error_rates.on_target.pdf', width = 11, height = 7))
 
     lociErrorRateNoisePass <- lociErrorRateTable %>%
         filter(LOCUS_NOISE.PASS)

@@ -169,10 +169,11 @@ workflow
 
     // Mutation tracking (part of analysis)
 
-    runAnalysis(channel.fromPath("testdata/runAnalysis/source/mutation_table.outliersuppressed.rds"),
+    runAnalysis(channel.fromPath("testdata/runAnalysis/source/mutation_table.rds"),
                 tumourMutationsChannel,
                 layoutChannel,
                 channel.fromPath("testdata/runAnalysis/source/background_error_rates.rds"),
+                channel.fromPath("testdata/runAnalysis/source/locus_error_rates.on_target.rds"),
                 channel.fromPath("testdata/runAnalysis/source/error_rates.off_target.no_cosmic.rds"),
                 channel.fromPath("testdata/runAnalysis/source/size_characterisation.rds"),
                 channel.fromPath("testdata/runAnalysis/source/invar_scores.rds"))
