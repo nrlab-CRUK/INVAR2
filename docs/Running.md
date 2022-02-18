@@ -33,7 +33,7 @@ pipeline's tasks on the same machine as _nextflow_. It runs as many tasks at
 once as will fit into the maximum memory and number of cores specified in the
 profile.
 
-"_slurm" is a profile for running on a Slurm cluster. It has no limit on the
+"_slurm_" is a profile for running on a Slurm cluster. It has no limit on the
 maximum memory or cores; instead jobs are submitted through the Slurm job
 management system asking for node space according each task. (It does limit
 the maximum number of cores per job to 16, though that is by design of this
