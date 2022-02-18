@@ -27,6 +27,6 @@ rates for off target mutations excluding those flagged with COSMIC.
 ## Plots and Analysis
 
 The pipeline will write the analysis results into an "`analysis`" directory (by
-default). This will contains an HTML report, `&lt;STUDY&gt;_invar2_analysis.html`,
+default). This will contains an HTML report, `<STUDY>_invar2_analysis.html`,
 and numerous plots in PDF format. It will also contain some summary CSV files from
 its own processing.
