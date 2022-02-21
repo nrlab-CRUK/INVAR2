@@ -366,6 +366,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
         mutate(UNIQUE_PATIENT_POS = str_c(UNIQUE_POS, UNIQUE_ALT, sep = '_'),
                UNIQUE_IF_MUTANT_SPECIFIC = ifelse(MUTANT & PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
                UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
+               UNIQUE_IF_MUTANT_CASE_OR_CONTROL = ifelse(CASE_OR_CONTROL == 'case', !is.na(UNIQUE_IF_MUTANT_SPECIFIC), !is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
                PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0)
 
     # Only interested in patient specific rows from INVAR scores.
@@ -382,7 +383,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
         summarise(LOCUS_NOISE.PASS = sum(LOCUS_NOISE.PASS & PATIENT_SPECIFIC),
                   MUTANTS_PATIENT_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
                   MUTANTS_NON_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
-                  SPECIFIC_OUTLIER.PASS = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC) & OUTLIER.PASS),
+                  MUTANT_OUTLIER.PASS = sum(UNIQUE_IF_MUTANT_CASE_OR_CONTROL & OUTLIER.PASS),
                   SPECIFIC.PASS = sum(PATIENT_SPECIFIC & PASS_ALL),
                   NON_SPECIFIC.PASS = sum(!PATIENT_SPECIFIC & PASS_ALL),
                   .groups = "drop") %>%
@@ -398,7 +399,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
         select(POOL, BARCODE, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
                INITIAL_MUTATIONS, LOCUS_NOISE.PASS,
                MUTANTS_PATIENT_SPECIFIC, MUTANTS_NON_SPECIFIC,
-               SPECIFIC_OUTLIER.PASS, SPECIFIC.PASS, NON_SPECIFIC.PASS,
+               MUTANT_OUTLIER.PASS, SPECIFIC.PASS, NON_SPECIFIC.PASS,
                WITH_SIZE.OUTLIER_PASS, NO_SIZE.OUTLIER_PASS,
                WITH_SIZE.OUTLIER_FAIL, NO_SIZE.OUTLIER_FAIL) %>%
         arrange(POOL, BARCODE, PATIENT, TIMEPOINT, CASE_OR_CONTROL)

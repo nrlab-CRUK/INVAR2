@@ -90,7 +90,7 @@ richTestOptions <- function()
     base <- str_c(testhome, 'runAnalysis/source/')
 
     list(
-        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.rds'),
+        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.rds'),
         ERROR_RATES_FILE = str_c(base, 'background_error_rates.rds'),
         ON_TARGET_LOCUS_ERROR_RATES_FILE = str_c(base, 'locus_error_rates.on_target.rds'),
         OFF_TARGET_ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
