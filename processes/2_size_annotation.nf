@@ -29,7 +29,7 @@ def combineIndexFileWithMutationsFiles(indexFile, mutationsFiles)
 process createSNVList
 {
     executor 'local'
-    memory '256m'
+    memory '128m'
     time '5m'
 
     input:
@@ -46,7 +46,7 @@ process createSNVList
 
 process getFragmentSize
 {
-    memory '1g'
+    memory '128m'
 
     tag "${pool} ${barcode}"
 
@@ -67,7 +67,7 @@ process annotateMutationsWithFragmentSize
 {
     tag "${pool} ${barcode}"
 
-    memory '2g'
+    memory '30g'
     cpus   { Math.min(params.MAX_CORES, 4) }
 
     input:

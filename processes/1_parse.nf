@@ -1,7 +1,7 @@
 process slopPatientInfo
 {
     executor 'local'
-    memory '256m'
+    memory '128m'
     time '5m'
 
     input:
@@ -23,6 +23,7 @@ process mpileup
     tag "${pool} ${barcode}"
 
     cpus { Math.min(params.MAX_CORES, 2) }
+    time "30m"
 
     input:
         each path(sloppedBedFile)
@@ -45,7 +46,7 @@ process biallelic
 {
     tag "${pool} ${barcode}"
 
-    memory '256m'
+    memory '512m'
     time   '10m'
 
     input:
@@ -65,7 +66,7 @@ process tabixSnp
 {
     tag "${pool} ${barcode}"
 
-    memory '32m'
+    memory '64m'
 
     input:
         each path(tabixDatabase)
@@ -85,7 +86,7 @@ process tabixCosmic
 {
     tag "${pool} ${barcode}"
 
-    memory '32m'
+    memory '64m'
 
     input:
         each path(tabixDatabase)
@@ -105,7 +106,7 @@ process trinucleotide
 {
     tag "${pool} ${barcode}"
 
-    memory '256m'
+    memory '32m'
 
     input:
         each path(fastaReference)
@@ -145,7 +146,7 @@ process annotateMutation
 
 process createMutationsTable
 {
-    memory '8g'
+    memory '20g'
     cpus   { Math.min(params.MAX_CORES, mutationsFiles.size()) }
 
     input:
@@ -172,7 +173,7 @@ process createMutationsTable
 
 process offTargetErrorRates
 {
-    memory '4g'
+    memory '32g'
     cpus   { Math.min(params.MAX_CORES, 2) }
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: "error_rates.*.rds"
@@ -223,7 +224,7 @@ process createOnTargetMutationsTable
 
 process onTargetErrorRatesAndFilter
 {
-    memory '4g'
+    memory '2g'
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: "locus_error_rates*"
 
