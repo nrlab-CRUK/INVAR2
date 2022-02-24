@@ -109,7 +109,11 @@ plots$P11
 # Enrichment level
 
 ```{r fig.width = 6, fig.height = 5, echo = FALSE}
-plots$P12
+if (is.null(plots$P12)) {
+    print("There are no data points from which to create the enrichment level plot.")
+} else {
+    plots$P12
+}
 ```
 
 # Receiver Operating Characteristic (ROC) Plots

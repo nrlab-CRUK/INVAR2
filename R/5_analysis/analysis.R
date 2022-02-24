@@ -367,11 +367,18 @@ main <- function(scriptArgs)
            filename = "p11_size_comparison.pdf",
            width = 6, height = 5)
 
-    # Enrichment level
+    # Enrichment level. This can be NULL if there were no rows to create the plot from.
 
-    ggsave(plot = plots$P12,
-           filename = "p12_enrichment_ratios.pdf",
-           width = 6, height = 5)
+    if (is.null(plots$P12))
+    {
+        warning("There are no data points from which to create the enrichment level plot.")
+    }
+    else
+    {
+        ggsave(plot = plots$P12,
+               filename = "p12_enrichment_ratios.pdf",
+               width = 6, height = 5)
+    }
 
     # Receiver Operating Characteristic Plots
 

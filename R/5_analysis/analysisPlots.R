@@ -376,10 +376,15 @@ enrichmentLevelPlot <- function(sizeCharacterisationSummary, study)
                RATIO = PROPORTION.M / PROPORTION.WT,
                RATIO.LOG2 = log2(RATIO))
 
-    plot <- enrichmentRatio %>%
-        mutate(STUDY = study) %>%
-        filter(PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case' & !is.na(RATIO.LOG2)) %>%
-        ggplot(aes(x = SIZE.ROUNDED, y = RATIO.LOG2)) +
+    enrichmentRatio.filtered <- enrichmentRatio %>%
+        filter(PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case' & !is.na(RATIO.LOG2))
+
+    plot <- NULL
+    if (nrow(enrichmentRatio.filtered) > 0)
+    {
+        plot <- enrichmentRatio.filtered %>%
+            mutate(STUDY = study) %>%
+            ggplot(aes(x = SIZE.ROUNDED, y = RATIO.LOG2)) +
             geom_bar(stat = "identity", position = "dodge") +
             labs(x = "Fragment size in bp",
                  y = "Enrichment ratio - log2 ratio",
@@ -392,6 +397,7 @@ enrichmentLevelPlot <- function(sizeCharacterisationSummary, study)
             geom_vline(xintercept = c(166, 166*2), linetype = "dashed", alpha = 0.5) +
             annotate("text", x = 210, y = 5, label = "166bp", alpha = 0.5) +
             annotate("text", x = 380, y = 5, label = "332bp", alpha = 0.5)
+    }
 
     plot
 }
