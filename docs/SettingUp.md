@@ -77,7 +77,7 @@ directory under which you should place your data files (aligned BAM) and the oth
 we will need to create for INVAR2 to run. As the pipeline runs, other files and directories
 will be created containing the results.
 
-__Tip__ This directory where you will run _nextflow_ from. In the Nextflow files, this
+__Tip__ This is the directory where you will run _nextflow_ from. In the Nextflow files, this
 directory is accessed by the built in variable "`launchDir`", e.g. `"${launchDir}/bam"`.
 
 ### BAM Files
@@ -87,7 +87,7 @@ If these files are already available on the file system, one could hard link the
 than copy them to save space. If they are on another area of the file system, they needn't
 be copied but their full path needs to be listed in the `to_run.csv` file discussed below.
 
-__Tip__ Be wary of using symoblic links: much of the INVAR2 pipeline runs inside Singularity and
+__Tip__ Be wary of using symbolic links: much of the INVAR2 pipeline runs inside Singularity and
 links that point outside the regular file structure may not be visible to the pipeline's
 tasks. This can cause errors that might surprise, as outside of Singularity those files
 will be accessible.
