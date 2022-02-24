@@ -16,7 +16,7 @@ annotatedFile     = None
 if len(sys.argv) > 5 and sys.argv[5] != '-':
     annotatedFile = sys.argv[5]
 
-chrRemover = re.compile('^chr', re.IGNORECASE)
+chrRemover = re.compile(r'^chr', re.IGNORECASE)
 fastaExtractor = re.compile(r'^>(chr)?([A-Z0-9]+):([0-9]+)-([0-9]+)$', re.IGNORECASE)
 
 

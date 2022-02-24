@@ -21,8 +21,7 @@ running INVAR2.
 
 The pipeline needs these publicly available files:
 
-1. An index file for the UCSC hg19 human genome.
-2. The UCSC hg19 reference FASTA file, with index.
+1. The reference genome FASTA file, with index.
 3. [1,000 genomes](https://www.internationalgenome.org/) SNP VCF file.
 4. [COSMIC](https://cancer.sanger.ac.uk/cosmic/) coding mutants VCF file.
 

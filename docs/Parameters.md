@@ -30,7 +30,7 @@ reference data is in the same directory, one could write:
 params {
     REFERENCE_ROOT = "/home/reference_data/INVAR2"
     FASTA_REFERENCE = "${REFERENCE_ROOT}/ucsc.hg19.fasta"
-    HG19_GENOME = "${REFERENCE_ROOT}/hg19.genome"
+    COSMIC_DATABASE = "${REFERENCE_ROOT}/CosmicCodingMuts.vcf.gz"
 }
 ```
 
@@ -51,8 +51,7 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | FAMILY_SIZE               | int  | The family size.                                           |
 | LAYOUT_TABLE              |      | The path to the layout table file.                         |
 | TUMOUR_MUTATIONS_CSV      |      | The path to the patient tumour mutations file.             |
-| HG19_GENOME               |      | Path to the hg19 genome index file.                        |
-| FASTA_REFERENCE           |      | Path to the hg19 FASTQ reference file.                     |
+| FASTA_REFERENCE           |      | Path to the reference genome FASTQ file.                   |
 | THOUSAND_GENOMES_DATABASE |      | Path to the 1,000 genomes SNP file (VCF).                  |
 | COSMIC_DATABASE           |      | Path to the COSMIC variants file (VCF).                    |
 

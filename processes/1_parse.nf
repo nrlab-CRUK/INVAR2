@@ -1,5 +1,26 @@
 include { makeSafeForFileName } from '../functions/naming'
 
+process createSequenceDictionary
+{
+    time '5m'
+
+    input:
+        path fastaReference
+        path fastaIndex
+
+    output:
+        path sequenceDictionary, emit: "dictionary"
+
+    shell:
+        sequenceDictionary = "${fastaReference.baseName}.dict"
+
+        """
+        picard CreateSequenceDictionary \
+            --REFERENCE "!{fastaReference}" \
+            --OUTPUT "!{sequenceDictionary}"
+        """
+}
+
 process slopPatientInfo
 {
     executor 'local'
@@ -8,7 +29,7 @@ process slopPatientInfo
 
     input:
         path csvFile
-        path genomeFile
+        path dictionaryFile
 
     output:
         path filteredBedFile, emit: "sloppedBed"
@@ -259,11 +280,11 @@ workflow parse
 {
     take:
         bamChannel
+
         tumourMutationsChannel
         layoutChannel
 
     main:
-        genome_channel = channel.fromPath(params.HG19_GENOME, checkIfExists: true)
         fasta_channel = channel.fromPath(params.FASTA_REFERENCE, checkIfExists: true)
         fasta_index_channel = channel.fromPath("${params.FASTA_REFERENCE}.fai")
         snp_channel = channel.fromPath(params.THOUSAND_GENOMES_DATABASE, checkIfExists: true)
@@ -271,7 +292,9 @@ workflow parse
         cosmic_channel = channel.fromPath(params.COSMIC_DATABASE, checkIfExists: true)
         cosmic_index_channel = channel.fromPath("${params.COSMIC_DATABASE}.tbi")
 
-        slopPatientInfo(tumourMutationsChannel, genome_channel)
+        createSequenceDictionary(fasta_channel, fasta_index_channel)
+
+        slopPatientInfo(tumourMutationsChannel, createSequenceDictionary.out)
 
         mpileup(slopPatientInfo.out, fasta_channel, fasta_index_channel, bamChannel)
         biallelic(mpileup.out)

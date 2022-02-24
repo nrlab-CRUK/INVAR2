@@ -24,7 +24,7 @@ currentColumnNames <- c("SAMPLE_ID", commonColumnNames)
 
 read_csv(args[1], col_names = originalColumnNames, col_types = 'cccciiiiiiillll', skip = 1) %>%
     separate("SAMPLE_ID", into = c("POOL", "BARCODE"), sep = '_') %>%
-    mutate(SAMPLE_ID = str_c(POOL, BARCODE, sep = ":")) %>% 
+    mutate(SAMPLE_ID = str_c(POOL, BARCODE, sep = ":")) %>%
     select(all_of(currentColumnNames)) %>%
     arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL) %>%
     mutate_if(is.logical, toChar) %>%

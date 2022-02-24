@@ -11,7 +11,7 @@ mutationsFile = sys.argv[1]
 offset = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 prefix = sys.argv[3] if len(sys.argv) > 3 else ""
 
-chrRemover = re.compile('^chr', re.IGNORECASE)
+chrRemover = re.compile(r'^chr', re.IGNORECASE)
 
 with open(mutationsFile, 'r') as fp1:
     csvReader = csv.DictReader(fp1, delimiter = '\t')

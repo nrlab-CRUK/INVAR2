@@ -124,21 +124,6 @@ def validatePipeline(params)
             }
         }
 
-        if (!containsKey('HG19_GENOME'))
-        {
-            log.error "HG19_GENOME must be set in your project's configuration file."
-            errors = true
-        }
-        else
-        {
-            def refFile = file(HG19_GENOME)
-            if (!exists(refFile))
-            {
-                log.error "HG19_GENOME file ${refFile.toAbsolutePath()} does not exist."
-                errors = true
-            }
-        }
-
         if (!containsKey('THOUSAND_GENOMES_DATABASE'))
         {
             log.error "THOUSAND_GENOMES_DATABASE must be set in your project's configuration file."
