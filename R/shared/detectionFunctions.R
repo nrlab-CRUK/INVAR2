@@ -166,14 +166,21 @@ estimate_real_length_probability <- function(fragment_length, counts, bw_adjust 
 {
     calc_probability <- function(frag_length)
     {
-        weights <- counts / sum(counts)
+        probability <- 0
 
-        den <- density(fragment_length, weights = weights, adjust = bw_adjust,from = min_length - 0.5, to = max_length + 0.5)
-        den_function <- approxfun(den)
+        # Need to guard against too few points.
+        if (length(counts) > 1)
+        {
+            weights <- counts / sum(counts)
 
-        result <- integrate(den_function, frag_length - 0.5, frag_length + 0.5, abs.tol = error_tolerence)
+            den <- density(fragment_length, weights = weights, adjust = bw_adjust,from = min_length - 0.5, to = max_length + 0.5)
+            den_function <- approxfun(den)
 
-        result$value
+            result <- integrate(den_function, frag_length - 0.5, frag_length + 0.5, abs.tol = error_tolerence)
+
+            probability <- result$value
+        }
+        probability
     }
 
     lengths <- seq(min_length, max_length)

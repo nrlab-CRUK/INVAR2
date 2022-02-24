@@ -402,6 +402,12 @@ main <- function(scriptArgs)
         mc.reset.stream()
     }
 
+    assert_that(file.exists(scriptArgs$MUTATIONS_TABLE_FILE),
+                msg = str_c(scriptArgs$MUTATIONS_TABLE_FILE, " does not exist."))
+
+    assert_that(file.exists(scriptArgs$SIZE_CHARACTERISATION_FILE),
+                msg = str_c(scriptArgs$SIZE_CHARACTERISATION_FILE, " does not exist."))
+
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
