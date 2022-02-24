@@ -36,18 +36,17 @@ columns the INVAR2 pipeline requires are listed below. Other columns may be pres
 play no part in the INVAR2 processing. Neither is column order important.
 
     STUDY
+    SAMPLE_ID
     SAMPLE_NAME
     SAMPLE_TYPE
     CASE_OR_CONTROL
-    POOL
-    BARCODE
     INPUT_INTO_LIBRARY_NG
     PATIENT
     TIMEPOINT
 
 `PATIENT` is the patient id and is used to link to rows in the tumour mutations file.
-`POOL` and `BARCODE` are ids for the pool a sample is in and the barcode used in sequencing
-for that sample respectively; they cross link into the `to_run.csv` file discussed below.
+`SAMPLE_ID` can be any text to internally identify a sample: it just must be unique
+in this file. It cross links into the `to_run.csv` file discussed below.
 `CASE_OR_CONTROL` identifies cases (cancer patients) or control samples, and its content
 should either be "`case`" or contain "`control`", such as "`control_negative`". This
 file can contain information for all projects, so the `STUDY` column provides the means of
@@ -101,16 +100,13 @@ to exclude them from processing without having to remove them from the `bam` dir
 
 The file must start with a header line that contains exactly the values (any order):
 
-    POOL
-    BARCODE
+    SAMPLE_ID
     FILE_NAME
 
-The `POOL` and `BARCODE` columns cross linked to the same columns in the layout file.
-We would expect then each row to form a unique pair in this file and a unique pair within
-a study in the layout file. If a pool + barcode pair does not exist in the layout file,
-the pipeline will stop with an error.
+The `SAMPLE_ID` column cross links to the same column in the layout file.
+If a sample id does not exist in the layout file, the pipeline will stop with an error.
 
-`FILE_NAME` gives the name of the BAM file for the pool + barcode. It can be a relative
+`FILE_NAME` gives the name of the BAM file for the sample. It can be a relative
 path to the top level directory (e.g. "`bam/sample1.bam`") or an absolute path.
 
 ### Configuration File

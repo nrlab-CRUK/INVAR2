@@ -83,10 +83,10 @@ getMutationOutlierFlags <- function(mutationTableFileName)
 
     reducedTable <- mutationTable %>%
         filter(MUTANT) %>%
-        group_by(POOL, BARCODE, CHROM, POS) %>%
+        group_by(SAMPLE_ID, CHROM, POS) %>%
         slice_head(n = 1) %>%
         ungroup() %>%
-        select(POOL, BARCODE, CHROM, POS, OUTLIER.PASS)
+        select(SAMPLE_ID, CHROM, POS, OUTLIER.PASS)
 
     reducedTable
 }
@@ -106,7 +106,7 @@ main <- function(scriptArgs)
 
     outlierFlagTable <-
         bind_rows(outlierFlagTables) %>%
-        arrange(POOL, BARCODE, CHROM, POS)
+        arrange(SAMPLE_ID, CHROM, POS)
 
     saveRDS(outlierFlagTable, "outlierflags.rds")
 
@@ -124,7 +124,7 @@ main <- function(scriptArgs)
     # default of passing is sensible.
 
     mutationTable.withOutlier <- mutationTable %>%
-        left_join(outlierFlagTable, by = c('POOL', 'BARCODE', 'CHROM', 'POS')) %>%
+        left_join(outlierFlagTable, by = c('SAMPLE_ID', 'CHROM', 'POS')) %>%
         mutate(MUTANT = !is.na(OUTLIER.PASS), .before = OUTLIER.PASS) %>%
         mutate(OUTLIER.PASS = ifelse(is.na(OUTLIER.PASS), TRUE, OUTLIER.PASS))
 

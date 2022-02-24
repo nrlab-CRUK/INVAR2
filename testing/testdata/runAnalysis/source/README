@@ -16,6 +16,6 @@ Rscript ../../reorganiseMutationTable.R \
     mutation_table.rds
 
 The error rate file is the RDS version of the reference generated
-for onTargetErrorRatesAndFilter. The Rdata file is converted and
+for createOnTargetMutationsTable. The Rdata file is converted and
 copied here.
 

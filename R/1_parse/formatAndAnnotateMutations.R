@@ -4,16 +4,15 @@ suppressPackageStartupMessages(library(stringr))
 
 args <- commandArgs(trailingOnly = TRUE)
 
-if (length(args) != 5)
+if (length(args) != 4)
 {
-    stop("Wrong number of arguments given to formatAndAnnotateMutations.R. Expect five.")
+    stop("Wrong number of arguments given to formatAndAnnotateMutations.R. Expect four.")
 }
 
 inFile   <- args[1]
 outFile  <- args[2]
 minDepth <- as.integer(args[3])
-pool     <- args[4]
-barcode  <- args[5]
+sampleId <- args[4]
 
 # Original R code implies in a comment that the filter should also include
 # "MQSB != '.'" but it is not present in the actual active code.
@@ -29,6 +28,5 @@ mutate(REF_F = as.integer(ifelse(ALT == '.', ADF, str_split_fixed(ADF, ',', Inf)
        .before = 'MQSB') %>%
 select(-ADF, -ADR) %>%
 mutate(MQSB = as.double(MQSB),
-       POOL = pool,
-       BARCODE = barcode) %>%
+       SAMPLE_ID = sampleId) %>%
 write_tsv(file = outFile)

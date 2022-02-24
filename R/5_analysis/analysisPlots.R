@@ -292,14 +292,14 @@ tumourAFInLociPlot <- function(mutationsTable, study)
     # recalculate average to exclude high level samples
 
     samplesToKeep <- mutationsTable %>%
-        group_by(PATIENT, POOL_BARCODE) %>%
+        group_by(PATIENT, SAMPLE_ID) %>%
         summarise(AVERAGE = weighted.mean(AF, DP), .groups = "drop") %>%
         filter(AVERAGE <= 0.01) %>%
-        distinct(POOL_BARCODE)
+        distinct(SAMPLE_ID)
 
     mutationsTable.filtered <- mutationsTable %>%
         filter(OUTLIER.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & LOCUS_NOISE.PASS &
-               POOL_BARCODE %in% samplesToKeep$POOL_BARCODE) %>%
+               SAMPLE_ID %in% samplesToKeep$SAMPLE_ID) %>%
         mutate(IN_PLASMA = ifelse(AF > 0, "Yes", "No"),
                COHORT = as.factor(ifelse(PATIENT_SPECIFIC, "Patient Specific", "Non-Patient Specific")))
 
@@ -499,8 +499,7 @@ depthToIMAFPlot <- function(ifPatientData)
 detectableWaterfallPlot <- function(annotatedPatientSpecificGLRT, study)
 {
     plot <- annotatedPatientSpecificGLRT %>%
-        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep = " ")) %>%
-        ggplot(aes(x = reorder(POOL_BARCODE, CTDNA_PLOTTING), y = (7.2 + log10(CTDNA_PLOTTING)))) +
+        ggplot(aes(x = reorder(SAMPLE_ID, CTDNA_PLOTTING), y = (7.2 + log10(CTDNA_PLOTTING)))) +
             geom_bar(stat =  "identity", width = 0.5, colour = "white") +
             scale_fill_manual(values = "chocolate1") +
             geom_point(aes(shape = LOLLIPOP), size = 3) +
@@ -522,8 +521,7 @@ detectableWaterfallPlot <- function(annotatedPatientSpecificGLRT, study)
 cancerGenomesWaterfallPlot <- function(annotatedPatientSpecificGLRT, study)
 {
     plot <- annotatedPatientSpecificGLRT %>%
-        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep = " ")) %>%
-        ggplot(aes(x = reorder(POOL_BARCODE, CTDNA_PLOTTING), y = CANCER_GENOMES_FRACTION)) +
+        ggplot(aes(x = reorder(SAMPLE_ID, CTDNA_PLOTTING), y = CANCER_GENOMES_FRACTION)) +
            geom_bar(stat =  "identity", width = 0.7, colour = "white") +
            scale_fill_manual(values = "chocolate1") +
            scale_y_log10(breaks = c(1e-4,1e-3,1e-2,1e-1,1,2,10,100),

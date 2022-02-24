@@ -69,9 +69,9 @@ richTestOptions <- function()
 
     list(
         MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.filtered.rds'),
-        ERROR_RATES_FILE = str_c(base, 'mutation_table.error_rates.no_cosmic.rds'),
-        TUMOUR_MUTATIONS_FILE = str_c(testhome, 'source_files/PARADIGM_mutation_list_full_cohort_hg19.csv'),
-        LAYOUT_FILE = str_c(testhome, 'source_files/combined.SLX_table_with_controls_031220.csv')
+        ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
+        TUMOUR_MUTATIONS_FILE = str_c(testhome, 'invar_source/PARADIGM_mutation_list_full_cohort_hg19.v2.csv'),
+        LAYOUT_FILE = str_c(testhome, 'invar_source/combined.SLX_table_with_controls_031220.v2.csv')
     )
 }
 
@@ -110,7 +110,7 @@ convertComplementaryMutations <- function(mutationTable)
                MUTATION_CLASS = complement(MUTATION_CLASS))
 
     bind_rows(forward, reverse) %>%
-        arrange(POOL, BARCODE, CHROM, POS, REF, ALT, TRINUCLEOTIDE)
+        arrange(SAMPLE_ID, CHROM, POS, REF, ALT, TRINUCLEOTIDE)
 }
 
 
@@ -155,11 +155,11 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
         filter(UNIQUE_POS %in% nonPatientSpecific$UNIQUE_POS)
 
     nonPatientSpecific.cases <- nonPatientSpecific %>%
-        filter(!POOL_BARCODE %in% controlSamples$POOL_BARCODE) %>%
+        filter(!SAMPLE_ID %in% controlSamples$SAMPLE_ID) %>%
         filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS)
 
     nonPatientSpecific.controls <- nonPatientSpecific %>%
-        filter(POOL_BARCODE %in% controlSamples$POOL_BARCODE) %>%
+        filter(SAMPLE_ID %in% controlSamples$SAMPLE_ID) %>%
         filter(UNIQUE_POS %in% patientSpecific$UNIQUE_POS)
 
     # Combine these three to provide a final mutation table with TUMOUR_AF values.
@@ -183,11 +183,10 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
     }
 
     thinLayoutTable <- layoutTable %>%
-        select(SAMPLE_NAME, CASE_OR_CONTROL, POOL_BARCODE)
+        select(SAMPLE_ID, SAMPLE_NAME, CASE_OR_CONTROL)
 
     allErrorRates <- bind_rows(errorRatesList) %>%
-        mutate(POOL_BARCODE = str_c(POOL, BARCODE, sep='_')) %>%
-        left_join(thinLayoutTable, by = 'POOL_BARCODE')
+        left_join(thinLayoutTable, by = 'SAMPLE_ID')
 
     backgroundError <- allErrorRates %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
@@ -212,7 +211,7 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
 
     missingClasses <- missingErrorClasses(backgroundError2, trinucleotideDepth)
 
-    rbind(backgroundError2, missingClasses) %>%
+    bind_rows(backgroundError2, missingClasses) %>%
         arrange(REF, ALT, CASE_OR_CONTROL, ERROR_RATE_TYPE)
 }
 
@@ -315,7 +314,7 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
     # This bit from "annotate_with_SLX_table", plus the additional column
 
     mutationTable <- mutationTable %>%
-        left_join(layoutTable, by = 'POOL_BARCODE') %>%
+        left_join(layoutTable, by = 'SAMPLE_ID') %>%
         mutate(UNIQUE_PATIENT_POS = str_c(PATIENT, UNIQUE_POS, sep='_'))
 
     # This from "ignore_unexpected_variants". After this point, we want to
@@ -366,7 +365,7 @@ main <- function(scriptArgs)
 
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        select(SAMPLE_NAME, PATIENT, CASE_OR_CONTROL, POOL_BARCODE)
+        select(SAMPLE_NAME, PATIENT, CASE_OR_CONTROL, SAMPLE_ID)
 
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%

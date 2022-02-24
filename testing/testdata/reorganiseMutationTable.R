@@ -2,7 +2,7 @@
 # into the format created by the INVAR 2 pipeline.
 # Doesn't recalculate anything. It brings the column names up to date and
 # removes derived columns. It arranges the file by the standard order
-# of POOL, BARCODE, CHROM, POS, REF, ALT, TRINULCEOTIDE.
+# of SAMPLE_ID, CHROM, POS, REF, ALT, TRINULCEOTIDE.
 
 
 library(assertthat)
@@ -50,7 +50,7 @@ parseArgs <- function(args)
 }
 
 desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'REF_R', 'ALT_R', 'MQSB',
-                 'POOL', 'BARCODE', 'COSMIC_MUTATIONS', 'COSMIC_SNP', '1KG_AF', 'TRINUCLEOTIDE',
+                 'SAMPLE_ID', 'COSMIC_MUTATIONS', 'COSMIC_SNP', '1KG_AF', 'TRINUCLEOTIDE',
                  'AF', 'COSMIC', 'SNP', 'ON_TARGET',
                  'SAMPLE_NAME', 'PATIENT', 'CASE_OR_CONTROL',
                  'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO',
@@ -58,7 +58,7 @@ desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'R
                  "LOCUS_NOISE.PASS", "BOTH_STRANDS.PASS", "CONTAMINATION_RISK.PASS",
                  "SIZE", "MUTANT", "OUTLIER.PASS")
 
-orderByColumns = c('POOL', 'BARCODE', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
+orderByColumns = c('SAMPLE_ID', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
                    'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
 
 controlBarcodes = c('SXTLI097','SXTLI098','SXTLI099','SXTLI100','SXTLI101','SXTLI102','SXTLI103','SXTLI104','SXTLI060','SXTLI059')
@@ -77,47 +77,50 @@ message("Converting table")
 t <- as_tibble(table) %>%
     rename_all(str_to_upper) %>%
     select(-contains('UNIQ'), -any_of(c('FILE_NAME', 'SLX_BARCODE'))) %>%
-    rename(`1KG_AF` = X1KG_AF, POOL = SLX) %>%
+    rename(`1KG_AF` = X1KG_AF) %>%
+    mutate(SAMPLE_ID = str_c(SLX, BARCODE, sep = ":")) %>%
     mutate_if(is.factor, as.character) %>%
     mutate(COSMIC_SNP = as.logical(COSMIC_SNP))
 
-if ('BOTH_STRANDS' %in% colnames(t)) {
+colNames <- colnames(t)
+
+if ('BOTH_STRANDS' %in% colNames) {
     t <- t %>%
         rename(BOTH_STRANDS.PASS = BOTH_STRANDS)
 }
 
-if ('BACKGROUND.MUT_SUM' %in% colnames(t)) {
+if ('BACKGROUND.MUT_SUM' %in% colNames) {
     t <- t %>%
         rename(BACKGROUND_MUTATION_SUM = BACKGROUND.MUT_SUM,
                BACKGROUND_DP = BACKGROUND.DP)
 }
 
-if ('PT_MUTATION_BELONGS_TO' %in% colnames(t)) {
+if ('PT_MUTATION_BELONGS_TO' %in% colNames) {
     t <- t %>%
         rename(PATIENT_MUTATION_BELONGS_TO = PT_MUTATION_BELONGS_TO)
 }
 
-if ('MUT_CLASS' %in% colnames(t)) {
+if ('MUT_CLASS' %in% colNames) {
     t <- t %>%
         rename(MUTATION_CLASS = MUT_CLASS)
 }
 
-if ('SAMPLE_NAME' %in% colnames(t)) {
+if ('SAMPLE_NAME' %in% colNames) {
     t <- t %>%
         mutate(SAMPLE_NAME = str_remove(SAMPLE_NAME, ' (.+)$'))
 }
 
-if ('MUTANT' %in% colnames(t)) {
+if ('MUTANT' %in% colNames) {
     t <- t %>%
         mutate(MUTANT = as.logical(MUTANT))
 }
 
-if ('PASS' %in% colnames(t)) {
+if ('PASS' %in% colNames) {
     t <- t %>%
         rename(OUTLIER.PASS = PASS)
 }
 
-if (!'CASE_OR_CONTROL' %in% colnames(t)) {
+if (!'CASE_OR_CONTROL' %in% colNames && 'PATIENT' %in% colNames) {
     t <- t %>%
         mutate(CASE_OR_CONTROL = ifelse(BARCODE %in% controlBarcodes, 'control_negative', 'case'))
 }

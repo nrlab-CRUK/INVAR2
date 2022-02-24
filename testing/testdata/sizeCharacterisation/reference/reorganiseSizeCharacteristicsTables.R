@@ -32,10 +32,10 @@ parseArg <- function(arg)
     list(SOURCE = arg, NAME = name, EXTENSION = extension, CONVERTED = convertedFile)
 }
 
-desiredOrder = c('POOL', 'BARCODE', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
+desiredOrder = c('SAMPLE_ID', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
                  'CASE_OR_CONTROL', 'PATIENT_SPECIFIC', 'MUTANT', 'SIZE', 'TOTAL' )
 
-orderByColumns = c('POOL', 'BARCODE', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO', 'MUTANT', 'SIZE')
+orderByColumns = c('SAMPLE_ID', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO', 'MUTANT', 'SIZE')
 
 args <- commandArgs(TRUE)
 
@@ -54,6 +54,7 @@ message("Converting table")
 allSizes <- as_tibble(table) %>%
     mutate_if(is.factor, as.character) %>%
     separate(SLX_barcode, into = c('POOL', 'BARCODE'), sep = "_") %>%
+    mutate(SAMPLE_ID = str_c(POOL, BARCODE, sep = ":")) %>%
     separate(sample_name, into = c('SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO'), sep = " ") %>%
     mutate(PATIENT_MUTATION_BELONGS_TO = str_remove_all(PATIENT_MUTATION_BELONGS_TO, "[()]")) %>%
     mutate(PATIENT_SPECIFIC = data == 'ptspec') %>%

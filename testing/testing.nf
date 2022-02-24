@@ -101,8 +101,8 @@ workflow
 
     // sizeAnnotation
 
-    sizeAnnotationInsertsChannel = channel.of(['SLX-19721', 'SXTLI001']).combine(
-        channel.fromPath("testdata/annotateMutationsWithFragmentSize/source/SLX-19721.SXTLI001.inserts.tsv"))
+    sizeAnnotationInsertsChannel = channel.of(['SLX-19721:SXTLI001']).combine(
+        channel.fromPath("testdata/annotateMutationsWithFragmentSize/source/SLX19721SXTLI001.inserts.tsv"))
 
     annotateMutationsWithFragmentSize(sizeAnnotationInsertsChannel,
                                       channel.fromPath('testdata/annotateMutationsWithFragmentSize/source/mutation_table.on_target.rds'))
@@ -110,25 +110,25 @@ workflow
     annotateMutationsWithFragmentSize_perPatientChannel =
         annotateMutationsWithFragmentSize.out.mutationsFiles
             .flatMap {
-                pool, barcode, indexFile, mutationsFiles ->
+                sampleId, indexFile, mutationsFiles ->
                 combineIndexFileWithMutationsFiles(indexFile, mutationsFiles)
             }
             .filter {
-                p, b, pt, f ->
-                p == 'SLX-19721' && b == 'SXTLI001' && pt in ['PARA_002', 'PARA_028']
+                sampleId, pt, f ->
+                sampleId == 'SLX-19721:SXTLI001' && pt in ['PARA_002', 'PARA_028']
             }
-            .map { p, b, pt, f -> f }
+            .map { sampleId, pt, f -> f }
 
     mapForDiff('annotateMutationsWithFragmentSize', annotateMutationsWithFragmentSize_perPatientChannel) | diff5
 
     // Outlier suppression
 
-    markOutliersChannel = channel.of(['SLX-19721', 'SXTLI001', 'PARA_002']).combine(
-        channel.fromPath("testdata/markOutliers/source/mutation_table.with_sizes.SLX-19721.SLXLI001.PARA_002.rds"))
+    markOutliersChannel = channel.of(['SLX-19721:SXTLI001', 'PARA_002']).combine(
+        channel.fromPath("testdata/markOutliers/source/mutation_table.with_sizes.SLX19721SLXLI001.PARA_002.rds"))
 
     markOutliers(markOutliersChannel)
 
-    mapForDiff('markOutliers', markOutliers.out.mutationsFile.map { p, b, pt, f -> f }) | diff6
+    mapForDiff('markOutliers', markOutliers.out.mutationsFile.map { s, pt, f -> f }) | diff6
 
     // Size characterisation
 
@@ -146,10 +146,10 @@ workflow
 
     // Generalised Likelihood Ratio Test
 
-    generalisedLikelihoodRatioTestChannelSpecific = channel.of(['SLX-19721', 'SXTLI001', 'PARA_002']).combine(
+    generalisedLikelihoodRatioTestChannelSpecific = channel.of(['SLX-19721:SXTLI001', 'PARA_002']).combine(
         channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/mutation_table.outliersuppressed.SLX-19721.SXTLI001.1.rds"))
 
-    generalisedLikelihoodRatioTestChannelNonSpecific = channel.of(['SLX-19721', 'SXTLI001', 'PARA_028']).combine(
+    generalisedLikelihoodRatioTestChannelNonSpecific = channel.of(['SLX-19721:SXTLI001', 'PARA_028']).combine(
         channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/mutation_table.outliersuppressed.SLX-19721.SXTLI001.3.rds"))
 
     generalisedLikelihoodRatioTestSizeChannel =
@@ -162,9 +162,9 @@ workflow
         generalisedLikelihoodRatioTestChannelNonSpecific, generalisedLikelihoodRatioTestSizeChannel)
 
     // Need to trim the non-specific file to only include the first iteration.
-    trimGLRT(generalisedLikelihoodRatioTestNonSpecific.out.invarScores.map { p, b, pt, f -> f } )
+    trimGLRT(generalisedLikelihoodRatioTestNonSpecific.out.invarScores.map { s, pt, f -> f } )
 
-    mapForDiff('generalisedLikelihoodRatioTest', generalisedLikelihoodRatioTestSpecific.out.invarScores.map { p, b, pt, f -> f }) | diff9
+    mapForDiff('generalisedLikelihoodRatioTest', generalisedLikelihoodRatioTestSpecific.out.invarScores.map { s, pt, f -> f }) | diff9
     mapForDiff('generalisedLikelihoodRatioTest', trimGLRT.out.trimmedGLRT) | diff10
 
     // Mutation tracking (part of analysis)

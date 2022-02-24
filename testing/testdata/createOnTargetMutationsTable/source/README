@@ -1,4 +1,8 @@
-This is a mutation table written by a verified execution
-of createMutationsTable.R and an off target, no cosmic error
-rates table taken from a verified execution of
-offTargetErrorRates.R.
+This is a converted version of f0.9_s2.BQ_20.MQ_40.Rdata used
+as the reference to createMutationsTable test. This already
+exists as an input to offTargetErrorRates.
+
+The error rates file is from the file
+PARADIGM.f0.9_s2.BQ_20.MQ_40.cosmic_FALSE.error_rates.Rdata converted
+as part of the reference creation of offTargetErrorRates.
+

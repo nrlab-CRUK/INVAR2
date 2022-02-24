@@ -28,10 +28,12 @@ convert <- function(errorRateTable)
     as_tibble(errorRateTable) %>%
     rename_all(str_to_upper) %>%
     select(-contains('UNIQ')) %>%
-    rename(POOL = SLX, DP_SUM = TOTAL_DP, MUTATION_SUM = MUT_SUM) %>%
+    rename(DP_SUM = TOTAL_DP, MUTATION_SUM = MUT_SUM) %>%
+    mutate(SAMPLE_ID = str_c(SLX, BARCODE, sep = ":"), .before = SLX) %>%
+    select(-SLX, -BARCODE) %>%
     mutate_if(is.logical, toChar) %>%
     mutate_if(is.double, signif, digits = 6) %>%
-    arrange(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE)
+    arrange(SAMPLE_ID, REF, ALT, TRINUCLEOTIDE)
 }
 
 convertAndSave <- function(errorRateTable, tsvFile)

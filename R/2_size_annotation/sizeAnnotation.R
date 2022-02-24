@@ -23,11 +23,8 @@ parseOptions <- function()
         make_option(c("--fragment-sizes"), type="character", metavar="file",
                     dest="FRAGMENT_SIZES_FILE", help="The fragment sizes file",
                     default=defaultMarker),
-        make_option(c("--pool"), type="character", metavar="string",
-                    dest="POOL", help="The pool (SLX) identifier for the BAM/sizes file",
-                    default=defaultMarker),
-        make_option(c("--barcode"), type="character", metavar="string",
-                    dest="BARCODE", help="The barcode for the BAM/sizes file",
+        make_option(c("--sample"), type="character", metavar="string",
+                    dest="SAMPLE_ID", help="The sample identifier for the BAM/sizes file",
                     default=defaultMarker),
         make_option(c("--outlier-suppression"), type="double", metavar="number",
                     dest="OUTLIER_SUPPRESSION", help="The outlier suppression setting",
@@ -67,8 +64,7 @@ richTestOptions <- function()
     list(
         MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.on_target.rds'),
         FRAGMENT_SIZES_FILE = str_c(base, 'SLX-19721.SXTLI001.inserts.tsv'),
-        POOL = 'SLX-19721',
-        BARCODE = 'SXTLI001',
+        SAMPLE_ID = 'SLX-19721:SXTLI001',
         OUTLIER_SUPPRESSION = 0.05,
         SAMPLING_SEED = 1024L,
         THREADS = 2L
@@ -250,9 +246,9 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, .samplingSeed
 # for a specific patient (mutation belongs to).
 #
 
-saveForPatient <- function(patient, mutationsTable, pool, barcode)
+saveForPatient <- function(patient, mutationsTable, sampleId)
 {
-    filename <- str_c('mutation_table.with_sizes', pool, barcode, makeSafeForFileName(patient), "rds", sep = '.')
+    filename <- str_c('mutation_table.with_sizes', makeSafeForFileName(sampleId), makeSafeForFileName(patient), "rds", sep = '.')
 
     mutationsTable %>%
         filter(PATIENT_MUTATION_BELONGS_TO == patient) %>%
@@ -260,8 +256,7 @@ saveForPatient <- function(patient, mutationsTable, pool, barcode)
         arrangeMutationTableForExport() %>%
         saveRDS(filename)
 
-    tibble(POOL = pool, BARCODE = barcode,
-           PATIENT_MUTATION_BELONGS_TO = patient, FILE_NAME = filename)
+    tibble(SAMPLE_ID = sampleId, PATIENT_MUTATION_BELONGS_TO = patient, FILE_NAME = filename)
 }
 
 ##
@@ -272,22 +267,22 @@ main <- function(scriptArgs)
 {
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
-        filter(POOL == scriptArgs$POOL & BARCODE == scriptArgs$BARCODE) %>%
+        filter(SAMPLE_ID == scriptArgs$SAMPLE_ID) %>%
         addMutationTableDerivedColumns()
 
     # Expect the combination of pool, barcode and patient mutation belongs to to be
     # unique in this file.
 
     mutationsFileCheck <- mutationsTable %>%
-        distinct(POOL, BARCODE) %>%
-        mutate(MATCHING = POOL == scriptArgs$POOL & BARCODE == scriptArgs$BARCODE)
+        distinct(SAMPLE_ID) %>%
+        mutate(MATCHING = SAMPLE_ID == scriptArgs$SAMPLE_ID)
 
     assert_that(nrow(mutationsFileCheck) == 1,
                 msg = str_c("Do not have a single pool + barcode in ", scriptArgs$MUTATIONS_TABLE_FILE))
 
     assert_that(all(mutationsFileCheck$MATCHING),
                 msg = str_c("Mutations in", scriptArgs$MUTATIONS_TABLE_FILE, "do not belong to ",
-                            scriptArgs$POOL, scriptArgs$BARCODE, sep = " "))
+                            scriptArgs$SAMPLE_ID, sep = " "))
 
     fragmentSizesTable <-
         read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci') %>%
@@ -302,7 +297,7 @@ main <- function(scriptArgs)
     fileInfoList <-
         mclapply(unique(mutationsTable.withSizes$PATIENT_MUTATION_BELONGS_TO), saveForPatient,
                  mutationsTable.withSizes,
-                 pool = scriptArgs$POOL, barcode = scriptArgs$BARCODE,
+                 sampleId = scriptArgs$SAMPLE_ID,
                  mc.cores = scriptArgs$THREADS)
 
     fileInfoTable <- bind_rows(fileInfoList)

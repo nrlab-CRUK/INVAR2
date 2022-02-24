@@ -19,7 +19,8 @@ process runAnalysis
         path "*.pdf", emit: "plots"
         path "${params.STUDY}_invar2_analysis.html", emit: "report"
         path "mutations_tracking.csv", emit: "mutationsTracking"
-
+        path "*.csv", emit: "dataFiles"
+        
     shell:
         tapasSetting = "${params.ERROR_SUPPRESSION_NAME}_BQ_${params.BASE_QUALITY}.MQ_${params.MAPPING_QUALITY}"
 

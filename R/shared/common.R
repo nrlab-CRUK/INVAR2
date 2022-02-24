@@ -37,11 +37,10 @@ loadLayoutTable <- function(layoutFile)
     # suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
     #     rename_with(str_trim) %>%
     #     rename_with(str_to_upper) %>%
-    #     rename(POOL = SLX_ID) %>%
-    #     mutate(POOL_BARCODE = str_c(POOL, str_replace(BARCODE, '-', '_'), sep = '_'))
+    #     mutate(SAMPLE_ID = str_c(SLX_ID, str_replace(BARCODE, '-', '_'), sep = '_'), .before = "SLX_ID") %>%
+    #     select(-SLX_ID, -BARCODE)
 
-    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
-        mutate(POOL_BARCODE = str_c(POOL, str_replace(BARCODE, '-', '_'), sep = '_'))
+    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE))
 }
 
 ##
@@ -53,8 +52,7 @@ addMutationTableDerivedColumns <- function(mutationTable)
     mutationTable <- mutationTable %>%
         mutate(MUTATION_SUM = ALT_F + ALT_R,
                UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-               UNIQUE_ALT = str_c(UNIQUE_POS, str_c(REF, ALT, sep='/'), sep='_'),
-               POOL_BARCODE = str_c(POOL, BARCODE, sep='_'))
+               UNIQUE_ALT = str_c(UNIQUE_POS, str_c(REF, ALT, sep='/'), sep='_'))
 
     if (all(c('PATIENT', 'PATIENT_MUTATION_BELONGS_TO') %in% colnames(mutationTable)))
     {
@@ -72,7 +70,7 @@ addMutationTableDerivedColumns <- function(mutationTable)
 removeMutationTableDerivedColumns <- function(mutationTable)
 {
     mutationTable %>%
-        select(-any_of(c('MUTATION_SUM', 'POOL_BARCODE', 'PATIENT_SPECIFIC')), -contains('UNIQUE'))
+        select(-any_of(c('MUTATION_SUM', 'PATIENT_SPECIFIC')), -contains('UNIQUE'))
 }
 
 ##
@@ -83,7 +81,7 @@ removeMutationTableDerivedColumns <- function(mutationTable)
 # Helps comparison between files.
 arrangeMutationTableForExport <- function(mutationTable)
 {
-    orderByColumns = c('POOL', 'BARCODE', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
+    orderByColumns = c('SAMPLE_ID', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
                        'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
 
     mutationTable %>%
@@ -130,7 +128,7 @@ exportCSV <- function(t, file)
 # all characters that are not word characters (letter, number, underscore).
 makeSafeForFileName <- function(string)
 {
-    string <- str_replace_all(string, "\\s+", "_")
-    string <- str_replace_all(string, "[^\\w]+", "")
-    string
+    string %>%
+        str_replace_all("\\s+", "_") %>%
+        str_replace_all("[^\\w]+", "")
 }

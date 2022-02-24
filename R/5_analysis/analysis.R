@@ -141,8 +141,7 @@ main <- function(scriptArgs)
     sizeCharacterisationTable <- readRDS(scriptArgs$SIZE_CHARACTERISATION_FILE)
 
     invarScoresTable <- readRDS(scriptArgs$INVAR_SCORES_FILE) %>%
-        mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO,
-               POOL_BARCODE = str_c(POOL, BARCODE, sep = "_"))
+        mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO)
 
     assert_that(length(offTargetErrorRatesList) == 4 && all(names(offTargetErrorRatesList) %in% c('PREFILTER', 'LOCUS_NOISE', 'BOTH_STRANDS', 'LOCUS_NOISE.BOTH_STRANDS')),
                 msg = "Off target error rates list does not contain the tables expected.")

@@ -3,7 +3,8 @@ Convert layout table with:
 read_csv(file = 'combined.SLX_table_with_controls_031220.csv', col_names = TRUE) %>%
 rename_with(str_to_upper) %>%
 rename_with(str_trim) %>%
-rename(POOL = SLX_ID) %>%
+mutate(SAMPLE_ID = str_c(SLX_ID, BARCODE, sep = ":"), .before = SLX_ID) %>%
+select(-SLX_ID, -BARCODE) %>%
 write_csv('combined.SLX_table_with_controls_031220.v2.csv', na = '')
 
 

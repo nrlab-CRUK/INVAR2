@@ -37,10 +37,10 @@ calculateErrorRatesINV042 <- function(errorRatesTable, layoutTable)
     assert_that(!is.null(layoutTable), msg = "layoutTable cannot be null")
 
     layoutTable <- layoutTable %>%
-        select(POOL, BARCODE, CASE_OR_CONTROL)
+        select(SAMPLE_ID, CASE_OR_CONTROL)
 
     errorRatesTable <- errorRatesTable %>%
-        left_join(layoutTable, by = c('POOL', 'BARCODE'))
+        left_join(layoutTable, by = 'SAMPLE_ID')
 
     controls <- errorRatesTable %>%
         filter(str_detect(CASE_OR_CONTROL, "control"))
@@ -136,14 +136,14 @@ adjustInvarScores <- function(invarScoresTable, layoutTable)
     }
 
     layoutTable <- layoutTable %>%
-        select(POOL, BARCODE, CASE_OR_CONTROL, SAMPLE_TYPE, DATA_TYPE, TIMEPOINT)
+        select(SAMPLE_ID, CASE_OR_CONTROL, SAMPLE_TYPE, DATA_TYPE, TIMEPOINT)
 
     assert_that(!any(invarScoresTable$DP < 0), msg = "Have negative DP.")
 
     # setting ctDNA level to 1/# molecules where p_mle (AF_P) < 1/# molecules (last mutate)
 
     adjustedScoresTable <- invarScoresTable %>%
-        left_join(layoutTable, by = c('POOL', 'BARCODE')) %>%
+        left_join(layoutTable, by = 'SAMPLE_ID') %>%
         mutate(ADJUSTED_INVAR_SCORE = ifelse(MUTANT_READS_PRESENT, INVAR_SCORE, 0),
                ADJUSTED_IMAF = ifelse(MUTANT_READS_PRESENT, IMAF, 0)) %>%
         mutate(ADJUSTED_IMAF = ifelse(ADJUSTED_IMAF < 1 / DP, 1 / DP, ADJUSTED_IMAF))
@@ -156,7 +156,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable)
 
     adjustedScoresTable <-
         bind_rows(adjustedList) %>%
-        arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
+        arrange(SAMPLE_ID, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
                 ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 }
 
@@ -176,9 +176,9 @@ scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 2000
 
     nonSpecific <- adjustedScoresTable %>%
         filter(!PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case' &
-               !POOL_BARCODE %in% contaminationRiskSamples$POOL_BARCODE)
+               !SAMPLE_ID %in% contaminationRiskSamples$SAMPLE_ID)
 
-    joinColumns <- c('POOL', 'BARCODE', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO')
+    joinColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO')
     joinSuffix <- c('.NO_SIZE', '.WITH_SIZE')
 
     nonSpecific.noSize <- nonSpecific %>%
@@ -194,7 +194,7 @@ scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 2000
         mutate(ADJUSTED_INVAR_SCORE.WITH_SIZE = ifelse(is.na(ADJUSTED_INVAR_SCORE.WITH_SIZE), 0, ADJUSTED_INVAR_SCORE.WITH_SIZE)) %>%
         filter(DP > lowSensitivityThreshold)
 
-    joinColumns <- c('POOL', 'BARCODE')
+    joinColumns <- 'SAMPLE_ID'
 
     specific.noSize <- specific %>%
         filter(!USING_SIZE) %>%
@@ -247,7 +247,7 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
     assert_that(is.numeric(lowSensitivityThreshold), msg = "lowSensitivityThreshold my be a number")
 
     invarScoreColumn <- ifelse(useSize, 'ADJUSTED_INVAR_SCORE.WITH_SIZE', 'ADJUSTED_INVAR_SCORE.NO_SIZE')
-    useColumns <- c('POOL', 'BARCODE', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', invarScoreColumn, 'DP')
+    useColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', invarScoreColumn, 'DP')
 
     minimumSpecificDP <- min(specificInvarScores$DP)
 
@@ -297,14 +297,14 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable)
         scaleInvarScores()
 
     patientSpecificGLRT <- scaledInvarResultsList$PATIENT_SPECIFIC %>%
-        arrange(POOL, BARCODE, PATIENT, PATIENT_MUTATION_BELONGS_TO)
+        arrange(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
 
     ifPatientData <- patientSpecificGLRT %>%
         left_join(patientSummaryTable, by = 'PATIENT') %>%
         mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
                NG_ON_SEQ = UNIQUE_MOLECULES / 300,
                LOW_SENSITIVITY = DP < 20000 & !DETECTED.WITH_SIZE) %>%
-        arrange(POOL, BARCODE, PATIENT, PATIENT_MUTATION_BELONGS_TO)
+        arrange(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
 
     thresholds <- as_tibble(c(0,20000,66666)) %>%
         rename(THRESHOLD = 1)
@@ -330,11 +330,11 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable)
 annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patientSummaryTable)
 {
     layoutTable <- layoutTable %>%
-        select(POOL, BARCODE, STUDY, INPUT_INTO_LIBRARY_NG, QUANTIFICATION_METHOD) %>%
+        select(SAMPLE_ID, STUDY, INPUT_INTO_LIBRARY_NG, QUANTIFICATION_METHOD) %>%
         mutate_at(vars(INPUT_INTO_LIBRARY_NG), as.double)
 
     patientSpecificGLRT.annotated <- patientSpecificGLRT %>%
-        left_join(layoutTable, by = c('POOL', 'BARCODE')) %>%
+        left_join(layoutTable, by = 'SAMPLE_ID') %>%
         mutate(NOT_DETECTABLE_DPCR = ADJUSTED_IMAF < 3.3 / INPUT_INTO_LIBRARY_NG,
                CTDNA_PLOTTING = ifelse(!DETECTED.WITH_SIZE, 1e-7, ifelse(DP < 20000, 1e-8, ADJUSTED_IMAF)),
                LS_FILTER = ifelse(DETECTED.WITH_SIZE | DP >= 20000 , "Pass", "Fail"),
@@ -356,7 +356,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
                 msg = "invarScoresTable lacking derived PATIENT_SPECIFIC column.")
 
     layoutTableTimepoint <- layoutTable %>%
-        select(POOL, BARCODE, TIMEPOINT)
+        select(SAMPLE_ID, TIMEPOINT)
 
     tumourMutationTableSummary <- tumourMutationsTable %>%
         group_by(PATIENT) %>%
@@ -376,10 +376,10 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
     invarScoresTable <- invarScoresTable %>%
         adjustInvarScores(layoutTable) %>%
         filter(PATIENT_SPECIFIC) %>%
-        select(POOL, BARCODE, PATIENT, USING_SIZE, OUTLIER.PASS, DETECTION)
+        select(SAMPLE_ID, PATIENT, USING_SIZE, OUTLIER.PASS, DETECTION)
 
     mutationTracking <- mutationsTable %>%
-        group_by(POOL, BARCODE, PATIENT, CASE_OR_CONTROL) %>%
+        group_by(SAMPLE_ID, PATIENT, CASE_OR_CONTROL) %>%
         summarise(LOCUS_NOISE.PASS = sum(LOCUS_NOISE.PASS & PATIENT_SPECIFIC),
                   MUTANTS_PATIENT_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
                   MUTANTS_NON_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
@@ -387,22 +387,22 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
                   SPECIFIC.PASS = sum(PATIENT_SPECIFIC & PASS_ALL),
                   NON_SPECIFIC.PASS = sum(!PATIENT_SPECIFIC & PASS_ALL),
                   .groups = "drop") %>%
-        left_join(layoutTableTimepoint, by = c("POOL", "BARCODE")) %>%
+        left_join(layoutTableTimepoint, by = "SAMPLE_ID") %>%
         left_join(tumourMutationTableSummary, by = "PATIENT") %>%
-        full_join(invarScoresTable, by = c('POOL', 'BARCODE', 'PATIENT')) %>%
+        full_join(invarScoresTable, by = c('SAMPLE_ID', 'PATIENT')) %>%
         mutate(INITIAL_MUTATIONS = ifelse(CASE_OR_CONTROL == 'case', INITIAL_MUTATIONS, 0)) %>%
         mutate(USING_SIZE = ifelse(USING_SIZE, 'WITH_SIZE', 'NO_SIZE'),
                OUTLIER.PASS = ifelse(OUTLIER.PASS, 'PASS', 'FAIL')) %>%
         pivot_wider(names_from = c(USING_SIZE, OUTLIER.PASS),
                     names_glue = "{USING_SIZE}.OUTLIER_{OUTLIER.PASS}",
                     values_from = DETECTION) %>%
-        select(POOL, BARCODE, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
+        select(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
                INITIAL_MUTATIONS, LOCUS_NOISE.PASS,
                MUTANTS_PATIENT_SPECIFIC, MUTANTS_NON_SPECIFIC,
                MUTANT_OUTLIER.PASS, SPECIFIC.PASS, NON_SPECIFIC.PASS,
                WITH_SIZE.OUTLIER_PASS, NO_SIZE.OUTLIER_PASS,
                WITH_SIZE.OUTLIER_FAIL, NO_SIZE.OUTLIER_FAIL) %>%
-        arrange(POOL, BARCODE, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
+        arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
 
     mutationTracking
 }

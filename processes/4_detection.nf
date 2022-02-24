@@ -6,20 +6,20 @@ process generalisedLikelihoodRatioTest
     // combinations it will run ten iterations of the algorithm, which can be
     // run in parallel.
 
-    tag "${pool} ${barcode} ${patientMutationBelongsTo}"
+    tag "${sampleId} ${patientMutationBelongsTo}"
 
     memory '48g'
     cpus   { Math.min(params.MAX_CORES, 10) }
 
     input:
-        tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(osMutationsFile)
+        tuple val(sampleId), val(patientMutationBelongsTo), path(osMutationsFile)
         each path(sizeCharacterisationFile)
 
     output:
-        tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(invarScoresFile), emit: "invarScores"
+        tuple val(sampleId), val(patientMutationBelongsTo), path(invarScoresFile), emit: "invarScores"
 
     shell:
-        invarScoresFile = "invar_scores.${pool}.${barcode}.${makeSafeForFileName(patientMutationBelongsTo)}.rds"
+        invarScoresFile = "invar_scores." + makeSafeForFileName(sampleId) + '.' + makeSafeForFileName(patientMutationBelongsTo) + ".rds"
 
         """
         Rscript --vanilla "!{params.projectHome}/R/4_detection/generalisedLikelihoodRatioTest.R" \
@@ -69,7 +69,7 @@ workflow detection
 
         scoresChannel =
             generalisedLikelihoodRatioTest.out.invarScores
-                .map { p, b, pt, f -> f }
+                .map { s, pt, f -> f }
                 .collect()
 
         combineGeneralisedLikelihoodRatioTestResults(scoresChannel)

@@ -14,9 +14,10 @@ with this:
 
 as_tibble(readRDS('PARADIGM.f0.9_s2.BQ_20.MQ_40combined.outlier_suppression0.05.rds')) %>%
 separate(uniq, into = c('CHROM', 'POS', 'POOL', 'BARCODE'), sep='[:_]') %>%
-mutate(POS = as.integer(POS)) %>%
+mutate(POS = as.integer(POS),
+       SAMPLE_ID = str_c(POOL, BARCODE, sep = ":")) %>%
 rename(OUTLIER.PASS = PASS) %>%
-arrange(POOL, BARCODE, CHROM, POS) %>%
-select(POOL, BARCODE, CHROM, POS, OUTLIER.PASS) %>%
+arrange(SAMPLE_ID, CHROM, POS) %>%
+select(SAMPLE_ID, CHROM, POS, OUTLIER.PASS) %>%
 mutate(OUTLIER.PASS = ifelse(OUTLIER.PASS, 'T', 'F')) %>%
 write_tsv(file = 'REFERENCE_outlierflags.fail.tsv')

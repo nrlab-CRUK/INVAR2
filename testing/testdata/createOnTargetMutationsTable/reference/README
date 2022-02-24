@@ -1,13 +1,15 @@
 This one is a little tricky, as the createOnTargetMutationsTable.R
 script isn't an end point in INVAR4.R. The output is the data frame
 at the end of the parse() method. INVAR4.R was modified to write out
-the data frame at that point to create the reference.
-Also added a line in parse()
-to export the background error rate table as a file (~line 464),
-which gives the PARADIGM.background_error_rates.rds
+the data frame at that point to create the reference as
+mutation_table.on_target.all.rds
 
 The data frame written out is then passed through reorganiseMutationTable.R
 to rename columns and perform standard sorting.
+
+Also added a line in parse()
+to export the background error rate table as a file (~line 464),
+which gives the PARADIGM.background_error_rates.rds
 
 The background error rates file is converted using
 reorganiseBackgroundErrorRates.R in this directory.

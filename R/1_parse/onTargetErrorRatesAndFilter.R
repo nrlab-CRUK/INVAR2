@@ -100,12 +100,12 @@ createLociErrorRateTable <- function(mutationTable,
 
     errorRateTable <- mutationTable %>%
         filter(!PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case') %>%
-        mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, POOL_BARCODE, NA)) %>%
+        mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SAMPLE_ID, NA)) %>%
         group_by(UNIQUE_POS, MUTATION_CLASS, TRINUCLEOTIDE, PATIENT_MUTATION_BELONGS_TO, COSMIC) %>%
         summarize(MUTATION_SUM = sum(ALT_F + ALT_R),
                   DP_SUM = sum(DP),
                   BACKGROUND_AF = MUTATION_SUM / DP_SUM,
-                  N_SAMPLES = n_distinct(POOL_BARCODE),
+                  N_SAMPLES = n_distinct(SAMPLE_ID),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
         separate(UNIQUE_POS, sep = ':', into = c('CHROM', 'POS'), remove = FALSE) %>%

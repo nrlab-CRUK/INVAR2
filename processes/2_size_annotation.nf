@@ -2,14 +2,14 @@
 
 /**
  * Helper function for turning the output from annotateMutationsWithFragmentSize
- * into a channel containing tuples of pool, barcode, patient mutation belongs to and
+ * into a channel containing tuples of sample id, patient mutation belongs to and
  * mutations table file.
  *
  * The index file from the process needs to be read in to get the information per file.
  * That can be used to produce the list of tuples required for the downstream channel.
  * The function should be called within a closure using Nextflow's flatMap method.
  *
- * The index file has columns for the pool, barcode, patient and file name, so it's
+ * The index file has columns for the sample id, patient and file name, so it's
  * a matter of finding the row that has the file name.
  */
 def combineIndexFileWithMutationsFiles(indexFile, mutationsFiles)
@@ -21,10 +21,13 @@ def combineIndexFileWithMutationsFiles(indexFile, mutationsFiles)
     {
         def fileInfo = indexContent.find { row -> row.FILE_NAME == file.name }
         assert fileInfo : "No information in ${indexFile.name} found for ${file.name}"
-        tuples << tuple(fileInfo.POOL, fileInfo.BARCODE, fileInfo.PATIENT_MUTATION_BELONGS_TO, file)
+        tuples << tuple(fileInfo.SAMPLE_ID, fileInfo.PATIENT_MUTATION_BELONGS_TO, file)
     }
     return tuples
 }
+
+include { makeSafeForFileName } from '../functions/naming'
+
 
 process createSNVList
 {
@@ -48,41 +51,41 @@ process getFragmentSize
 {
     memory '128m'
 
-    tag "${pool} ${barcode}"
+    tag "${sampleId}"
 
     input:
-        tuple val(pool), val(barcode), path(bamFile), path(bamIndex)
+        tuple val(sampleId), path(bamFile), path(bamIndex)
         each path(snvList)
 
     output:
-        tuple val(pool), val(barcode), path(insertsFile)
+        tuple val(sampleId), path(insertsFile)
 
     shell:
-        insertsFile = "${pool}.${barcode}.inserts.tsv"
+        insertsFile = makeSafeForFileName(sampleId) + ".inserts.tsv"
 
         template "2_size_annotation/getFragmentSize.sh"
 }
 
 process annotateMutationsWithFragmentSize
 {
-    tag "${pool} ${barcode}"
+    tag "${sampleId}"
 
     memory '30g'
     cpus   { Math.min(params.MAX_CORES, 4) }
 
     input:
-        tuple val(pool), val(barcode), path(fragmentSizesFile)
+        tuple val(sampleId), path(fragmentSizesFile)
         each path(mutationsFile)
 
     output:
-        tuple val(pool), val(barcode), path("index.csv"), path("mutation_table.with_sizes.*.rds"), emit: "mutationsFiles"
+        tuple val(sampleId), path("index.csv"), path("mutation_table.with_sizes.*.rds"), emit: "mutationsFiles"
 
     shell:
         """
         Rscript --vanilla "!{params.projectHome}/R/2_size_annotation/sizeAnnotation.R" \
             --mutations="!{mutationsFile}" \
             --fragment-sizes="!{fragmentSizesFile}" \
-            --pool="!{pool}" --barcode="!{barcode}" \
+            --sample="!{sampleId}" \
             --threads=!{task.cpus} \
             !{params.containsKey('SAMPLING_SEED') ? "--sampling-seed=${params['SAMPLING_SEED']}" : ""}
         """
@@ -105,9 +108,9 @@ workflow sizeAnnotation
 
         /*
          * This bit of Nextflow jiggery pokery converts the output from
-         * annotateMutationsWithFragmentSize, which is a tuple of pool, barcode,
-         * and index file and multiple RDS files (one per patient) into a channel
-         * of pool, barcode, patient and one RDS file. The index file is used
+         * annotateMutationsWithFragmentSize, which is a tuple of sampleId,
+         * index file and multiple RDS files (one per patient) into a channel
+         * of sampleId, patient and one RDS file. The index file is used
          * as a mapping between the patient identifier and the file relevant to
          * that patient. This is better (in my opinion) that trying to extract
          * that information from the file name.
@@ -116,7 +119,7 @@ workflow sizeAnnotation
         perPatientChannel =
             annotateMutationsWithFragmentSize.out.mutationsFiles
                 .flatMap {
-                    pool, barcode, indexFile, mutationsFiles ->
+                    sampleId, indexFile, mutationsFiles ->
                     combineIndexFileWithMutationsFiles(indexFile, mutationsFiles)
                 }
 

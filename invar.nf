@@ -35,7 +35,7 @@ workflow
             row ->
             bam = file(row.FILE_NAME, checkIfExists: true)
             index = file("${bam}.bai") // The index file may or may not exist.
-            tuple row.POOL, row.BARCODE, bam, index
+            tuple row.SAMPLE_ID, bam, index
         }
 
     parse(bamChannel, tumourMutationsChannel, layoutChannel)

@@ -18,8 +18,7 @@ Rscript --vanilla "!{params.projectHome}/R/1_parse/formatAndAnnotateMutations.R"
     split2.tsv \
     "!{mutationsFile}" \
     !{params.MPILEUP_MINIMUM_DEPTH} \
-    "!{pool}" \
-    "!{barcode}"
+    "!{sampleId}"
 
 ## Clean up
 

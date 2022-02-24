@@ -2,18 +2,19 @@ include { makeSafeForFileName } from '../functions/naming'
 
 process markOutliers
 {
-    tag "${pool} ${barcode} ${patientMutationBelongsTo}"
+    tag "${sampleId} ${patientMutationBelongsTo}"
 
     memory '6g'
 
     input:
-        tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(mutationsFile)
+        tuple val(sampleId), val(patientMutationBelongsTo), path(mutationsFile)
 
     output:
-        tuple val(pool), val(barcode), val(patientMutationBelongsTo), path(outlierMarkedFile), emit: "mutationsFile"
+        tuple val(sampleId), val(patientMutationBelongsTo), path(outlierMarkedFile), emit: "mutationsFile"
 
     shell:
-        outlierMarkedFile = "mutation_table.outliersuppressed.${pool}.${barcode}.${makeSafeForFileName(patientMutationBelongsTo)}.rds"
+        outlierMarkedFile = "mutation_table.outliersuppressed." + makeSafeForFileName(sampleId) + '.' +
+                            makeSafeForFileName(patientMutationBelongsTo) + ".rds"
 
         """
         Rscript --vanilla "!{params.projectHome}/R/3_outlier_suppression/outlierSuppression.R" \
@@ -79,7 +80,7 @@ workflow outlierSuppression
 
         outlierMarkedFiles =
             markOutliers.out.mutationsFile
-                .map { p, b, pt, mfile -> mfile }
+                .map { s, pt, mfile -> mfile }
                 .collect()
 
         sizeCharacterisation(outlierMarkedFiles)

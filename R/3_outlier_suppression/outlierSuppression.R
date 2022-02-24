@@ -121,7 +121,7 @@ main <- function(scriptArgs)
     # unique in this file.
 
     mutationsFileCheck <- mutationsTable %>%
-        distinct(POOL, BARCODE, PATIENT_MUTATION_BELONGS_TO)
+        distinct(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO)
 
     assert_that(nrow(mutationsFileCheck) == 1,
                 msg = str_c("Do not have single pool + barcode and patient (mutation belongs to) in ", scriptArgs$MUTATIONS_TABLE_FILE))
@@ -130,7 +130,7 @@ main <- function(scriptArgs)
         repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION)
 
     outputName <- str_c('mutation_table.outliersuppressed',
-                        mutationsFileCheck$POOL, mutationsFileCheck$BARCODE,
+                        makeSafeForFileName(mutationsFileCheck$SAMPLE_ID),
                         makeSafeForFileName(mutationsFileCheck$PATIENT_MUTATION_BELONGS_TO),
                         'rds', sep = '.')
 

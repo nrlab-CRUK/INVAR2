@@ -96,13 +96,13 @@ createLociErrorRateTable <- function(mutationTable,
         filter(CASE_OR_CONTROL == 'case')
 
     errorRateTable <- mutationTable %>%
-        filter(POOL_BARCODE %in% layoutTable.cases$POOL_BARCODE) %>%
-        mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, POOL_BARCODE, NA)) %>%
+        filter(SAMPLE_ID %in% layoutTable.cases$SAMPLE_ID) %>%
+        mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SAMPLE_ID, NA)) %>%
         group_by(UNIQUE_POS, TRINUCLEOTIDE) %>%
         summarize(MUTATION_SUM = sum(ALT_F) + sum(ALT_R),
                   DP_SUM = sum(DP),
                   BACKGROUND_AF = MUTATION_SUM / DP_SUM,
-                  N_SAMPLES = n_distinct(POOL_BARCODE),
+                  N_SAMPLES = n_distinct(SAMPLE_ID),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
         separate(UNIQUE_POS, sep = ':', into = c('CHROM', 'POS')) %>%
@@ -117,11 +117,11 @@ createLociErrorRateTable <- function(mutationTable,
 
 # Common function. Takes in a mutation table.
 # Adds MUTATION_SUM, DP_SUM, BACKGROUND_AF columns on rows grouped by
-# POOL, BARCODE, REF, ALT, TRINUCLEOTIDE
+# SAMPLE_ID, REF, ALT, TRINUCLEOTIDE
 groupAndSummarizeForErrorRate <- function(mutationTable)
 {
     mutationTable %>%
-        group_by(POOL, BARCODE, REF, ALT, TRINUCLEOTIDE) %>%
+        group_by(SAMPLE_ID, REF, ALT, TRINUCLEOTIDE) %>%
         summarize(MUTATION_SUM = sum(ALT_F) + sum(ALT_R),
                   DP_SUM = sum(DP),
                   BACKGROUND_AF = (sum(ALT_F) + sum(ALT_R)) / sum(DP),
@@ -220,7 +220,7 @@ main <- function(scriptArgs)
 {
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        select(CASE_OR_CONTROL, POOL_BARCODE)
+        select(CASE_OR_CONTROL, SAMPLE_ID)
 
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%

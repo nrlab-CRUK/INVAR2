@@ -350,7 +350,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
     # slice out every other row to give a row per molecule.
 
     mutationsTable.perMolecule <- mutationsTable %>%
-        arrange(UNIQUE_POS, POOL_BARCODE, SIZE) %>%
+        arrange(UNIQUE_POS, SAMPLE_ID, SIZE) %>%
         slice(seq(1, n(), by = 2))
 
     # only count mutant reads once for accurate ctDNA quantification
@@ -412,9 +412,9 @@ main <- function(scriptArgs)
         select(MUTANT, SIZE, COUNT, TOTAL, PROPORTION)
 
     mutationsInfo <- mutationsTable %>%
-        distinct(POOL, BARCODE, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO)
+        distinct(SAMPLE_ID, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO)
 
-    assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique POOL, BARCODE, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
+    assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique SAMPLE_ID, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
 
     # Create a table of all combinations of variable filter, then turn this into
     # a list of single row tibbles. lapply can then be used to work on every
@@ -438,15 +438,15 @@ main <- function(scriptArgs)
     invarResultsTable <-
         bind_rows(invarResultsList) %>%
         full_join(mutationsInfo, by = character()) %>%
-        select(POOL, BARCODE, SAMPLE_NAME, PATIENT, PATIENT_MUTATION_BELONGS_TO,
+        select(SAMPLE_ID, SAMPLE_NAME, PATIENT, PATIENT_MUTATION_BELONGS_TO,
                ITERATION, USING_SIZE,
                LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
                INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
                DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
-        arrange(POOL, BARCODE, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
+        arrange(SAMPLE_ID, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
                 ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 
-    outputName <- str_c("invar_scores", mutationsInfo$POOL, mutationsInfo$BARCODE,
+    outputName <- str_c("invar_scores", makeSafeForFileName(mutationsInfo$SAMPLE_ID),
                         makeSafeForFileName(mutationsInfo$PATIENT_MUTATION_BELONGS_TO), "rds", sep = ".")
 
     saveRDS(invarResultsTable, outputName)

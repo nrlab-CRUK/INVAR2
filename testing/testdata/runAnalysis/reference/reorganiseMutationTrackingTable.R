@@ -18,14 +18,15 @@ commonColumnNames <- c("PATIENT", "TIMEPOINT", "CASE_OR_CONTROL",
                        "WITH_SIZE.OUTLIER_PASS", "NO_SIZE.OUTLIER_PASS",
                        "WITH_SIZE.OUTLIER_FAIL", "NO_SIZE.OUTLIER_FAIL")
 
-originalColumnNames <- c("POOL_BARCODE", commonColumnNames)
+originalColumnNames <- c("SAMPLE_ID", commonColumnNames)
 
-currentColumnNames <- c("POOL", "BARCODE", commonColumnNames)
+currentColumnNames <- c("SAMPLE_ID", commonColumnNames)
 
 read_csv(args[1], col_names = originalColumnNames, col_types = 'cccciiiiiiillll', skip = 1) %>%
-    separate("POOL_BARCODE", into = c("POOL", "BARCODE"), sep = '_') %>%
+    separate("SAMPLE_ID", into = c("POOL", "BARCODE"), sep = '_') %>%
+    mutate(SAMPLE_ID = str_c(POOL, BARCODE, sep = ":")) %>% 
     select(all_of(currentColumnNames)) %>%
-    arrange(POOL, BARCODE, PATIENT, TIMEPOINT, CASE_OR_CONTROL) %>%
+    arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL) %>%
     mutate_if(is.logical, toChar) %>%
     mutate_if(is.double, signif, digits = 6) %>%
     write_csv(args[2])

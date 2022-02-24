@@ -5,5 +5,5 @@
  */
 def makeSafeForFileName(str)
 {
-    str.replaceAll(/\s+/, '_').replace(/[^\w]+/, '')
+    str.replaceAll(/\s+/, '_').replaceAll(/[^\w]+/, '')
 }

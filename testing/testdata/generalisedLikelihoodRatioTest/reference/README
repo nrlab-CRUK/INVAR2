@@ -14,18 +14,17 @@ The GLRT.out file from above should be processed with the .sh version,
 with five parameters.
 
 1. The path to "GLRT.out" from above.
-2. The pool (SLX) number.
-3. The barcode.
-4. The patient the mutation is for.
-5. The sample name.
+2. The path to the layout file.
+3. The pool (SLX) number.
+4. The barcode.
 
 The shell script uses first the Python script to untangle the output
 lines and then the R script to standardise and arrange the file.
 
 For example:
 
-../../reorganiseInvarScores.sh ~/work/invar/pipeline/GLRT.out SLX-19721 SXTLI001 PARA_028 "EXP3079_PARA_002_EOT" 
-../../reorganiseInvarScores.sh ~/work/invar/pipeline/GLRT.out SLX-19721 SXTLI001 PARA_002 "EXP3079_PARA_002_EOT" 
+../../reorganiseInvarScores.sh GLRT.PARA_028.out ../../invar_source/combined.SLX_table_with_controls_031220.v2.csv SLX-19721 SXTLI001
+../../reorganiseInvarScores.sh GLRT.PARA_002.out ../../invar_source/combined.SLX_table_with_controls_031220.v2.csv SLX-19721 SXTLI001
 
 The script will produce files
 REFERENCE_invar_scores.<pool>.<barcode>.<patient>.rds

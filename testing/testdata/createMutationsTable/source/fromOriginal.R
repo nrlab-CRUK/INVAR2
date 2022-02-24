@@ -14,7 +14,7 @@ TAPAS.tsv_colnames <- c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4','REF_F', 'ALT_
 # cicciciiiidccildcc
 
 read_tsv('PARADIGM.f0.9_s2.BQ_20.MQ_40.combined.final.ann.tsv', col_names = TAPAS.tsv_colnames, col_types='cicccccccccccclccc') %>%
-select(-FILE_NAME) %>%
+mutate(SAMPLE_ID = str_c(POOL, BARCODE, sep = ":"), .before = POOL) %>%
+select(-POOL, -BARCODE, -FILE_NAME) %>%
 mutate_if(is.logical, toChar) %>%
 write_tsv('mutation_table.tsv')
-

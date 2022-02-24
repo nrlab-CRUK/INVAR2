@@ -1,3 +1,5 @@
+include { makeSafeForFileName } from '../functions/naming'
+
 process slopPatientInfo
 {
     executor 'local'
@@ -20,7 +22,7 @@ process slopPatientInfo
 
 process mpileup
 {
-    tag "${pool} ${barcode}"
+    tag "${sampleId}"
 
     cpus { Math.min(params.MAX_CORES, 2) }
     time "30m"
@@ -28,13 +30,14 @@ process mpileup
     input:
         each path(sloppedBedFile)
         each path(fastaReference)
-        tuple val(pool), val(barcode), path(bamFile), path(bamIndex)
+        each path(fastaIndex)
+        tuple val(sampleId), path(bamFile), path(bamIndex)
 
     output:
-        tuple val(pool), val(barcode), path(vcfFile), emit: "vcfFile"
+        tuple val(sampleId), path(vcfFile), emit: "vcfFile"
 
     shell:
-        vcfFile = "${pool}.${barcode}.mpileup.vcf"
+        vcfFile = makeSafeForFileName(sampleId) + ".mpileup.vcf"
 
         dedupFlags = params.REMOVE_DUPLICATES ? "-R --ff UNMAP" : ""
 
@@ -44,19 +47,19 @@ process mpileup
 
 process biallelic
 {
-    tag "${pool} ${barcode}"
+    tag "${sampleId}"
 
     memory '512m'
     time   '10m'
 
     input:
-        tuple val(pool), val(barcode), path(vcfFile)
+        tuple val(sampleId), path(vcfFile)
 
     output:
-        tuple val(pool), val(barcode), path(mutationsFile), emit: "mutationsFile"
+        tuple val(sampleId), path(mutationsFile), emit: "mutationsFile"
 
     shell:
-        mutationsFile = "${pool}.${barcode}.tsv"
+        mutationsFile = makeSafeForFileName(sampleId) + ".tsv"
 
         template "1_parse/biallelic.sh"
 }
@@ -64,75 +67,76 @@ process biallelic
 
 process tabixSnp
 {
-    tag "${pool} ${barcode}"
+    tag "${sampleId}"
 
     memory '64m'
 
     input:
         each path(tabixDatabase)
         each path(tabixDatabaseIndex)
-        tuple val(pool), val(barcode), path(mutationFile)
+        tuple val(sampleId), path(mutationFile)
 
     output:
-        tuple val(pool), val(barcode), path(tabixFile)
+        tuple val(sampleId), path(tabixFile)
 
     shell:
-        tabixFile = "${pool}.${barcode}.snp.vcf"
+        tabixFile = makeSafeForFileName(sampleId) + ".snp.vcf"
 
         template "1_parse/tabix.sh"
 }
 
 process tabixCosmic
 {
-    tag "${pool} ${barcode}"
+    tag "${sampleId}"
 
     memory '64m'
 
     input:
         each path(tabixDatabase)
         each path(tabixDatabaseIndex)
-        tuple val(pool), val(barcode), path(mutationFile)
+        tuple val(sampleId), path(mutationFile)
 
     output:
-        tuple val(pool), val(barcode), path(tabixFile)
+        tuple val(sampleId), path(tabixFile)
 
     shell:
-        tabixFile = "${pool}.${barcode}.cosmic.vcf"
+        tabixFile = makeSafeForFileName(sampleId) + ".cosmic.vcf"
 
         template "1_parse/tabix.sh"
 }
 
 process trinucleotide
 {
-    tag "${pool} ${barcode}"
+    tag "${sampleId}"
 
     memory '32m'
 
     input:
         each path(fastaReference)
-        tuple val(pool), val(barcode), path(mutationFile)
+        each path(fastaIndex)
+        tuple val(sampleId), path(mutationFile)
 
     output:
-        tuple val(pool), val(barcode), path(trinucleotideFile)
+        tuple val(sampleId), path(trinucleotideFile)
 
     shell:
-        trinucleotideFile = "${pool}.${barcode}.trinucleotide.fa"
+        trinucleotideFile = makeSafeForFileName(sampleId) + ".trinucleotide.fa"
 
         template "1_parse/samtools_faidx.sh"
 }
 
 process annotateMutation
 {
-    tag "${pool} ${barcode}"
+    tag "${sampleId}"
 
     input:
-        tuple val(pool), val(barcode), path(mutationFile), path(snp), path(cosmic), path(trinucleotide)
+        tuple val(sampleId), path(mutationFile), path(snp), path(cosmic), path(trinucleotide)
 
     output:
-        tuple val(pool), val(barcode), path(annotatedFile), emit: "mutationsFile"
+        tuple val(sampleId), path(annotatedFile), emit: "mutationsFile"
 
     shell:
-        annotatedFile = "${pool}.${barcode}.mutations.tsv"
+        annotatedFile = makeSafeForFileName(sampleId) + ".mutations.tsv"
 
         """
         python3 "!{params.projectHome}/python/1_parse/addTabixAndTrinucleotides.py" \
@@ -261,6 +265,7 @@ workflow parse
     main:
         genome_channel = channel.fromPath(params.HG19_GENOME, checkIfExists: true)
         fasta_channel = channel.fromPath(params.FASTA_REFERENCE, checkIfExists: true)
+        fasta_index_channel = channel.fromPath("${params.FASTA_REFERENCE}.fai")
         snp_channel = channel.fromPath(params.THOUSAND_GENOMES_DATABASE, checkIfExists: true)
         snp_index_channel = channel.fromPath("${params.THOUSAND_GENOMES_DATABASE}.tbi")
         cosmic_channel = channel.fromPath(params.COSMIC_DATABASE, checkIfExists: true)
@@ -268,23 +273,23 @@ workflow parse
 
         slopPatientInfo(tumourMutationsChannel, genome_channel)
 
-        mpileup(slopPatientInfo.out, fasta_channel, bamChannel)
+        mpileup(slopPatientInfo.out, fasta_channel, fasta_index_channel, bamChannel)
         biallelic(mpileup.out)
 
-        mutationChannel = biallelic.out.filter { pool, bc, f -> f.countLines() > 1 }
+        mutationChannel = biallelic.out.filter { sampleId, f -> f.countLines() > 1 }
 
         tabixSnp(snp_channel, snp_index_channel, mutationChannel)
         tabixCosmic(cosmic_channel, cosmic_index_channel, mutationChannel)
-        trinucleotide(fasta_channel, mutationChannel)
+        trinucleotide(fasta_channel, fasta_index_channel, mutationChannel)
 
         byBamMutationChannel = mutationChannel
-            .join(tabixSnp.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
-            .join(tabixCosmic.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
-            .join(trinucleotide.out, by: 0..1, failOnDuplicate: true, failOnMismatch: true)
+            .join(tabixSnp.out, by: 0, failOnDuplicate: true, failOnMismatch: true)
+            .join(tabixCosmic.out, by: 0, failOnDuplicate: true, failOnMismatch: true)
+            .join(trinucleotide.out, by: 0, failOnDuplicate: true, failOnMismatch: true)
 
         mutationsFiles =
             annotateMutation(byBamMutationChannel)
-                .map { pool, barcode, file -> file }
+                .map { sampleId, file -> file }
                 .collect()
 
         createMutationsTable(mutationsFiles, tumourMutationsChannel)
