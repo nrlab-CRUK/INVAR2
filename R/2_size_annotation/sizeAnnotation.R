@@ -63,7 +63,7 @@ richTestOptions <- function()
 
     list(
         MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.on_target.rds'),
-        FRAGMENT_SIZES_FILE = str_c(base, 'SLX-19721.SXTLI001.inserts.tsv'),
+        FRAGMENT_SIZES_FILE = str_c(base, 'SLX19721SXTLI001.inserts.tsv'),
         SAMPLE_ID = 'SLX-19721:SXTLI001',
         OUTLIER_SUPPRESSION = 0.05,
         SAMPLING_SEED = 1024L,
@@ -112,6 +112,13 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
     mpileupTotals <- fragmentSizesGroup %>%
         summarise(MUTATION_SUM = ALT_F + ALT_R, DP = DP) %>%
         distinct()
+
+    if (nrow(mpileupTotals) == 0)
+    {
+        # Can happen with an empty group.
+        mpileupTotals <- mpileupTotals %>%
+            add_row(MUTATION_SUM = 0, DP = 0)
+    }
 
     assert_that(nrow(mpileupTotals) == 1, msg = str_c("Have ", nrow(mpileupTotals), " rows for mpileup totals when there must be exactly 1."))
 
@@ -265,6 +272,12 @@ saveForPatient <- function(patient, mutationsTable, sampleId)
 
 main <- function(scriptArgs)
 {
+    assert_that(file.exists(scriptArgs$MUTATIONS_TABLE_FILE),
+                msg = str_c(scriptArgs$MUTATIONS_TABLE_FILE, " does not exist."))
+
+    assert_that(file.exists(scriptArgs$FRAGMENT_SIZES_FILE),
+                msg = str_c(scriptArgs$FRAGMENT_SIZES_FILE, " does not exist."))
+
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         filter(SAMPLE_ID == scriptArgs$SAMPLE_ID) %>%
@@ -278,7 +291,7 @@ main <- function(scriptArgs)
         mutate(MATCHING = SAMPLE_ID == scriptArgs$SAMPLE_ID)
 
     assert_that(nrow(mutationsFileCheck) == 1,
-                msg = str_c("Do not have a single pool + barcode in ", scriptArgs$MUTATIONS_TABLE_FILE))
+                msg = str_c("Do not have a single sample id in ", scriptArgs$MUTATIONS_TABLE_FILE))
 
     assert_that(all(mutationsFileCheck$MATCHING),
                 msg = str_c("Mutations in", scriptArgs$MUTATIONS_TABLE_FILE, "do not belong to ",
