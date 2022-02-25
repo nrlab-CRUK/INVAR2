@@ -134,7 +134,7 @@ def addCosmicInfo(mutation, tabixInfo):
                info['FILTER'] == "PASS"):
                 mutation['COSMIC_MUTATIONS'] = info['INFO'].get('CNT', '0')
                 mutation['COSMIC_SNP'] = info['INFO'].get('SNP', 'F')
-                
+
                 #print(f"Set COSMIC info for {key} to count = {mutation['COSMIC_MUTATIONS']} and snp = {mutation['COSMIC_SNP']}", file = sys.stderr)
 
                 break

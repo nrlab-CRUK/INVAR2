@@ -36,6 +36,7 @@ play no part in the INVAR2 processing. Neither is column order important.
 
     STUDY
     SAMPLE_ID
+    BAM_FILE
     SAMPLE_NAME
     SAMPLE_TYPE
     CASE_OR_CONTROL
@@ -50,6 +51,15 @@ in this file. It cross links into the `to_run.csv` file discussed below.
 should either be "`case`" or contain "`control`", such as "`control_negative`". This
 file can contain information for all projects, so the `STUDY` column provides the means of
 listing samples for multiple data sets.
+
+`BAM_FILE` is the name of the aligned BAM file for this sample. It will be relative
+to the `BAM_DIR` parameter, which by default will be a directory called `bam` in your
+project directory. One can add an optional column `ACTIVE` to the layout file to prevent
+some BAM files being used for the analysis. If this column is present and has a value that
+is not either "true" or "yes", then the sample will not be included in the analysis. If the
+column is present but there is no value for a sample, it's interpreted as being included.
+In other words, if you explicitly want a sample excluded, put "no" or "false" into the column
+for the sample.
 
 ### Tumour Mutations File
 
@@ -79,35 +89,6 @@ will be created containing the results.
 __Tip__ This is the directory where you will run _nextflow_ from. In the Nextflow files, this
 directory is accessed by the built in variable "`launchDir`", e.g. `"${launchDir}/bam"`.
 
-### BAM Files
-
-For simplicity, copy the BAM files into a directory `bam` in the top level directory.
-If these files are already available on the file system, one could hard link them rather
-than copy them to save space. If they are on another area of the file system, they needn't
-be copied but their full path needs to be listed in the `to_run.csv` file discussed below.
-
-__Tip__ Be wary of using symbolic links: much of the INVAR2 pipeline runs inside Singularity and
-links that point outside the regular file structure may not be visible to the pipeline's
-tasks. This can cause errors that might surprise, as outside of Singularity those files
-will be accessible.
-
-### `to_run.csv`
-
-This file is a summary of the BAM files. It needs to list the pool, barcode and file name
-for each BAM that should be part of the analysis. Files can be removed from this list
-to exclude them from processing without having to remove them from the `bam` directory.
-
-The file must start with a header line that contains exactly the values (any order):
-
-    SAMPLE_ID
-    FILE_NAME
-
-The `SAMPLE_ID` column cross links to the same column in the layout file.
-If a sample id does not exist in the layout file, the pipeline will stop with an error.
-
-`FILE_NAME` gives the name of the BAM file for the sample. It can be a relative
-path to the top level directory (e.g. "`bam/sample1.bam`") or an absolute path.
-
 ### Configuration File
 
 The configuration file sets the parameters for the INVAR2 run. There are some parameters
@@ -136,3 +117,19 @@ params {
 
 It will have as many parameters as needed. [The parameters page](Parameters.md) lists
 all the parameters that can or must be set to run INVAR2.
+
+### BAM Files
+
+For simplicity, copy the BAM files into a directory `bam` in the top level directory.
+If these files are already available on the file system, one could hard link them rather
+than copy them to save space. If they are on another area of the file system, it is safest
+to copy them to this directory.
+
+If your files are all together but are elsewhere on the file system, rather than copy
+them about one can set the parameter "`BAM_DIR`" in your project's `nextflow.config` file
+to the path to their directory.
+
+__Tip__ Be wary of using symbolic links: much of the INVAR2 pipeline runs inside Singularity and
+links that point outside the regular file structure may not be visible to the pipeline's
+tasks. This can cause errors that might surprise, as outside of Singularity those files
+will be accessible.

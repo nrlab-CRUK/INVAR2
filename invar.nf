@@ -1,5 +1,10 @@
 #!/usr/bin/env nextflow
 
+@Grab('org.apache.commons:commons-lang3:3.12.0')
+
+import static org.apache.commons.lang3.StringUtils.isNotBlank
+import static org.apache.commons.lang3.StringUtils.trimToEmpty
+
 /*
  * Main alignment work flow.
  */
@@ -29,11 +34,17 @@ workflow
     tumourMutationsChannel = channel.fromPath(params.TUMOUR_MUTATIONS_CSV, checkIfExists: true)
     layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
 
-    bamChannel = channel.fromPath(params.INPUT_FILES, checkIfExists: true)
+    bamChannel = layoutChannel
         .splitCsv(header: true, by: 1, strip: true)
+        .filter {
+            row ->
+            row.STUDY == params.STUDY &&
+                         isNotBlank(row.BAM_FILE) &&
+                         trimToEmpty(row.ACTIVE).toLowerCase() in [ '', 'yes', 'y', 'true', 't' ]
+        }
         .map {
             row ->
-            bam = file(row.FILE_NAME, checkIfExists: true)
+            bam = file("${params.BAM_DIR}/${row.BAM_FILE}", checkIfExists: true)
             index = file("${bam}.bai") // The index file may or may not exist.
             tuple row.SAMPLE_ID, bam, index
         }

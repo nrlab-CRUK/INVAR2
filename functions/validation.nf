@@ -102,13 +102,6 @@ def validatePipeline(params)
             }
         }
 
-        def inputListFile = file(INPUT_FILES)
-        if (!exists(inputListFile))
-        {
-            log.error "INPUT_FILES file ${inputListFile.toAbsolutePath()} does not exist."
-            errors = true
-        }
-
         if (!containsKey('FASTA_REFERENCE'))
         {
             log.error "FASTA_REFERENCE must be set in your project's configuration file."

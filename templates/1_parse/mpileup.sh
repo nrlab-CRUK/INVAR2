@@ -14,7 +14,7 @@ fi
 # Seems that the recommended move to "bcftools mpileup" isn't quite as simple
 # as just changing the command.
 # -t doesn't exist.
-# An unexpected contig results in the program stopping. 
+# An unexpected contig results in the program stopping.
 
 samtools mpileup --ignore-overlaps --max-depth 100000 \
     --min-MQ !{params.MAPPING_QUALITY} --min-BQ !{params.BASE_QUALITY} !{dedupFlags} \
