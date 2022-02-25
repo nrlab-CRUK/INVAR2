@@ -69,11 +69,10 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | ANALYSIS_DIR                   |      | "${launchDir}/analysis"   | The directory to write analysis plots and report to.      |
 | MAPPING_QUALITY                | int  | 40                        | Minimum mapping quality threshold.                        |
 | BASE_QUALITY                   | int  | 20                        | Minimum base quality threshold.                           |
-| MPILEUP_MINIMUM_DEPTH          | int  | 2                         | Minimumin depth to consider for mpileup. Set to 1 for sWGS samples. |
-| MPILEUP_MAXIMUM_DEPTH          | int  | 100000                    | Maximum depth for mpileup.                                |
+| MPILEUP_MINIMUM_DEPTH          | int  | 2                         | Minimum depth to consider for mpileup. Set to 1 for sWGS samples. |
 | SLOP_BASES                     | int  | 10                        | How many bases either side of the target base to assess for the background error rate. |
 | REMOVE_DUPLICATES              | bool | `true`                    | Whether to remove duplicates in pile ups.                 |
-| MAXIMUM_DEPTH                  | int  | 1500                      | Omit data points with uncharacteristially high unique depth given the input mass used. |
+| MAXIMUM_DEPTH                  | int  | 1500                      | Omit data points with uncharacteristically high unique depth given the input mass used. |
 | MINIMUM_REFERENCE_DEPTH        | int  | 5                         | Here we require at least 5 reference reads at a locus. Set to 0 for sWGS. |
 | MQSB_THRESHOLD                 | num  | 0.01                      | Exclude data points due to poor MQ and SB.                |
 | ALT_ALLELES_THRESHOLD          | int  | 3                         | Blacklist loci with &ge; N separate alternate alleles.    |

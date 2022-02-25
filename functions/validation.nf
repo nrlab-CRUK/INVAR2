@@ -200,20 +200,6 @@ def validatePipeline(params)
             errors = true
         }
 
-        if (isInteger(MPILEUP_MAXIMUM_DEPTH))
-        {
-            if (MPILEUP_MAXIMUM_DEPTH < 1)
-            {
-                log.error "MPILEUP_MAXIMUM_DEPTH must be a positive integer > 0."
-                errors = true
-            }
-        }
-        else
-        {
-            log.error "MPILEUP_MAXIMUM_DEPTH must be an integer."
-            errors = true
-        }
-
         if (isInteger(MPILEUP_MINIMUM_DEPTH) && isInteger(MPILEUP_MAXIMUM_DEPTH) &&
             MPILEUP_MINIMUM_DEPTH > MPILEUP_MAXIMUM_DEPTH)
         {
