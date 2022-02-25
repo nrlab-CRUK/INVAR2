@@ -119,20 +119,19 @@ loadMutationsTable <- function(mutationsFile, tumourMutationsTable, cosmicThresh
 # Create a list of loci that have more than the given number of alleles.
 
 createMultiallelicBlacklist <- function(mutationTable,
-                                        n_alt_alleles_threshold,
-                                        minor_alt_alleles_threshold)
+                                        nAltAllelesThreshold,
+                                        minorAltAllelesThreshold)
 {
-    assert_that(is.number(n_alt_alleles_threshold), msg = "n_alt_alleles_threshold must be a number")
-    assert_that(is.number(minor_alt_alleles_threshold), msg = "minor_alt_alleles_threshold must be a number")
+    assert_that(is.number(nAltAllelesThreshold), msg = "nAltAllelesThreshold must be a number")
+    assert_that(is.number(minorAltAllelesThreshold), msg = "minorAltAllelesThreshold must be a number")
 
     # Filter for rows with positive AF and MQSB above threshold.
     # Then determine the number of alt alleles per UNIQUE_POS
     # Identify loci with >1 alt alleles (e.g. both A>C and A>T at a position)
 
     # In the original code, the final filter is:
-    # N_ALT_ALLELES == n_alt_alleles_threshold
-    # I'm sure this should be >=, but to keep things the same for now,
-    # it's == here too.
+    # N_ALT_ALLELES == nAltAllelesThreshold
+    # I'm sure this should be >=, and we've latterly decided >= is correct.
 
     mutationTable %>%
         filter(AF > 0) %>%
@@ -144,8 +143,8 @@ createMultiallelicBlacklist <- function(mutationTable,
                   MIN = min(MUTATION_SUM),
                   MAX = max(MUTATION_SUM),
                   .groups = "drop") %>%
-        filter(N_ALT_ALLELES == n_alt_alleles_threshold &
-               MIN >= minor_alt_alleles_threshold)
+        filter(N_ALT_ALLELES >= nAltAllelesThreshold &
+               MIN >= minorAltAllelesThreshold)
 }
 
 
@@ -185,8 +184,8 @@ main <- function(scriptArgs)
     # Filter out positions that are multiallelic.
 
     multiallelicBlacklist <- mutationTable.filtered %>%
-        createMultiallelicBlacklist(n_alt_alleles_threshold = scriptArgs$ALT_ALLELES_THRESHOLD,
-                                    minor_alt_alleles_threshold = scriptArgs$MINOR_ALT_ALLELES_THRESHOLD)
+        createMultiallelicBlacklist(nAltAllelesThreshold = scriptArgs$ALT_ALLELES_THRESHOLD,
+                                    minorAltAllelesThreshold = scriptArgs$MINOR_ALT_ALLELES_THRESHOLD)
 
     message("Number of multiallelic blacklist positions = ", nrow(multiallelicBlacklist))
 
