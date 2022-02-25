@@ -16,11 +16,13 @@ sampleId <- args[4]
 
 # Original R code implies in a comment that the filter should also include
 # "MQSB != '.'" but it is not present in the actual active code.
+# Decided 25th Feb meeting to filter these out here. They're filtered at the
+# start of the major R processing anyway.
 
 read_tsv(inFile,
     col_names = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'ADF', 'ADR', 'MQSB'),
     col_types = 'ciccicccc') %>%
-filter(DP >= minDepth) %>%
+filter(DP >= minDepth & MQSB != '.') %>%
 mutate(REF_F = as.integer(ifelse(ALT == '.', ADF, str_split_fixed(ADF, ',', Inf)[,1])),
        ALT_F = as.integer(ifelse(ALT == '.', 0, str_split_fixed(ADF, ',', Inf)[,2])),
        REF_R = as.integer(ifelse(ALT == '.', ADR, str_split_fixed(ADR, ',', Inf)[,1])),
