@@ -39,8 +39,8 @@ workflow
         .filter {
             row ->
             row.STUDY == params.STUDY &&
-                         isNotBlank(row.BAM_FILE) &&
-                         trimToEmpty(row.ACTIVE).toLowerCase() in [ '', 'yes', 'y', 'true', 't' ]
+            isNotBlank(row.BAM_FILE) &&
+            trimToEmpty(row.ACTIVE).toLowerCase() in [ '', 'yes', 'y', 'true', 't' ]
         }
         .map {
             row ->
