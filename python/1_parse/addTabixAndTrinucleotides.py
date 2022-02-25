@@ -116,10 +116,9 @@ def addCosmicInfo(mutation, tabixInfo):
         for info in cosmicInfo:
             #print(f"COSMIC: {chr}=={info['CHROM']} {pos}=={info['POS']} {mutation['REF']}=={info['REF']} {mutation['ALT']}=={info['ALT']} {info['FILTER']}==PASS", file = sys.stderr)
 
-            #print(f"Set COSMIC info for {key} to count = {mutation['COSMIC_MUTATIONS']} and snp = {mutation['COSMIC_SNP']}", file = sys.stderr)
-
-            # TODO
             # Should we check that the position and alternate allele match?
+            # ANSWER: No, at least not for the time being. Let results that don't match
+            # exaclty the position be ignored.
             # (the original ann.py does not but it looks like a bug)
             # This would need to be handled carefully since COSMIC has mutations
             # such as the following where matching on the position field would
@@ -128,8 +127,17 @@ def addCosmicInfo(mutation, tabixInfo):
             #   1      12785295      COSM5377462    CGG    CAA    .      .       GENE=AADACL3;STRAND=+;CDS=c.176_177GG>AA;AA=p.R59Q;CNT=1
             #   1      12785295      COSM5377461    CGG    CAA    .      .       GENE=AADACL3_ENST00000359318;STRAND=+;CDS=c.386_387GG>AA;AA=p.R129Q;CNT=1
 
-            mutation['COSMIC_MUTATIONS'] = info['INFO'].get('CNT', '0')
-            mutation['COSMIC_SNP'] = info['INFO'].get('SNP', 'F')
+            if (info['CHROM'] == chr and
+               info['POS'] == pos and
+               info['REF'] == mutation['REF'] and
+               info['ALT'] == mutation['ALT'] and
+               info['FILTER'] == "PASS"):
+                mutation['COSMIC_MUTATIONS'] = info['INFO'].get('CNT', '0')
+                mutation['COSMIC_SNP'] = info['INFO'].get('SNP', 'F')
+                
+                #print(f"Set COSMIC info for {key} to count = {mutation['COSMIC_MUTATIONS']} and snp = {mutation['COSMIC_SNP']}", file = sys.stderr)
+
+                break
 
     return mutation
 
