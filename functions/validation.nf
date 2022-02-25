@@ -200,13 +200,6 @@ def validatePipeline(params)
             errors = true
         }
 
-        if (isInteger(MPILEUP_MINIMUM_DEPTH) && isInteger(MPILEUP_MAXIMUM_DEPTH) &&
-            MPILEUP_MINIMUM_DEPTH > MPILEUP_MAXIMUM_DEPTH)
-        {
-            log.error "MPILEUP_MINIMUM_DEPTH must be <= MPILEUP_MAXIMUM_DEPTH"
-            errors = true
-        }
-
         if (isInteger(SLOP_BASES))
         {
             if (SLOP_BASES < 0)

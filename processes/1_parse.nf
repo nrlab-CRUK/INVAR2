@@ -60,7 +60,7 @@ process mpileup
     shell:
         vcfFile = makeSafeForFileName(sampleId) + ".mpileup.vcf"
 
-        dedupFlags = params.REMOVE_DUPLICATES ? "-R --ff UNMAP" : ""
+        dedupFlags = params.REMOVE_DUPLICATES ? "--ignore-RG --excl-flags UNMAP" : ""
 
         template "1_parse/mpileup.sh"
 }

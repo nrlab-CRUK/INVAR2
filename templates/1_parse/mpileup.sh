@@ -11,10 +11,16 @@ then
 fi
 
 # Give a larger -d option than the default 8000 as that is too few for some cases.
+# Seems that the recommended move to "bcftools mpileup" isn't quite as simple
+# as just changing the command.
+# -t doesn't exist.
+# An unexpected contig results in the program stopping. 
 
-samtools mpileup -x -d 100000 -q !{params.MAPPING_QUALITY} -Q !{params.BASE_QUALITY} !{dedupFlags} \
-    -g -l "!{sloppedBedFile}" \
+samtools mpileup --ignore-overlaps --max-depth 100000 \
+    --min-MQ !{params.MAPPING_QUALITY} --min-BQ !{params.BASE_QUALITY} !{dedupFlags} \
     -t "DP,AD,ADF,ADR,SP,INFO/AD,INFO/ADF,INFO/ADR" \
-    -f "!{fastaReference}" \
-    "!{bamFile}" \
-| bcftools call -A -m -p 0 -o "!{vcfFile}"
+    --positions "!{sloppedBedFile}" \
+    --fasta-ref "!{fastaReference}" \
+    --BCF "!{bamFile}" \
+| bcftools call --keep-alts --multiallelic-caller --pval-threshold 0 \
+    --output "!{vcfFile}"
