@@ -12,6 +12,7 @@ import static org.apache.commons.lang3.StringUtils.trimToEmpty
 nextflow.enable.dsl = 2
 
 include { validatePipeline } from './functions/validation'
+include { findFileOnPath } from './functions/paths'
 include { parse } from './processes/1_parse'
 include { sizeAnnotation } from './processes/2_size_annotation'
 include { outlierSuppression } from './processes/3_outlier_suppression'
@@ -44,7 +45,7 @@ workflow
         }
         .map {
             row ->
-            bam = file("${params.BAM_DIR}/${row.BAM_FILE}", checkIfExists: true)
+            bam = file(findFileOnPath(params.BAM_PATH, row.BAM_FILE), checkIfExists: true)
             index = file("${bam}.bai") // The index file may or may not exist.
             tuple row.SAMPLE_ID, bam, index
         }

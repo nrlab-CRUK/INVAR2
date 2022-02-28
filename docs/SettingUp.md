@@ -53,7 +53,7 @@ file can contain information for all projects, so the `STUDY` column provides th
 listing samples for multiple data sets.
 
 `BAM_FILE` is the name of the aligned BAM file for this sample. It will be relative
-to the `BAM_DIR` parameter, which by default will be a directory called `bam` in your
+to the `BAM_PATH` parameter, which by default will be a directory called `bam` in your
 project directory. One can add an optional column `ACTIVE` to the layout file to prevent
 some BAM files being used for the analysis. If this column is present and has a value that
 is not either "true" or "yes", then the sample will not be included in the analysis. If the
@@ -120,16 +120,17 @@ all the parameters that can or must be set to run INVAR2.
 
 ### BAM Files
 
-For simplicity, copy the BAM files into a directory `bam` in the top level directory.
-If these files are already available on the file system, one could hard link them rather
-than copy them to save space. If they are on another area of the file system, it is safest
-to copy them to this directory.
+The simplest way to make your BAM files available to the INVAR2 pipeline is to
+copy them into a directory `bam` in the project directory. This though can mean
+making copies of large files that could be accessed in their original locations,
+if those locations are visible to the machine(s) you are running INVAR2 on.
+In these circumstances, one can set the
+parameter "`BAM_PATH`" in your project's `nextflow.config` file
+to list all the directories your BAM files can be found in ([see the parameters page](Parameters.md)).
+The pipeline will then be able to read the files from their original locations without
+making copies.
 
-If your files are all together but are elsewhere on the file system, rather than copy
-them about one can set the parameter "`BAM_DIR`" in your project's `nextflow.config` file
-to the path to their directory.
-
-__Tip__ Be wary of using symbolic links: much of the INVAR2 pipeline runs inside Singularity and
+__Tip__ Be wary of using symbolic links. Much of the INVAR2 pipeline runs inside Singularity and
 links that point outside the regular file structure may not be visible to the pipeline's
 tasks. This can cause errors that might surprise, as outside of Singularity those files
 will be accessible.

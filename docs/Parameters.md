@@ -64,7 +64,7 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 
 | Parameter                      | Type | Default                   | Description/Purpose                                       |
 |--------------------------------|------|---------------------------|-----------------------------------------------------------|
-| BAM_DIR                 |      |      | "${launchDir}/bam"        | The directory the aligned BAM files can be found in.      |
+| BAM_PATH                       |      | "${launchDir}/bam"        | A list of directories the aligned BAM files can be found in. |
 | RESULTS_DIR                    |      | "${launchDir}/results"    | The directory to write results (R _RDS_ files) to.        |
 | ANALYSIS_DIR                   |      | "${launchDir}/analysis"   | The directory to write analysis plots and report to.      |
 | MAPPING_QUALITY                | int  | 40                        | Minimum mapping quality threshold.                        |
@@ -87,3 +87,13 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | MAXIMUM_FRAGMENT_LENGTH        | int  | 300                       | Maximum fragment length.                                  |
 | SMOOTHING                      | num  | 0.25                      | Smoothing function for size profile (width of smoothing). |
 | ONLY_WEIGH_MUTANTS             | bool | true                      | Only weigh ctDNA signal based on mutant fragments.        |
+
+`BAM_PATH` is a list of directories in which the BAM files can be found. It is
+handled very much like the _`PATH`_ environment variable one is familiar with
+if using Unix. It is a list of directory paths separated by a colon (semicolon in
+Windows). Each directory is examined in turn to try
+to find each BAM file listed in the layout file; the first directory in which the
+file appears is used for the full path to the file for the pipeline.
+Thus one can specify more than one directory to look for BAM files in.
+The pipeline will halt with an error if a file cannot be
+found in any of the directories given by `BAM_PATH`.
