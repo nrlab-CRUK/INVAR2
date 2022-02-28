@@ -32,10 +32,10 @@ parseArg <- function(arg)
     list(SOURCE = arg, NAME = name, EXTENSION = extension, CONVERTED = convertedFile)
 }
 
-desiredOrder = c('SAMPLE_ID', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
+desiredOrder = c('SAMPLE_ID', 'PATIENT_MUTATION_BELONGS_TO',
                  'CASE_OR_CONTROL', 'PATIENT_SPECIFIC', 'MUTANT', 'SIZE', 'TOTAL' )
 
-orderByColumns = c('SAMPLE_ID', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO', 'MUTANT', 'SIZE')
+orderByColumns = c('SAMPLE_ID', 'PATIENT_MUTATION_BELONGS_TO', 'MUTANT', 'SIZE')
 
 args <- commandArgs(TRUE)
 

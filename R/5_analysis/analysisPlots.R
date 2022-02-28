@@ -256,9 +256,12 @@ summaryCohortPlot <- function(mutationsTable, study)
     plot
 }
 
-backgroundPolishingPlot <- function(mutationsTable, study, errorSuppression, outlierSuppression)
+backgroundPolishingPlot <- function(mutationsTable, layoutTable, study, errorSuppression, outlierSuppression)
 {
     assert_that(is.character(study), msg = "Study is expected to be a string")
+
+    layoutTable <- layoutTable %>%
+        select(SAMPLE_ID, SAMPLE_NAME)
 
     # SAMPLE_NAME in original now has the patient mutation belongs to as part of it.
     # That might need to be done here too.
@@ -266,6 +269,7 @@ backgroundPolishingPlot <- function(mutationsTable, study, errorSuppression, out
     plot <- mutationsTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS &
                AF > 0 & AF < 0.25 & MUTATION_SUM < 10) %>%
+        left_join(layoutTable, by = 'SAMPLE_ID') %>%
         mutate(COMBINED_SAMPLE_NAME = str_c(SAMPLE_NAME, " (", PATIENT_MUTATION_BELONGS_TO, ")"),
                PASS = ifelse(OUTLIER.PASS, "Yes", "No"),
                STUDY = study,

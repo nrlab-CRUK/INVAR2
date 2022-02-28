@@ -51,7 +51,7 @@ main <- function(scriptArgs)
 
     glrtTable <-
         bind_rows(glrtResultsList) %>%
-        arrange(SAMPLE_ID, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
+        arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
                 LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, ITERATION, USING_SIZE)
 
     saveRDS(glrtTable, 'invar_scores.rds')

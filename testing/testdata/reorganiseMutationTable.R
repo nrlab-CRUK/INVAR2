@@ -52,13 +52,13 @@ parseArgs <- function(args)
 desiredOrder = c('CHROM', 'POS', 'REF', 'ALT', 'DP', 'DP4', 'REF_F', 'ALT_F', 'REF_R', 'ALT_R', 'MQSB',
                  'SAMPLE_ID', 'COSMIC_MUTATIONS', 'COSMIC_SNP', '1KG_AF', 'TRINUCLEOTIDE',
                  'AF', 'COSMIC', 'SNP', 'ON_TARGET',
-                 'SAMPLE_NAME', 'PATIENT', 'CASE_OR_CONTROL',
+                 'PATIENT', 'CASE_OR_CONTROL',
                  'TUMOUR_AF', 'MUTATION_CLASS', 'PATIENT_MUTATION_BELONGS_TO',
                  'BACKGROUND_MUTATION_SUM', 'BACKGROUND_DP', 'BACKGROUND_AF',
                  "LOCUS_NOISE.PASS", "BOTH_STRANDS.PASS", "CONTAMINATION_RISK.PASS",
                  "SIZE", "MUTANT", "OUTLIER.PASS")
 
-orderByColumns = c('SAMPLE_ID', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
+orderByColumns = c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO',
                    'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
 
 controlBarcodes = c('SXTLI097','SXTLI098','SXTLI099','SXTLI100','SXTLI101','SXTLI102','SXTLI103','SXTLI104','SXTLI060','SXTLI059')
@@ -103,11 +103,6 @@ if ('PT_MUTATION_BELONGS_TO' %in% colNames) {
 if ('MUT_CLASS' %in% colNames) {
     t <- t %>%
         rename(MUTATION_CLASS = MUT_CLASS)
-}
-
-if ('SAMPLE_NAME' %in% colNames) {
-    t <- t %>%
-        mutate(SAMPLE_NAME = str_remove(SAMPLE_NAME, ' (.+)$'))
 }
 
 if ('MUTANT' %in% colNames) {

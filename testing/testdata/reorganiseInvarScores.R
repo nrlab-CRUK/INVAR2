@@ -19,7 +19,7 @@ toChar <- function(v) { ifelse(v, 'T', 'F') }
 
 layoutTable <-
     suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
-    select(SAMPLE_ID, PATIENT, SAMPLE_NAME)
+    select(SAMPLE_ID, PATIENT)
 
 colTypes <- 'diddccllldcldddlciil'
 
@@ -50,12 +50,12 @@ t <- t %>%
            BOTH_STRANDS.PASS = BOTH_STRANDS,
            OUTLIER.PASS = PASS,
            MUTATION_SUM = MUT_SUM) %>%
-    select(SAMPLE_ID, SAMPLE_NAME, PATIENT, PATIENT_MUTATION_BELONGS_TO,
+    select(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO,
            ITERATION, USING_SIZE,
            LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
            INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
            DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
-    arrange(SAMPLE_ID, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
+    arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
             ITERATION, USING_SIZE,
             LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 

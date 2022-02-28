@@ -232,7 +232,7 @@ main <- function(scriptArgs)
 
     plots$P6 <- summaryCohortPlot(mutationsTable, study = scriptArgs$STUDY)
 
-    plots$P8 <- backgroundPolishingPlot(mutationsTable,
+    plots$P8 <- backgroundPolishingPlot(mutationsTable, layoutTable,
                                        study = scriptArgs$STUDY,
                                        errorSuppression = scriptArgs$ERROR_SUPPRESSION,
                                        outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION)

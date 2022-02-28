@@ -81,7 +81,7 @@ removeMutationTableDerivedColumns <- function(mutationTable)
 # Helps comparison between files.
 arrangeMutationTableForExport <- function(mutationTable)
 {
-    orderByColumns = c('SAMPLE_ID', 'PATIENT', 'SAMPLE_NAME', 'PATIENT_MUTATION_BELONGS_TO',
+    orderByColumns = c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO',
                        'CHROM', 'POS', 'REF', 'ALT', 'TRINUCLEOTIDE', 'SIZE', 'MUTANT')
 
     mutationTable %>%

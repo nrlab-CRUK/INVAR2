@@ -128,7 +128,7 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
 
     alleleFrequencyTable <- mutationTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS) %>%
-        group_by(SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO, PATIENT_SPECIFIC) %>%
+        group_by(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO, PATIENT_SPECIFIC) %>%
         summarise(MUTATION_SUM = sum(ALT_F + ALT_R),
                   DP = sum(DP),
                   AF = MUTATION_SUM / DP,
@@ -143,7 +143,7 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
     nonPatientSpecific = alleleFrequencyTable %>%
         filter(!PATIENT_SPECIFIC)
 
-    test <- inner_join(patientSpecific, nonPatientSpecific, by = c('SAMPLE_NAME'))
+    test <- inner_join(patientSpecific, nonPatientSpecific, by = c('SAMPLE_ID'))
 
     lowSamples <- test %>%
         filter(AF.x < afThreshold)
@@ -154,7 +154,7 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
         filter(PATIENT_SPECIFIC & AF > afThreshold)
 
     doNotUse %>%
-        distinct(SAMPLE_NAME)
+        distinct(SAMPLE_ID)
 }
 
 
@@ -188,7 +188,7 @@ main <- function(scriptArgs)
     contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$ALLELE_FREQUENCY_THRESHOLD)
 
     mutationTable.filtered <- mutationTable.filtered %>%
-        mutate(CONTAMINATION_RISK.PASS = !SAMPLE_NAME %in% contaminatedSamples$SAMPLE_NAME)
+        mutate(CONTAMINATION_RISK.PASS = !SAMPLE_ID %in% contaminatedSamples$SAMPLE_ID)
 
     mutationTable.filtered %>%
         removeMutationTableDerivedColumns() %>%

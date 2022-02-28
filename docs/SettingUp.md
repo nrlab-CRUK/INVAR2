@@ -37,11 +37,11 @@ play no part in the INVAR2 processing. Neither is column order important.
     STUDY
     SAMPLE_ID
     BAM_FILE
+    CASE_OR_CONTROL
+    PATIENT
+    INPUT_INTO_LIBRARY_NG
     SAMPLE_NAME
     SAMPLE_TYPE
-    CASE_OR_CONTROL
-    INPUT_INTO_LIBRARY_NG
-    PATIENT
     TIMEPOINT
 
 `PATIENT` is the patient id and is used to link to rows in the tumour mutations file.

@@ -156,7 +156,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable)
 
     adjustedScoresTable <-
         bind_rows(adjustedList) %>%
-        arrange(SAMPLE_ID, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
+        arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
                 ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 }
 
@@ -330,7 +330,7 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable)
 annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patientSummaryTable)
 {
     layoutTable <- layoutTable %>%
-        select(SAMPLE_ID, STUDY, INPUT_INTO_LIBRARY_NG, QUANTIFICATION_METHOD) %>%
+        select(SAMPLE_ID, STUDY, INPUT_INTO_LIBRARY_NG) %>%
         mutate_at(vars(INPUT_INTO_LIBRARY_NG), as.double)
 
     patientSpecificGLRT.annotated <- patientSpecificGLRT %>%

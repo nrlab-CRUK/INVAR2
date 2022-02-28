@@ -183,7 +183,7 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
     }
 
     thinLayoutTable <- layoutTable %>%
-        select(SAMPLE_ID, SAMPLE_NAME, CASE_OR_CONTROL)
+        select(SAMPLE_ID, CASE_OR_CONTROL)
 
     allErrorRates <- bind_rows(errorRatesList) %>%
         left_join(thinLayoutTable, by = 'SAMPLE_ID')
@@ -365,7 +365,7 @@ main <- function(scriptArgs)
 
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
-        select(SAMPLE_NAME, PATIENT, CASE_OR_CONTROL, SAMPLE_ID)
+        select(SAMPLE_ID, PATIENT, CASE_OR_CONTROL)
 
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%

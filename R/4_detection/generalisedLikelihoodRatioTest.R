@@ -418,9 +418,9 @@ main <- function(scriptArgs)
         select(MUTANT, SIZE, COUNT, TOTAL, PROPORTION)
 
     mutationsInfo <- mutationsTable %>%
-        distinct(SAMPLE_ID, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO)
+        distinct(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
 
-    assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique SAMPLE_ID, PATIENT, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
+    assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
 
     # Create a table of all combinations of variable filter, then turn this into
     # a list of single row tibbles. lapply can then be used to work on every
@@ -444,12 +444,12 @@ main <- function(scriptArgs)
     invarResultsTable <-
         bind_rows(invarResultsList) %>%
         full_join(mutationsInfo, by = character()) %>%
-        select(SAMPLE_ID, SAMPLE_NAME, PATIENT, PATIENT_MUTATION_BELONGS_TO,
+        select(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO,
                ITERATION, USING_SIZE,
                LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
                INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
                DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
-        arrange(SAMPLE_ID, SAMPLE_NAME, PATIENT_MUTATION_BELONGS_TO,
+        arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
                 ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 
     outputName <- str_c("invar_scores", makeSafeForFileName(mutationsInfo$SAMPLE_ID),
