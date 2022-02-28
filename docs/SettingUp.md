@@ -46,7 +46,7 @@ play no part in the INVAR2 processing. Neither is column order important.
 
 `PATIENT` is the patient id and is used to link to rows in the tumour mutations file.
 `SAMPLE_ID` can be any text to internally identify a sample: it just must be unique
-in this file. It cross links into the `to_run.csv` file discussed below.
+in this file.
 `CASE_OR_CONTROL` identifies cases (cancer patients) or control samples, and its content
 should either be "`case`" or contain "`control`", such as "`control_negative`". This
 file can contain information for all projects, so the `STUDY` column provides the means of
