@@ -134,3 +134,13 @@ __Tip__ Be wary of using symbolic links. Much of the INVAR2 pipeline runs inside
 links that point outside the regular file structure may not be visible to the pipeline's
 tasks. This can cause errors that might surprise, as outside of Singularity those files
 will be accessible.
+
+__Tip__ If a file cannot be found, the pipeline will stop with an error that's a
+little odd. For example, if your file is called "SampleA.bam" but the pipeline
+can't find it in any directory given by `BAM_PATH`, you will see an error such as:
+
+    No such file: /dev/null/SampleA.bam
+
+Ignore the "_/dev/null_" bit: this is just a way to force the pipeline to stop
+when a BAM file cannot be found. What it's really saying is that the file "SampleA.bam"
+cannot be found in any directory listed in `BAM_PATH`.
