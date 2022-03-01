@@ -179,7 +179,7 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
         stop(str_c("LOCUS NOISE mutant sum is zero.",
                    "This is likely due to insufficient controls being run.",
                    "Either run more controls or override this with a higher locus noise filter (beware higher background rates).",
-                   sep='\n'))
+                   sep=' '))
     }
 
     thinLayoutTable <- layoutTable %>%
@@ -359,6 +359,11 @@ addPatientAndBackgroundColumns <- function(mutationTable, tumourMutationTable, l
 
 main <- function(scriptArgs)
 {
+    assert_that(file.exists(scriptArgs$TUMOUR_MUTATIONS_FILE), msg = str_c(scriptArgs$TUMOUR_MUTATIONS_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$LAYOUT_FILE), msg = str_c(scriptArgs$LAYOUT_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$MUTATIONS_TABLE_FILE), msg = str_c(scriptArgs$MUTATIONS_TABLE_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$ERROR_RATES_FILE), msg = str_c(scriptArgs$ERROR_RATES_FILE, " does not exist."))
+
     tumourMutationTable <-
         loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE) %>%
         select(PATIENT, REF, ALT, TUMOUR_AF, MUTATION_CLASS, UNIQUE_POS, UNIQUE_ALT, UNIQUE_PATIENT_POS)
