@@ -373,9 +373,21 @@ main <- function(scriptArgs)
         select(SAMPLE_ID, PATIENT, CASE_OR_CONTROL)
 
     mutationTable <-
-        readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
+        readRDS(scriptArgs$MUTATIONS_TABLE_FILE)
+
+    if (nrow(mutationTable) == 0)
+    {
+        stop("There a no mutations in the mutations table (", scriptArgs$MUTATIONS_TABLE_FILE, ").")
+    }
+
+    mutationTable <- mutationTable %>%
         filter(ON_TARGET) %>%
         addMutationTableDerivedColumns()
+
+    if (nrow(mutationTable) == 0)
+    {
+        stop("There a no on-target mutations in the mutations table.")
+    }
 
     errorRatesList <- readRDS(scriptArgs$ERROR_RATES_FILE)
 
