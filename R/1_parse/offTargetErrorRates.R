@@ -218,6 +218,9 @@ doMain <- function(withCosmic, mutationTable, layoutTable, lociErrorRateTable)
 
 main <- function(scriptArgs)
 {
+    assert_that(file.exists(scriptArgs$LAYOUT_FILE), msg = str_c(scriptArgs$LAYOUT_FILE, " does not exist."))
+    assert_that(file.exists(scriptArgs$MUTATIONS_TABLE_FILE), msg = str_c(scriptArgs$MUTATIONS_TABLE_FILE, " does not exist."))
+
     layoutTable <-
         loadLayoutTable(scriptArgs$LAYOUT_FILE) %>%
         select(CASE_OR_CONTROL, SAMPLE_ID)
