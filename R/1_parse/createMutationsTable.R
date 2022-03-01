@@ -154,6 +154,13 @@ createMultiallelicBlacklist <- function(mutationTable,
 
 main <- function(scriptArgs)
 {
+    assert_that(file.exists(scriptArgs$TUMOUR_MUTATIONS_FILE), msg = str_c(scriptArgs$TUMOUR_MUTATIONS_FILE, " does not exist."))
+
+    for (mutationsFile in scriptArgs$MUTATIONS_TABLE_FILE)
+    {
+        assert_that(file.exists(mutationsFile), msg = str_c(mutationsFile, " does not exist."))
+    }
+
     tumourMutationTable <-
         loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
 
