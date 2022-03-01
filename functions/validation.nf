@@ -267,9 +267,9 @@ def validateParameters(params)
 
         if (isInteger(MINIMUM_REFERENCE_DEPTH))
         {
-            if (MINIMUM_REFERENCE_DEPTH < 1)
+            if (MINIMUM_REFERENCE_DEPTH < 0)
             {
-                log.error "MINIMUM_REFERENCE_DEPTH must be a positive integer > 0."
+                log.error "MINIMUM_REFERENCE_DEPTH must be a positive integer or zero."
                 errors = true
             }
         }
