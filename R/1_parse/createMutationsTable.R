@@ -174,6 +174,12 @@ main <- function(scriptArgs)
 
     message("Number of mutations at start = ", nrow(mutationTable.all))
 
+    if (nrow(mutationTable.all) == 0)
+    {
+        stop("There are no mutations at all! Have a look at the files in ", getwd())
+    }
+
+
     # Filter the mutations table to remove rows with MSQB above the threshold
     # (was blacklist.MQSB in TAPAS_functions.R) and the base filters with
     # thresholds (INVAR3.R).
@@ -188,6 +194,11 @@ main <- function(scriptArgs)
 
     message("Number of mutations after MQSB filter = ", nrow(mutationTable.filtered))
 
+    if (nrow(mutationTable.filtered) == 0)
+    {
+        stop("After first filtering there are no mutations left. Might need to tune the MQSB_THRESHOLD, MAXIMUM_DEPTH or MINIMUM_REFERENCE_DEPTH parameters.")
+    }
+
     # Filter out positions that are multiallelic.
 
     multiallelicBlacklist <- mutationTable.filtered %>%
@@ -196,20 +207,25 @@ main <- function(scriptArgs)
 
     message("Number of multiallelic blacklist positions = ", nrow(multiallelicBlacklist))
 
+    if (nrow(multiallelicBlacklist) > 0)
+    {
+        exportTSV(multiallelicBlacklist, 'multiallelic_blacklist.tsv')
+    }
+
     mutationTable.biallelic <- mutationTable.filtered %>%
         filter(!UNIQUE_POS %in% multiallelicBlacklist$UNIQUE_POS)
 
     message("Number of mutations after multiallelic filter = ", nrow(mutationTable.biallelic))
 
+    if (nrow(mutationTable.biallelic) == 0)
+    {
+        stop("No mutations after left multiallelic filtering.")
+    }
+
     mutationTable.biallelic %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
         saveRDS("mutation_table.filtered.rds")
-
-    if (nrow(multiallelicBlacklist) > 0)
-    {
-        exportTSV(multiallelicBlacklist, 'multiallelic_blacklist.tsv')
-    }
 }
 
 # Launch it.
