@@ -514,7 +514,7 @@ def validateReferenceFiles(params)
 
             if (line.STUDY == params.STUDY)
             {
-                def active = trimToEmpty(line.ACTIVE).toLowerCase() in activeMarkers
+                def active = !line.columns.containsKey('ACTIVE') || trimToEmpty(line.ACTIVE).toLowerCase() in activeMarkers
 
                 if (isBlank(line.BAM_FILE))
                 {
