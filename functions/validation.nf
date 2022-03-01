@@ -448,6 +448,8 @@ def validateReferenceFiles(params)
     def layoutFile = file(params.LAYOUT_TABLE)
     def tumourMutationsFile = file(params.TUMOUR_MUTATIONS_CSV)
 
+    log.info "Set to process files in the ${params.STUDY} study/project."
+
     /*
      * Check the layout file.
      */
