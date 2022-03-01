@@ -14,14 +14,19 @@
  */
 def combineIndexFileWithMutationsFiles(indexFile, mutationsFiles)
 {
-    def indexContent = com.xlson.groovycsv.CsvParser.parseCsv(indexFile.getText('UTF-8'))
-
     def tuples = []
-    for (file in mutationsFiles)
+    indexFile.withReader
     {
-        def fileInfo = indexContent.find { row -> row.FILE_NAME == file.name }
-        assert fileInfo : "No information in ${indexFile.name} found for ${file.name}"
-        tuples << tuple(fileInfo.SAMPLE_ID, fileInfo.PATIENT_MUTATION_BELONGS_TO, file)
+        reader ->
+
+        def indexContent = com.xlson.groovycsv.CsvParser.parseCsv(reader)
+
+        for (file in mutationsFiles)
+        {
+            def fileInfo = indexContent.find { row -> row.FILE_NAME == file.name }
+            assert fileInfo : "No information in ${indexFile.name} found for ${file.name}"
+            tuples << tuple(fileInfo.SAMPLE_ID, fileInfo.PATIENT_MUTATION_BELONGS_TO, file)
+        }
     }
     return tuples
 }

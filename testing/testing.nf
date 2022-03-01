@@ -147,10 +147,10 @@ workflow
     // Generalised Likelihood Ratio Test
 
     generalisedLikelihoodRatioTestChannelSpecific = channel.of(['SLX-19721:SXTLI001', 'PARA_002']).combine(
-        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/mutation_table.outliersuppressed.SLX-19721.SXTLI001.1.rds"))
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/mutation_table.outliersuppressed.SLX19721SXTLI001.1.rds"))
 
     generalisedLikelihoodRatioTestChannelNonSpecific = channel.of(['SLX-19721:SXTLI001', 'PARA_028']).combine(
-        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/mutation_table.outliersuppressed.SLX-19721.SXTLI001.3.rds"))
+        channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/mutation_table.outliersuppressed.SLX19721SXTLI001.3.rds"))
 
     generalisedLikelihoodRatioTestSizeChannel =
         channel.fromPath("testdata/generalisedLikelihoodRatioTest/source/size_characterisation.rds")

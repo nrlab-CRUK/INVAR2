@@ -10,8 +10,8 @@ def findFileOnPath(path, filename)
 {
     def pathParts = path.split(Pattern.quote(File.pathSeparator))
     def dirFiles = []
-    
-    for (def dirPath in pathParts)
+
+    for (dirPath in pathParts)
     {
         def dir = new File(dirPath)
         if (dir.directory)
@@ -20,7 +20,7 @@ def findFileOnPath(path, filename)
         }
     }
 
-    for (def dir in dirFiles)
+    for (dir in dirFiles)
     {
         def file = new File(dir, filename)
         if (file.exists())
@@ -28,7 +28,7 @@ def findFileOnPath(path, filename)
             return file.absolutePath
         }
     }
-    
+
     // Return a file path that can (probably) never exist.
     return "/dev/null/${filename}"
 }

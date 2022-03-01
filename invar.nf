@@ -11,8 +11,8 @@ import static org.apache.commons.lang3.StringUtils.trimToEmpty
 
 nextflow.enable.dsl = 2
 
-include { validatePipeline } from './functions/validation'
 include { findFileOnPath } from './functions/paths'
+include { validateParameters; validateReferenceFiles } from './functions/validation'
 include { parse } from './processes/1_parse'
 include { sizeAnnotation } from './processes/2_size_annotation'
 include { outlierSuppression } from './processes/3_outlier_suppression'
@@ -22,7 +22,17 @@ include { analysis } from './processes/5_analysis'
 /*
  * Check the pipeline is set up without basic errors.
  */
-if (!validatePipeline(params))
+if (!validateParameters(params))
+{
+    exit 1
+}
+
+/*
+ * Check the layout file has the required columns and has files for each
+ * sample in the study. Also check the tumour mutations file has the
+ * required columns.
+ */
+if (!validateReferenceFiles(params))
 {
     exit 1
 }

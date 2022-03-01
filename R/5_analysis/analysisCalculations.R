@@ -136,7 +136,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable)
     }
 
     layoutTable <- layoutTable %>%
-        select(SAMPLE_ID, CASE_OR_CONTROL, SAMPLE_TYPE, DATA_TYPE, TIMEPOINT)
+        select(SAMPLE_ID, CASE_OR_CONTROL, SAMPLE_TYPE, TIMEPOINT)
 
     assert_that(!any(invarScoresTable$DP < 0), msg = "Have negative DP.")
 

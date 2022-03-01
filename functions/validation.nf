@@ -1,9 +1,14 @@
+@Grab('com.xlson.groovycsv:groovycsv:1.3')
+
 /**
  * Validation pipeline configuration.
  * Make sure mandatory parameters are defined and all others are within acceptable ranges.
  */
 
+import java.util.regex.Pattern
 import static java.nio.file.Files.exists
+import static org.apache.commons.lang3.StringUtils.isBlank
+import static org.apache.commons.lang3.StringUtils.trimToEmpty
 
 /**
  * Check if value is a boolean.
@@ -30,7 +35,40 @@ def isNumber(value)
     return value instanceof Number
 }
 
-def validatePipeline(params)
+/**
+ * Find a file on a Unix/Windows style path list. The path is
+ * searched in order, and the first file found with an exact name
+ * match is returned. Returns null if there is no file with the name
+ * on any path.
+ */
+def findFileOnPath(path, filename)
+{
+    def pathParts = path.split(Pattern.quote(File.pathSeparator))
+    def dirFiles = []
+
+    for (dirPath in pathParts)
+    {
+        def dir = new File(dirPath)
+        if (dir.directory)
+        {
+            dirFiles << dir
+        }
+    }
+
+    for (dir in dirFiles)
+    {
+        def file = new File(dir, filename)
+        if (file.exists())
+        {
+            return file
+        }
+    }
+
+    return null
+}
+
+
+def validateParameters(params)
 {
     def errors = false
 
@@ -397,6 +435,173 @@ def validatePipeline(params)
         if (!isBoolean(ONLY_WEIGH_MUTANTS))
         {
             log.error "ONLY_WEIGH_MUTANTS must be true or false."
+            errors = true
+        }
+    }
+
+    return !errors
+}
+
+def validateReferenceFiles(params)
+{
+    def errors = false
+    def layoutFile = file(params.LAYOUT_TABLE)
+    def tumourMutationsFile = file(params.TUMOUR_MUTATIONS_CSV)
+
+    /*
+     * Check the layout file.
+     */
+
+    def requiredColumns = [ 'STUDY', 'SAMPLE_ID', 'BAM_FILE', 'CASE_OR_CONTROL', 'PATIENT',
+                            'INPUT_INTO_LIBRARY_NG', 'SAMPLE_NAME', 'SAMPLE_TYPE', 'TIMEPOINT' ]
+    def activeMarkers = [ '', 'yes', 'y', 'true', 't' ]
+
+    layoutFile.withReader
+    {
+        reader ->
+
+        def layoutContent = com.xlson.groovycsv.CsvParser.parseCsv(reader)
+        def lineNumber = 1
+        def uniqueSampleIds = new HashSet()
+        def uniqueBamFiles = new HashSet()
+        def activeBamCount = 0
+
+        for (line in layoutContent)
+        {
+            if (lineNumber == 1)
+            {
+                // First time through, check columns.
+
+                for (col in requiredColumns)
+                {
+                    if (!line.columns.containsKey(col))
+                    {
+                        log.error "${col} column is missing from the layout file."
+                        errors = true
+                    }
+                }
+
+                if (errors)
+                {
+                    break
+                }
+            }
+
+            ++lineNumber
+
+            if (isBlank(line.STUDY))
+            {
+                log.error "No STUDY on line ${lineNumber}."
+                errors = true
+            }
+
+            if (isBlank(line.SAMPLE_ID))
+            {
+                log.error "No SAMPLE_ID on line ${lineNumber}."
+                errors = true
+            }
+            else if (line.STUDY == params.STUDY)
+            {
+                if (uniqueSampleIds.contains(line.SAMPLE_ID))
+                {
+                    log.error "Have a duplicate SAMPLE_ID \"${line.SAMPLE_ID}\" within ${params.STUDY} (line ${lineNumber})."
+                    errors = true
+                }
+                uniqueSampleIds << line.SAMPLE_ID
+            }
+
+            if (line.STUDY == params.STUDY)
+            {
+                def active = trimToEmpty(line.ACTIVE).toLowerCase() in activeMarkers
+
+                if (isBlank(line.BAM_FILE))
+                {
+                    log.error "There is no BAM_FILE for sample ${line.SAMPLE_ID} (line ${lineNumber})."
+                    errors = true
+                }
+                else
+                {
+                    if (uniqueBamFiles.contains(line.BAM_FILE))
+                    {
+                        log.error "Have a duplicate BAM_FILE within ${params.STUDY} (line ${lineNumber})."
+                        errors = true
+                    }
+                    else
+                    {
+                        if (active)
+                        {
+                            def foundBamFile = findFileOnPath(params.BAM_PATH, line.BAM_FILE)
+                            if (foundBamFile)
+                            {
+                                ++activeBamCount
+                            }
+                            else
+                            {
+                                log.error "Could not locate \"${line.BAM_FILE}\" on BAM_PATH."
+                                errors = true
+                            }
+                        }
+                    }
+                    uniqueBamFiles << line.BAM_FILE
+                }
+
+                if (active)
+                {
+                    try
+                    {
+                        Double.valueOf(line.INPUT_INTO_LIBRARY_NG)
+                    }
+                    catch (NumberFormatException e)
+                    {
+                        log.error "INPUT_INTO_LIBRARY_NG is not a number (sample ${line.SAMPLE_ID}, line ${lineNumber})."
+                        errors = true
+                    }
+                }
+            }
+        }
+
+        if (lineNumber == 1)
+        {
+            log.warn "${params.LAYOUT_TABLE} is empty."
+            errors = true
+        }
+
+        if (activeBamCount == 0)
+        {
+            log.warn "There are no samples active for ${params.STUDY}."
+            errors = true
+        }
+    }
+
+    /*
+     * Check the tumour mutations file.
+     * We don't check the rows of this file, just that the required columns are present.
+     */
+
+    requiredColumns = [ 'CHROM', 'POS', 'REF', 'ALT', 'TUMOUR_AF', 'PATIENT' ]
+
+    tumourMutationsFile.withReader
+    {
+        reader ->
+
+        def tmIterator = com.xlson.groovycsv.CsvParser.parseCsv(reader)
+
+        if (tmIterator.hasNext())
+        {
+            def line = tmIterator.next()
+
+            for (col in requiredColumns)
+            {
+                if (!line.columns.containsKey(col))
+                {
+                    log.error "${col} column is missing from the tumour mutations file."
+                    errors = true
+                }
+            }
+        }
+        else
+        {
+            log.warn "${params.TUMOUR_MUTATIONS_CSV} is empty."
             errors = true
         }
     }
