@@ -219,7 +219,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable.biallelic) == 0)
     {
-        stop("No mutations after left multiallelic filtering.")
+        stop("No mutations left after multiallelic filtering.")
     }
 
     mutationTable.biallelic %>%

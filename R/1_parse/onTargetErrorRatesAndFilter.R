@@ -148,7 +148,12 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
     lowSamples <- test %>%
         filter(AF.x < afThreshold)
 
-    print(cor.test(lowSamples$AF.x, lowSamples$AF.y))
+    tryCatch({
+        print(cor.test(lowSamples$AF.x, lowSamples$AF.y))
+    },
+    error = function(e) {
+        warning("Couldn't run correlation test: ", e)
+    })
 
     doNotUse <- alleleFrequencyTable %>%
         filter(PATIENT_SPECIFIC & AF > afThreshold)
@@ -164,9 +169,16 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
 
 main <- function(scriptArgs)
 {
+    assert_that(file.exists(scriptArgs$MUTATIONS_TABLE_FILE), msg = str_c(scriptArgs$MUTATIONS_TABLE_FILE, " does not exist."))
+
     mutationTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
+
+    if (nrow(mutationTable) == 0)
+    {
+        stop("There are no mutations in the mutations table (", scriptArgs$MUTATIONS_TABLE_FILE, ").")
+    }
 
     lociErrorRateTable <- mutationTable %>%
         createLociErrorRateTable(proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
@@ -185,10 +197,20 @@ main <- function(scriptArgs)
         mutate(LOCUS_NOISE.PASS = UNIQUE_POS %in% lociErrorRateNoisePass$UNIQUE_POS,
                BOTH_STRANDS.PASS = ALT_F > 0 & ALT_R > 0 | AF == 0)
 
+    if (nrow(mutationTable.filtered) == 0)
+    {
+        stop("There are no mutations left after filtering for locus noise pass filter.")
+    }
+
     contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$ALLELE_FREQUENCY_THRESHOLD)
 
     mutationTable.filtered <- mutationTable.filtered %>%
         mutate(CONTAMINATION_RISK.PASS = !SAMPLE_ID %in% contaminatedSamples$SAMPLE_ID)
+
+    if (nrow(mutationTable.filtered) == 0)
+    {
+        stop("There are no mutations left after filtering out those from contaminated samples.")
+    }
 
     mutationTable.filtered %>%
         removeMutationTableDerivedColumns() %>%

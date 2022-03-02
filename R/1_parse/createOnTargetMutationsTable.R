@@ -377,7 +377,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable) == 0)
     {
-        stop("There a no mutations in the mutations table (", scriptArgs$MUTATIONS_TABLE_FILE, ").")
+        stop("There are no mutations in the mutations table (", scriptArgs$MUTATIONS_TABLE_FILE, ").")
     }
 
     mutationTable <- mutationTable %>%
@@ -386,7 +386,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable) == 0)
     {
-        stop("There a no on-target mutations in the mutations table.")
+        stop("There are no on-target mutations in the mutations table.")
     }
 
     errorRatesList <- readRDS(scriptArgs$ERROR_RATES_FILE)
@@ -403,6 +403,11 @@ main <- function(scriptArgs)
 
     mutationTable.withPatientAndBackground <-
         addPatientAndBackgroundColumns(mutationTable, tumourMutationTable, layoutTable, backgroundErrorTable)
+
+    if (nrow(mutationTable.withPatientAndBackground) == 0)
+    {
+        stop("There are no on-target mutations after filtering for background.")
+    }
 
     backgroundErrorTable %>%
         saveRDS('background_error_rates.rds')
