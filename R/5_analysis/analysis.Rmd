@@ -133,7 +133,11 @@ plots$P13b
 # IR (depth) to IMAF
 
 ```{r fig.width = 6, fig.height = 4, echo = FALSE}
-plots$P14
+if (is.null(plots$P14)) {
+    warning("There is no IF patient data from which to create the IF to IMAF plot.")
+} else {
+    plots$P14
+}
 ```
 
 # Waterfall Plots
@@ -141,26 +145,40 @@ plots$P14
 ## Detectable vs non detectable using dPCR
 
 ```{r fig.width = 10, fig.height = 5, echo = FALSE}
-plots$P15
+if (is.null(plots$P15)) {
+    warning("There is no patient specific GLRT data from which to create the detectable/non detectable plot.")
+} else {
+    plots$P15
+}
 ```
 
 ## Cancer genomes
 
 ```{r fig.width = 10, fig.height = 5, echo = FALSE}
-plots$P16
+if (is.null(plots$P16)) {
+    warning("There is no patient specific GLRT data from which to create the cancer genomes waterfall plot.")
+} else {
+    plots$P16
+}
 ```
 
 # dPCR comparison plot
 
 ```{r fig.width = 8, fig.height = 5, echo = FALSE}
-plots$P17
+if (is.null(plots$P17)) {
+    warning("There is no patient specific GLRT data from which to create the dPCR comparison plot.")
+} else {
+    plots$P17
+}
 ```
 
 # Mutation Tracking
 
 ```{r, echo = FALSE}
-toYesNo <- function(v) { ifelse(v, 'Yes', 'No' ) }
-mutationTrackingTable %>%
-    mutate_if(is.logical, toYesNo) %>%
-    kable()
+if (nrow(mutationTrackingTable) > 0) {
+    toYesNo <- function(v) { ifelse(v, 'Yes', 'No' ) }
+    mutationTrackingTable %>%
+        mutate_if(is.logical, toYesNo) %>%
+        kable()
+}
 ```

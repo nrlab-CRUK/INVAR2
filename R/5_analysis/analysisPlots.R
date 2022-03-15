@@ -415,8 +415,22 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, w
     adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable) %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS)
 
-    scaledInvarResultsList <- adjustedScoresTable %>%
-        scaleInvarScores()
+    scaledInvarResultsList <-
+        tryCatch(
+        {
+            adjustedScoresTable %>%
+                scaleInvarScores()
+        },
+        error = function(cond)
+        {
+            warning(geterrmessage())
+            NULL
+        })
+
+    if (is.null(scaledInvarResultsList))
+    {
+        return(NULL)
+    }
 
     patientControlCutOffInfo <- scaledInvarResultsList[[cutoffName]]
 
@@ -474,6 +488,8 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, w
 
 depthToIMAFPlot <- function(ifPatientData)
 {
+    assert_that(!is.null(ifPatientData), msg = "ifPatientData is null")
+
     tmp_20k <- tibble(X = c(5e3,5e3,20000,20000), Y = c(0, 2e-04, 5e-05, 0))
 
     tmp_66k <- tibble(X = c(20000,20000, 66666, 66666), Y = c(0,5e-05, 1.5e-5, 0))
@@ -578,4 +594,32 @@ dpcrComparisionPlot <- function(annotatedPatientSpecificGLRT, study)
                            values = c("dodgerblue", "brown2"))
 
     plot
+}
+
+
+##
+# Function to render plots and trap any errors that are raised while
+# doing so, printing a warning instead. Returns the plot object passed
+# in if there is no error, nor NULL if there was an error rendering
+# the plot.
+#
+
+savePlotSafely <- function(plot, filename, width, height)
+{
+    if (is.null(plot))
+    {
+        return(NULL)
+    }
+
+    tryCatch(
+    {
+        ggsave(plot = plot, filename = filename,
+               width = width, height = height)
+        plot
+    },
+    error = function(cond)
+    {
+        warning("Could not render or save '", filename, "': ", geterrmessage())
+        NULL
+    })
 }

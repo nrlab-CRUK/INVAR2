@@ -86,7 +86,7 @@ parseOptions <- function()
 
 richTestOptions <- function()
 {
-    testhome <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/')
+    testhome <- str_c(Sys.getenv('INVAR_HOME'), '/emptytesting/testdata/')
     base <- str_c(testhome, 'runAnalysis/source/')
 
     list(
@@ -168,10 +168,22 @@ main <- function(scriptArgs)
                                              study = scriptArgs$STUDY, roundTo = 5L)
 
     ifPatientData <-
-        getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable)
+        tryCatch(
+        {
+            getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable)
+        },
+        error = function(cond)
+        {
+            warning(geterrmessage())
+            NULL
+        })
 
-    annotatedPatientSpecificGLRT <-
-        annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable)
+    annotatedPatientSpecificGLRT <- NULL
+    if (!is.null(ifPatientData))
+    {
+        annotatedPatientSpecificGLRT <-
+            annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable)
+    }
 
     mutationTrackingTable <-
         mutationTracking(mutationsTable, layoutTable, tumourMutationsTable, invarScoresTable)
@@ -182,9 +194,12 @@ main <- function(scriptArgs)
 
     exportCSV(calculateErrorRateSummary(errorRatesINV042), "error_rate_summary.csv")
 
-    exportCSV(ifPatientData$PATIENT_SPECIFIC_GLRT, 'patient_specific_GLRT.csv')
-    exportCSV(ifPatientData$IF_PATIENT_DATA, 'IF_patient_data.csv')
-    exportCSV(ifPatientData$THRESHOLD_EFFECTS, 'IR_threshold_effects.csv')
+    if (!is.null(ifPatientData))
+    {
+        exportCSV(ifPatientData$PATIENT_SPECIFIC_GLRT, 'patient_specific_GLRT.csv')
+        exportCSV(ifPatientData$IF_PATIENT_DATA, 'IF_patient_data.csv')
+        exportCSV(ifPatientData$THRESHOLD_EFFECTS, 'IR_threshold_effects.csv')
+    }
 
     mutationTrackingTable %>%
         arrangeMutationTableForExport() %>%
@@ -263,19 +278,205 @@ main <- function(scriptArgs)
 
     # IR (depth) to IMAF plot
 
-    plots$P14 <- depthToIMAFPlot(ifPatientData$IF_PATIENT_DATA)
+    plots$P14 <- NULL
+    if (!is.null(ifPatientData))
+    {
+        plots$P14 <- depthToIMAFPlot(ifPatientData$IF_PATIENT_DATA)
+    }
+
+    plots$P15 <- NULL
+    plots$P16 <- NULL
+    plots$P17 <- NULL
+    if (!is.null(annotatedPatientSpecificGLRT))
+    {
+        # Waterfall plot with detectable vs non detectable using dPCR
+
+        plots$P15 <- detectableWaterfallPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+
+        # Waterfall plot of cancer genomes
+
+        plots$P16 <- cancerGenomesWaterfallPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+
+        # dPCR comparision plot
+
+        plots$P17 <- dpcrComparisionPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+    }
+
+
+    ## Save the plots as individual files.
+
+    plots$P0 <-
+        savePlotSafely(plot = plots$P0,
+                       filename = "p0_on_target_locus_error_rates.pdf",
+                       width = 11, height = 7)
+
+    plots$P1 <-
+        savePlotSafely(plot = plots$P1,
+                       filename = "p1_cohort_mut_context.pdf",
+                       width = 6, height = 5)
+
+    # plot the AF by mutation class
+
+    plots$P2 <-
+        savePlotSafely(plot = plots$P2,
+                       filename = "p2_cohort_mut_AF_by_class.pdf",
+                       width = 6, height = 7)
+
+    # plot mutations per patient captured and passing pipeline filters
+
+    plots$P3 <-
+        savePlotSafely(plot = plots$P3,
+                       filename = "p3_cohort_mut_count_tumour.pdf",
+                       width = 6, height = 7)
+
+    # plot mutation class distribution by cohort
+
+    plots$P4 <-
+        savePlotSafely(plot = plots$P4,
+                       filename = "p4_cohort_mut_class.pdf",
+                       width = 6, height = 5)
+
+    # Case vs control error rates.
+
+    plots$P5 <-
+        savePlotSafely(plot = plots$P5,
+                       filename = "p5_background_error_comparison.case_vs_control.pdf",
+                       width = 6, height = 4)
+
+    # Summary plots
+
+    plots$P7 <-
+        savePlotSafely(plot = plots$P7,
+                       filename = "p7_background_error_rates.pdf",
+                       width = 8, height = 4)
+
+    plots$P9a <-
+        savePlotSafely(plot = plots$P9a,
+               filename = "p9a_error_rate_comparison.both_strands.pdf",
+               width = 6, height = 3)
+
+    plots$P9b <-
+        savePlotSafely(plot = plots$P9b,
+               filename = "p9b_error_rate_comparison.locus_noise.pdf",
+               width = 6, height = 3)
+
+    plots$P9c <-
+        savePlotSafely(plot = plots$P9c,
+               filename = "p9c_error_rate_comparison.locus_noise_both_strands.pdf",
+               width = 6, height = 3)
+
+    plots$P20 <-
+        savePlotSafely(plot = plots$P20,
+               filename = "p20_filtering_comparison.pdf",
+               width = 6, height = 4)
+
+    # Outlier suppression plots
+
+    plots$P6 <-
+        savePlotSafely(plot = plots$P6,
+               filename = "p6_os_data_retained.pdf",
+               width = 5, height = 6)
+
+    plots$P8 <-
+        savePlotSafely(plot = plots$P8,
+               filename = "p8_background_polishing.pdf",
+               width = 15, height = 12)
+
+    # Tumour AF in observed and unobserved loci.
+
+    plots$P10 <-
+        savePlotSafely(plot = plots$P10,
+               filename = "p10_tumour_AF_for_observed_non_observed_loci.pdf",
+               width = 5, height = 4)
+
+    # Fragment size per cohort, with different levels of error-suppression
+
+    plots$P11 <-
+        savePlotSafely(plot = plots$P11,
+               filename = "p11_size_comparison.pdf",
+               width = 6, height = 5)
+
+    # Enrichment level. This can be NULL if there were no rows to create the plot from.
+
+    if (is.null(plots$P12))
+    {
+        warning("There are no data points from which to create the enrichment level plot.")
+    }
+    else
+    {
+        plots$P12 <-
+            savePlotSafely(plot = plots$P12,
+                   filename = "p12_enrichment_ratios.pdf",
+                   width = 6, height = 5)
+    }
+
+    # Receiver Operating Characteristic Plots
+
+    plots$P13a <-
+        savePlotSafely(plot = plots$P13a,
+               filename = "p13a_receiver_operating_characteristic.pdf",
+               width = 4, height = 3)
+
+    plots$P13b <-
+        savePlotSafely(plot = plots$P13b,
+           filename = "p13b_receiver_operating_characteristic.no_size.pdf",
+           width = 4, height = 3)
+
+    # IR (depth) to IMAF plot
+
+    if (is.null(plots$P14))
+    {
+        warning("There is no IF patient data from which to create the IF to IMAF plot.")
+    }
+    else
+    {
+        plots$P14 <-
+            savePlotSafely(plot = plots$P14,
+                   filename = "p14_IR_vs_IMAF.pdf",
+                   width = 6, height = 4)
+    }
 
     # Waterfall plot with detectable vs non detectable using dPCR
 
-    plots$P15 <- detectableWaterfallPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+    if (is.null(plots$P15))
+    {
+        warning("There is no patient specific GLRT data from which to create the detectable/non detectable plot.")
+    }
+    else
+    {
+        plots$P15 <-
+            savePlotSafely(plot = plots$P15,
+                   filename = "p15_waterfall_IMAF.pdf",
+                   width = 10, height = 5)
+    }
 
     # Waterfall plot of cancer genomes
 
-    plots$P16 <- cancerGenomesWaterfallPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+    if (is.null(plots$P16))
+    {
+        warning("There is no patient specific GLRT data from which to create the cancer genomes waterfall plot.")
+    }
+    else
+    {
+        plots$P16 <-
+            savePlotSafely(plot = plots$P16,
+                   filename = "p16_waterfall_cancer_genomes.pdf",
+                   width = 10, height = 5)
+    }
 
-    # dPCR comparision plot
+    # dPCR comparison plot
 
-    plots$P17 <- dpcrComparisionPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
+    if (is.null(plots$P17))
+    {
+        warning("There is no patient specific GLRT data from which to create the dPCR comparison plot.")
+    }
+    else
+    {
+        plots$P17 <-
+            savePlotSafely(plot = plots$P17,
+                   filename = "p17_dPCR_comparison.pdf",
+                   width = 8, height = 5)
+    }
 
 
     ## Render the INVAR analysis report.
@@ -287,132 +488,6 @@ main <- function(scriptArgs)
                       output_format = rmarkdown::html_document(),
                       output_dir = getwd(),
                       output_file = str_c(scriptArgs$STUDY, "_invar2_analysis.html"))
-
-
-    ## Save the plots as individual files.
-
-    ggsave(plot = plots$P0,
-           filename = "p0_on_target_locus_error_rates.pdf",
-           width = 11, height = 7)
-
-    ggsave(plot = plots$P1,
-           filename = "p1_cohort_mut_context.pdf",
-           width = 6, height = 5)
-
-    # plot the AF by mutation class
-
-    ggsave(plot = plots$P2,
-           filename = "p2_cohort_mut_AF_by_class.pdf",
-           width = 6, height = 7)
-
-    # plot mutations per patient captured and passing pipeline filters
-
-    ggsave(plot = plots$P3,
-           filename = "p3_cohort_mut_count_tumour.pdf",
-           width = 6, height = 7)
-
-    # plot mutation class distribution by cohort
-
-    ggsave(plot = plots$P4,
-           filename = "p4_cohort_mut_class.pdf",
-           width = 6, height = 5)
-
-    # Case vs control error rates.
-
-    ggsave(plot = plots$P5,
-           filename = "p5_background_error_comparison.case_vs_control.pdf",
-           width = 6, height = 4)
-
-    # Summary plots
-
-    ggsave(plot = plots$P7,
-           filename = "p7_background_error_rates.pdf",
-           width = 8, height = 4)
-
-    ggsave(plot = plots$P9a,
-           filename = "p9a_error_rate_comparison.both_strands.pdf",
-           width = 6, height = 3)
-
-    ggsave(plot = plots$P9b,
-           filename = "p9b_error_rate_comparison.locus_noise.pdf",
-           width = 6, height = 3)
-
-    ggsave(plot = plots$P9c,
-           filename = "p9c_error_rate_comparison.locus_noise_both_strands.pdf",
-           width = 6, height = 3)
-
-    ggsave(plot = plots$P20,
-           filename = "p20_filtering_comparison.pdf",
-           width = 6, height = 4)
-
-    # Outlier suppression plots
-
-    ggsave(plot = plots$P6,
-           filename = "p6_os_data_retained.pdf",
-           width = 5, height = 6)
-
-    ggsave(plot = plots$P8,
-           filename = "p8_background_polishing.pdf",
-           width = 15, height = 12)
-
-    # Tumour AF in observed and unobserved loci.
-
-    ggsave(plot = plots$P10,
-           filename = "p10_tumour_AF_for_observed_non_observed_loci.pdf",
-           width = 5, height = 4)
-
-    # Fragment size per cohort, with different levels of error-suppression
-
-    ggsave(plot = plots$P11,
-           filename = "p11_size_comparison.pdf",
-           width = 6, height = 5)
-
-    # Enrichment level. This can be NULL if there were no rows to create the plot from.
-
-    if (is.null(plots$P12))
-    {
-        warning("There are no data points from which to create the enrichment level plot.")
-    }
-    else
-    {
-        ggsave(plot = plots$P12,
-               filename = "p12_enrichment_ratios.pdf",
-               width = 6, height = 5)
-    }
-
-    # Receiver Operating Characteristic Plots
-
-    ggsave(plot = plots$P13a,
-           filename = "p13a_receiver_operating_characteristic.pdf",
-           width = 4, height = 3)
-
-    ggsave(plot = plots$P13b,
-           filename = "p13b_receiver_operating_characteristic.no_size.pdf",
-           width = 4, height = 3)
-
-    # IR (depth) to IMAF plot
-
-    ggsave(plot = plots$P14,
-           filename = "p14_IR_vs_IMAF.pdf",
-           width = 6, height = 4)
-
-    # Waterfall plot with detectable vs non detectable using dPCR
-
-    ggsave(plot = plots$P15,
-           filename = "p15_waterfall_IMAF.pdf",
-           width = 10, height = 5)
-
-    # Waterfall plot of cancer genomes
-
-    ggsave(plot = plots$P16,
-           filename = "p16_waterfall_cancer_genomes.pdf",
-           width = 10, height = 5)
-
-    # dPCR comparision plot
-
-    ggsave(plot = plots$P17,
-           filename = "p17_dPCR_comparison.pdf",
-           width = 8, height = 5)
 }
 
 # Launch it.

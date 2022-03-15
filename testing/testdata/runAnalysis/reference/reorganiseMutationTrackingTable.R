@@ -14,7 +14,7 @@ invisible(assert_that(file.exists(args[1]), msg = str_c(args[1], " does not exis
 commonColumnNames <- c("PATIENT", "TIMEPOINT", "CASE_OR_CONTROL",
                        "INITIAL_MUTATIONS", "LOCUS_NOISE.PASS",
                        "MUTANTS_PATIENT_SPECIFIC", "MUTANTS_NON_SPECIFIC",
-                       "SPECIFIC_OUTLIER.PASS", "SPECIFIC.PASS", "NON_SPECIFIC.PASS",
+                       "MUTANT_OUTLIER.PASS", "SPECIFIC.PASS", "NON_SPECIFIC.PASS",
                        "WITH_SIZE.OUTLIER_PASS", "NO_SIZE.OUTLIER_PASS",
                        "WITH_SIZE.OUTLIER_FAIL", "NO_SIZE.OUTLIER_FAIL")
 

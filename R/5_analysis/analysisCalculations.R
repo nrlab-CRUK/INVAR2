@@ -15,7 +15,7 @@ convertComplementaryMutations <- function(backgroundErrorTable)
 
     complementary <- function(base)
     {
-        base == 'A' | base == 'G'
+        length(base) > 0 && (base == 'A' | base == 'G')
     }
 
     forward <- backgroundErrorTable %>%
@@ -46,8 +46,13 @@ calculateErrorRatesINV042 <- function(errorRatesTable, layoutTable)
         filter(str_detect(CASE_OR_CONTROL, "control"))
 
     cases <- errorRatesTable %>%
-        filter(CASE_OR_CONTROL == "case") %>%
-        slice_sample(n = nrow(controls), replace = TRUE)
+        filter(CASE_OR_CONTROL == "case")
+
+    if (nrow(cases) > 0)
+    {
+        cases <- cases %>%
+            slice_sample(n = nrow(controls), replace = TRUE)
+    }
 
     backgroundErrorTable <-
         bind_rows(cases, controls) %>%
@@ -249,7 +254,7 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
     invarScoreColumn <- ifelse(useSize, 'ADJUSTED_INVAR_SCORE.WITH_SIZE', 'ADJUSTED_INVAR_SCORE.NO_SIZE')
     useColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', invarScoreColumn, 'DP')
 
-    minimumSpecificDP <- min(specificInvarScores$DP)
+    minimumSpecificDP <- ifelse(nrow(specificInvarScores) == 0, 0, min(specificInvarScores$DP))
 
     # low sensitivity threshold based on lowest patient sample
 
@@ -262,9 +267,16 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
     # optimal.cutpoints does not like a tibble!
 
     cutPointInfo <-
-        OptimalCutpoints::optimal.cutpoints(data = as.data.frame(roc), X = 'ADJUSTED_INVAR_SCORE',
-                                            status = "PATIENT_SPECIFIC", tag.healthy = FALSE,
-                                            methods = "MaxSpSe", direction = "<")
+        tryCatch(
+        {
+            OptimalCutpoints::optimal.cutpoints(data = as.data.frame(roc), X = 'ADJUSTED_INVAR_SCORE',
+                                                status = "PATIENT_SPECIFIC", tag.healthy = FALSE,
+                                                methods = "MaxSpSe", direction = "<")
+        },
+        error = function(cond)
+        {
+            stop("OptimalCutpoints::optimal.cutpoints failed: ", geterrmessage())
+        })
 
     sizeCutOff <- cutPointInfo$MaxSpSe$Global$optimal.cutoff$cutoff
     maximumSpecificity <- max(cutPointInfo$MaxSpSe$Global$optimal.cutoff$Sp)
@@ -293,8 +305,16 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable)
     adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable) %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS)
 
-    scaledInvarResultsList <- adjustedScoresTable %>%
-        scaleInvarScores()
+    scaledInvarResultsList <-
+        tryCatch(
+        {
+            adjustedScoresTable %>%
+                scaleInvarScores()
+        },
+        error = function(cond)
+        {
+            stop("Patient IF data unavailable because of error: ", geterrmessage())
+        })
 
     patientSpecificGLRT <- scaledInvarResultsList$PATIENT_SPECIFIC %>%
         arrange(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
@@ -400,8 +420,8 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
                INITIAL_MUTATIONS, LOCUS_NOISE.PASS,
                MUTANTS_PATIENT_SPECIFIC, MUTANTS_NON_SPECIFIC,
                MUTANT_OUTLIER.PASS, SPECIFIC.PASS, NON_SPECIFIC.PASS,
-               WITH_SIZE.OUTLIER_PASS, NO_SIZE.OUTLIER_PASS,
-               WITH_SIZE.OUTLIER_FAIL, NO_SIZE.OUTLIER_FAIL) %>%
+               any_of(c('WITH_SIZE.OUTLIER_PASS', 'NO_SIZE.OUTLIER_PASS',
+                        'WITH_SIZE.OUTLIER_FAIL', 'NO_SIZE.OUTLIER_FAIL'))) %>%
         arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
 
     mutationTracking
