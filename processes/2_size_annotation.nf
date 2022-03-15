@@ -89,8 +89,7 @@ process annotateMutationsWithFragmentSize
             --mutations="!{mutationsFile}" \
             --fragment-sizes="!{fragmentSizesFile}" \
             --sample="!{sampleId}" \
-            --threads=!{task.cpus} \
-            !{params.containsKey('SAMPLING_SEED') ? "--sampling-seed=${params['SAMPLING_SEED']}" : ""}
+            --threads=!{task.cpus}
         """
 }
 

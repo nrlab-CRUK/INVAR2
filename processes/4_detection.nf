@@ -33,8 +33,7 @@ process generalisedLikelihoodRatioTest
             --minimum-fragment-length=!{params.MINIMUM_FRAGMENT_LENGTH} \
             --maximum-fragment-length=!{params.MAXIMUM_FRAGMENT_LENGTH} \
             --smoothing=!{params.SMOOTHING} \
-            !{params.ONLY_WEIGH_MUTANTS ? "--only-weigh-mutants" : ""} \
-            !{params.containsKey('SAMPLING_SEED') ? "--sampling-seed=${params['SAMPLING_SEED']}" : ""}
+            !{params.ONLY_WEIGH_MUTANTS ? "--only-weigh-mutants" : ""}
         """
 }
 
