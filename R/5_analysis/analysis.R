@@ -201,6 +201,11 @@ main <- function(scriptArgs)
         exportCSV(ifPatientData$THRESHOLD_EFFECTS, 'IR_threshold_effects.csv')
     }
 
+    if (!is.null(annotatedPatientSpecificGLRT))
+    {
+        exportCSV(annotatedPatientSpecificGLRT, 'annotated_patient_specific_GLRT.csv')
+    }
+
     mutationTrackingTable %>%
         arrangeMutationTableForExport() %>%
         exportCSV('mutations_tracking.csv')
@@ -352,49 +357,49 @@ main <- function(scriptArgs)
 
     plots$P9a <-
         savePlotSafely(plot = plots$P9a,
-               filename = "p9a_error_rate_comparison.both_strands.pdf",
-               width = 6, height = 3)
+                       filename = "p9a_error_rate_comparison.both_strands.pdf",
+                       width = 6, height = 3)
 
     plots$P9b <-
         savePlotSafely(plot = plots$P9b,
-               filename = "p9b_error_rate_comparison.locus_noise.pdf",
-               width = 6, height = 3)
+                       filename = "p9b_error_rate_comparison.locus_noise.pdf",
+                       width = 6, height = 3)
 
     plots$P9c <-
         savePlotSafely(plot = plots$P9c,
-               filename = "p9c_error_rate_comparison.locus_noise_both_strands.pdf",
-               width = 6, height = 3)
+                       filename = "p9c_error_rate_comparison.locus_noise_both_strands.pdf",
+                       width = 6, height = 3)
 
     plots$P20 <-
         savePlotSafely(plot = plots$P20,
-               filename = "p20_filtering_comparison.pdf",
-               width = 6, height = 4)
+                       filename = "p20_filtering_comparison.pdf",
+                       width = 6, height = 4)
 
     # Outlier suppression plots
 
     plots$P6 <-
         savePlotSafely(plot = plots$P6,
-               filename = "p6_os_data_retained.pdf",
-               width = 5, height = 6)
+                       filename = "p6_os_data_retained.pdf",
+                       width = 5, height = 6)
 
     plots$P8 <-
         savePlotSafely(plot = plots$P8,
-               filename = "p8_background_polishing.pdf",
-               width = 15, height = 12)
+                       filename = "p8_background_polishing.pdf",
+                       width = 15, height = 12)
 
     # Tumour AF in observed and unobserved loci.
 
     plots$P10 <-
         savePlotSafely(plot = plots$P10,
-               filename = "p10_tumour_AF_for_observed_non_observed_loci.pdf",
-               width = 5, height = 4)
+                       filename = "p10_tumour_AF_for_observed_non_observed_loci.pdf",
+                       width = 5, height = 4)
 
     # Fragment size per cohort, with different levels of error-suppression
 
     plots$P11 <-
         savePlotSafely(plot = plots$P11,
-               filename = "p11_size_comparison.pdf",
-               width = 6, height = 5)
+                       filename = "p11_size_comparison.pdf",
+                       width = 6, height = 5)
 
     # Enrichment level. This can be NULL if there were no rows to create the plot from.
 
@@ -406,21 +411,21 @@ main <- function(scriptArgs)
     {
         plots$P12 <-
             savePlotSafely(plot = plots$P12,
-                   filename = "p12_enrichment_ratios.pdf",
-                   width = 6, height = 5)
+                           filename = "p12_enrichment_ratios.pdf",
+                           width = 6, height = 5)
     }
 
     # Receiver Operating Characteristic Plots
 
     plots$P13a <-
         savePlotSafely(plot = plots$P13a,
-               filename = "p13a_receiver_operating_characteristic.pdf",
-               width = 4, height = 3)
+                       filename = "p13a_receiver_operating_characteristic.pdf",
+                       width = 4, height = 3)
 
     plots$P13b <-
         savePlotSafely(plot = plots$P13b,
-           filename = "p13b_receiver_operating_characteristic.no_size.pdf",
-           width = 4, height = 3)
+                       filename = "p13b_receiver_operating_characteristic.no_size.pdf",
+                       width = 4, height = 3)
 
     # IR (depth) to IMAF plot
 
@@ -432,8 +437,8 @@ main <- function(scriptArgs)
     {
         plots$P14 <-
             savePlotSafely(plot = plots$P14,
-                   filename = "p14_IR_vs_IMAF.pdf",
-                   width = 6, height = 4)
+                           filename = "p14_IR_vs_IMAF.pdf",
+                           width = 6, height = 4)
     }
 
     # Waterfall plot with detectable vs non detectable using dPCR
@@ -446,8 +451,8 @@ main <- function(scriptArgs)
     {
         plots$P15 <-
             savePlotSafely(plot = plots$P15,
-                   filename = "p15_waterfall_IMAF.pdf",
-                   width = 10, height = 5)
+                           filename = "p15_waterfall_IMAF.pdf",
+                           width = 10, height = 5)
     }
 
     # Waterfall plot of cancer genomes
@@ -460,8 +465,8 @@ main <- function(scriptArgs)
     {
         plots$P16 <-
             savePlotSafely(plot = plots$P16,
-                   filename = "p16_waterfall_cancer_genomes.pdf",
-                   width = 10, height = 5)
+                           filename = "p16_waterfall_cancer_genomes.pdf",
+                           width = 10, height = 5)
     }
 
     # dPCR comparison plot
@@ -474,8 +479,8 @@ main <- function(scriptArgs)
     {
         plots$P17 <-
             savePlotSafely(plot = plots$P17,
-                   filename = "p17_dPCR_comparison.pdf",
-                   width = 8, height = 5)
+                           filename = "p17_dPCR_comparison.pdf",
+                           width = 8, height = 5)
     }
 
 
