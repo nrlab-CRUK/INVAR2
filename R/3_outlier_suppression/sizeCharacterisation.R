@@ -95,6 +95,11 @@ main <- function(scriptArgs)
         bind_rows(sizeTables) %>%
         arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO, MUTANT, SIZE)
 
+    if (nrow(sizeCharacteristicsTable) == 0)
+    {
+        warning("There are no mutations from any of the mutations tables to form size characterisation from.")
+    }
+
     sizeCharacteristicsSummary <- sizeCharacteristicsTable %>%
         group_by(PATIENT_SPECIFIC, CASE_OR_CONTROL, MUTANT, SIZE) %>%
         summarise(COUNT = sum(TOTAL), .groups = "drop") %>%

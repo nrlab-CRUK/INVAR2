@@ -19,6 +19,8 @@ process markOutliers
         """
         Rscript --vanilla "!{params.projectHome}/R/3_outlier_suppression/outlierSuppression.R" \
             --mutations="!{mutationsFile}" \
+            --sample="!{sampleId}" \
+            --patient="!{patientMutationBelongsTo}" \
             --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD}
         """
 }

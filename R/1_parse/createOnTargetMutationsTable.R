@@ -176,10 +176,9 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
     # If the locus noise dataframe is completely clean - this means you have either a) set the locus noise threshold too low or b) not run enough control samples
     if (sum(errorRatesList$LOCUS_NOISE$MUTATION_SUM) == 0)
     {
-        stop(str_c("LOCUS NOISE mutant sum is zero.",
-                   "This is likely due to insufficient controls being run.",
-                   "Either run more controls or override this with a higher locus noise filter (beware higher background rates).",
-                   sep=' '))
+        warning("LOCUS NOISE mutant sum is zero. ",
+                "This is likely due to insufficient controls being run. ",
+                "Either run more controls or override this with a higher locus noise filter (beware higher background rates).")
     }
 
     thinLayoutTable <- layoutTable %>%
@@ -377,7 +376,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable) == 0)
     {
-        stop("There are no mutations in the mutations table (", scriptArgs$MUTATIONS_TABLE_FILE, ").")
+        warning("There are no mutations in the mutations table (", scriptArgs$MUTATIONS_TABLE_FILE, ").")
     }
 
     mutationTable <- mutationTable %>%
@@ -386,7 +385,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable) == 0)
     {
-        stop("There are no on-target mutations in the mutations table.")
+        warning("There are no on-target mutations in the mutations table.")
     }
 
     errorRatesList <- readRDS(scriptArgs$ERROR_RATES_FILE)
@@ -401,16 +400,16 @@ main <- function(scriptArgs)
         calculateBackgroundError(layoutTable) %>%
         errorTableComplementaryClasses()
 
+    backgroundErrorTable %>%
+        saveRDS('background_error_rates.rds')
+
     mutationTable.withPatientAndBackground <-
         addPatientAndBackgroundColumns(mutationTable, tumourMutationTable, layoutTable, backgroundErrorTable)
 
     if (nrow(mutationTable.withPatientAndBackground) == 0)
     {
-        stop("There are no on-target mutations after filtering for background.")
+        warning("There are no on-target mutations after filtering for background.")
     }
-
-    backgroundErrorTable %>%
-        saveRDS('background_error_rates.rds')
 
     mutationTable.withPatientAndBackground %>%
         removeMutationTableDerivedColumns() %>%

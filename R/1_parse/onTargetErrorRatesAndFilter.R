@@ -152,7 +152,7 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
         print(cor.test(lowSamples$AF.x, lowSamples$AF.y))
     },
     error = function(e) {
-        warning("Couldn't run correlation test: ", e)
+        message("Couldn't run correlation test: ", e)
     })
 
     doNotUse <- alleleFrequencyTable %>%
@@ -177,7 +177,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable) == 0)
     {
-        stop("There are no mutations in the mutations table (", scriptArgs$MUTATIONS_TABLE_FILE, ").")
+        warning("There are no mutations in the mutations table (", scriptArgs$MUTATIONS_TABLE_FILE, ").")
     }
 
     lociErrorRateTable <- mutationTable %>%
@@ -199,7 +199,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable.filtered) == 0)
     {
-        stop("There are no mutations left after filtering for locus noise pass filter.")
+        warning("There are no mutations left after filtering for locus noise pass filter.")
     }
 
     contaminatedSamples <- getContaminatedSamples(mutationTable.filtered, scriptArgs$ALLELE_FREQUENCY_THRESHOLD)
@@ -209,7 +209,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable.filtered) == 0)
     {
-        stop("There are no mutations left after filtering out those from contaminated samples.")
+        warning("There are no mutations left after filtering out those from contaminated samples.")
     }
 
     mutationTable.filtered %>%

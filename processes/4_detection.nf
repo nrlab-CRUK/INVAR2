@@ -26,6 +26,8 @@ process generalisedLikelihoodRatioTest
             --threads=!{task.cpus} \
             --mutations="!{osMutationsFile}" \
             --size-characterisation="!{sizeCharacterisationFile}" \
+            --sample="!{sampleId}" \
+            --patient="!{patientMutationBelongsTo}" \
             !{params.IS_BLOODSPOT ? "--bloodspot" : ""} \
             --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD} \
             --minimum-fragment-length=!{params.MINIMUM_FRAGMENT_LENGTH} \

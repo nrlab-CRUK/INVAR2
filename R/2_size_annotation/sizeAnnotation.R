@@ -91,7 +91,7 @@ convertComplementaryMutations <- function(fragmentSizesTable)
 
     complementary <- function(base)
     {
-        base == 'A' | base == 'G'
+        length(base) > 0 && (base == 'A' | base == 'G')
     }
 
     fragmentSizesTable %>%
@@ -284,18 +284,25 @@ main <- function(scriptArgs)
         addMutationTableDerivedColumns()
 
     # Expect the combination of pool, barcode and patient mutation belongs to to be
-    # unique in this file.
+    # unique in this file. If there are no mutations at all, that is ok.
 
     mutationsFileCheck <- mutationsTable %>%
         distinct(SAMPLE_ID) %>%
         mutate(MATCHING = SAMPLE_ID == scriptArgs$SAMPLE_ID)
 
-    assert_that(nrow(mutationsFileCheck) == 1,
-                msg = str_c("Do not have a single sample id in ", scriptArgs$MUTATIONS_TABLE_FILE))
+    if (nrow(mutationsFileCheck) == 0)
+    {
+        warning("There are no rows in ", basename(scriptArgs$MUTATIONS_TABLE_FILE))
+    }
+    else
+    {
+        assert_that(nrow(mutationsFileCheck) == 1,
+                    msg = str_c("Do not have a single sample id in ", scriptArgs$MUTATIONS_TABLE_FILE))
 
-    assert_that(all(mutationsFileCheck$MATCHING),
-                msg = str_c("Mutations in", scriptArgs$MUTATIONS_TABLE_FILE, "do not belong to ",
-                            scriptArgs$SAMPLE_ID, sep = " "))
+        assert_that(all(mutationsFileCheck$MATCHING),
+                    msg = str_c("Mutations in", scriptArgs$MUTATIONS_TABLE_FILE, "do not belong to ",
+                                scriptArgs$SAMPLE_ID, sep = " "))
+    }
 
     fragmentSizesTable <-
         read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci') %>%
@@ -314,6 +321,21 @@ main <- function(scriptArgs)
                  mc.cores = scriptArgs$THREADS)
 
     fileInfoTable <- bind_rows(fileInfoList)
+
+    if (nrow(fileInfoTable) == 0)
+    {
+        # When there are no rows, we need to write out an empty file info
+        # table (with headers). We also need to keep Nextflow happy by writing
+        # out a dummy patient file that is otherwise ignored.
+        fileInfoTable = tibble(SAMPLE_ID = character(), PATIENT_MUTATION_BELONGS_TO = character(), FILE_NAME = character())
+
+        filename <- str_c('mutation_table.with_sizes', makeSafeForFileName(scriptArgs$SAMPLE_ID), "dummy.rds", sep = '.')
+
+        mutationsTable %>%
+            filter(FALSE) %>%
+            removeMutationTableDerivedColumns() %>%
+            saveRDS(filename)
+    }
 
     if (any(duplicated(fileInfoTable$FILE_NAME)))
     {

@@ -20,6 +20,12 @@ parseOptions <- function()
         make_option(c("--mutations"), type="character", metavar="file",
                     dest="MUTATIONS_TABLE_FILE", help="The mutations table file (RDS) written by sizeAnnotation.R",
                     default=defaultMarker),
+        make_option(c("--sample"), type="character", metavar="string",
+                    dest="SAMPLE_ID", help="The sample identifier for the mutations table file",
+                    default=defaultMarker),
+        make_option(c("--patient"), type="character", metavar="string",
+                    dest="PATIENT_ID", help="The patient identifier for the mutations table file",
+                    default=defaultMarker),
         make_option(c("--outlier-suppression"), type="double", metavar="number",
                     dest="OUTLIER_SUPPRESSION", help="The outlier suppression threshold",
                     default=0.05))
@@ -50,7 +56,9 @@ richTestOptions <- function()
     base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/markOutliers/source/')
 
     list(
-        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.with_sizes.SLX-19721.SLXLI001.PARA_002.rds'),
+        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.with_sizes.SLX19721SLXLI001.PARA_002.rds'),
+        SAMPLE_ID = 'SLX-19721:SXTLI001',
+        PATIENT_ID = 'PARA_002',
         OUTLIER_SUPPRESSION = 0.05,
         SAMPLING_SEED = 1024L
     )
@@ -118,20 +126,38 @@ main <- function(scriptArgs)
         addMutationTableDerivedColumns()
 
     # Expect the combination of pool, barcode and patient mutation belongs to to be
-    # unique in this file.
+    # unique in this file. If the file is empty, that's fine too.
 
-    mutationsFileCheck <- mutationsTable %>%
-        distinct(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO)
+    if (nrow(mutationsTable) == 0)
+    {
+        warning("There are no rows in ", basename(scriptArgs$MUTATIONS_TABLE_FILE))
 
-    assert_that(nrow(mutationsFileCheck) == 1,
-                msg = str_c("Do not have single pool + barcode and patient (mutation belongs to) in ", scriptArgs$MUTATIONS_TABLE_FILE))
+        # The table won't have a column for OUTLIER.PASS
+        # It should be added before saving.
+        mutationsTable <- mutationsTable %>%
+            mutate(OUTLIER.PASS = logical())
+    }
+    else
+    {
+        mutationsFileCheck <- mutationsTable %>%
+            distinct(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO) %>%
+            mutate(MATCHING = SAMPLE_ID == scriptArgs$SAMPLE_ID & PATIENT_MUTATION_BELONGS_TO == scriptArgs$PATIENT_ID)
 
-    mutationsTable <- mutationsTable %>%
-        repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION)
+        assert_that(nrow(mutationsFileCheck) == 1,
+                    msg = str_c("Do not have single pool + barcode and patient (mutation belongs to) in ", scriptArgs$MUTATIONS_TABLE_FILE))
+
+        assert_that(all(mutationsFileCheck$MATCHING),
+                    msg = str_c("Mutations in", scriptArgs$MUTATIONS_TABLE_FILE, "do not belong to ",
+                                scriptArgs$SAMPLE_ID, "and patient (mutation belongs to)",
+                                scriptArgs$PATIENT_ID, sep = " "))
+
+        mutationsTable <- mutationsTable %>%
+            repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION)
+    }
 
     outputName <- str_c('mutation_table.outliersuppressed',
-                        makeSafeForFileName(mutationsFileCheck$SAMPLE_ID),
-                        makeSafeForFileName(mutationsFileCheck$PATIENT_MUTATION_BELONGS_TO),
+                        makeSafeForFileName(scriptArgs$SAMPLE_ID),
+                        makeSafeForFileName(scriptArgs$PATIENT_ID),
                         'rds', sep = '.')
 
     mutationsTable %>%

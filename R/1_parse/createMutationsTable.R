@@ -176,7 +176,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable.all) == 0)
     {
-        stop("There are no mutations at all! Have a look at the files in ", getwd())
+        warning("There are no mutations at all! Have a look at the files in ", getwd())
     }
 
 
@@ -186,17 +186,17 @@ main <- function(scriptArgs)
 
     mutationTable.filtered <- mutationTable.all %>%
         filter(!is.na(MQSB) &
-               MQSB > scriptArgs$MQSB_THRESHOLD &
-               DP < scriptArgs$MAX_DEPTH &
-               !SNP &
-               REF_R + REF_F >= scriptArgs$MIN_REF_DEPTH &
-               (ON_TARGET | !COSMIC))
+                   MQSB > scriptArgs$MQSB_THRESHOLD &
+                   DP < scriptArgs$MAX_DEPTH &
+                   !SNP &
+                   REF_R + REF_F >= scriptArgs$MIN_REF_DEPTH &
+                   (ON_TARGET | !COSMIC))
 
     message("Number of mutations after MQSB filter = ", nrow(mutationTable.filtered))
 
     if (nrow(mutationTable.filtered) == 0)
     {
-        stop("After first filtering there are no mutations left. Might need to tune the MQSB_THRESHOLD, MAXIMUM_DEPTH or MINIMUM_REFERENCE_DEPTH parameters.")
+        warning("After first filtering there are no mutations left. Might need to tune the MQSB_THRESHOLD, MAXIMUM_DEPTH or MINIMUM_REFERENCE_DEPTH parameters.")
     }
 
     # Filter out positions that are multiallelic.
@@ -219,7 +219,7 @@ main <- function(scriptArgs)
 
     if (nrow(mutationTable.biallelic) == 0)
     {
-        stop("No mutations left after multiallelic filtering.")
+        warning("No mutations left after multiallelic filtering.")
     }
 
     mutationTable.biallelic %>%

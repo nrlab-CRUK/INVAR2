@@ -25,6 +25,12 @@ parseOptions <- function()
         make_option(c("--size-characterisation"), type="character", metavar="file",
                     dest="SIZE_CHARACTERISATION_FILE", help="The size characterisation summary file (RDS)",
                     default=defaultMarker),
+        make_option(c("--sample"), type="character", metavar="string",
+                    dest="SAMPLE_ID", help="The sample identifier for the mutations table file",
+                    default=defaultMarker),
+        make_option(c("--patient"), type="character", metavar="string",
+                    dest="PATIENT_ID", help="The patient identifier for the mutations table file",
+                    default=defaultMarker),
         make_option(c("--bloodspot"), action="store_true", default=FALSE,
                     dest="BLOODSPOT", help="Indicate this is blood spot data."),
         make_option(c("--outlier-suppression"), type="double", metavar="number",
@@ -76,9 +82,11 @@ richTestOptions <- function()
     list(
         # Sample 1 is PARA_002. Sample 3 is PARA_028.
 
-        #MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.SLX-19721.SXTLI001.1.rds'),
-        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.SLX-19721.SXTLI001.3.rds'),
+        #MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.SLX19721SXTLI001.1.rds'),
+        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.SLX19721SXTLI001.3.rds'),
         SIZE_CHARACTERISATION_FILE = str_c(base, 'size_characterisation.rds'),
+        SAMPLE_ID = 'SLX-19721:SXTLI001',
+        PATIENT_ID = 'PARA_028',
         BLOODSPOT = FALSE,
         OUTLIER_SUPPRESSION = 0.05,
         THREADS = 4L,
@@ -417,43 +425,77 @@ main <- function(scriptArgs)
         filter(PATIENT_SPECIFIC) %>%
         select(MUTANT, SIZE, COUNT, TOTAL, PROPORTION)
 
-    mutationsInfo <- mutationsTable %>%
-        distinct(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
+    if (nrow(mutationsTable) == 0)
+    {
+        warning("Have no mutations in ", basename(scriptArgs$MUTATIONS_TABLE_FILE))
 
-    assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
+        # Create an empty table for saving.
 
-    # Create a table of all combinations of variable filter, then turn this into
-    # a list of single row tibbles. lapply can then be used to work on every
-    # sample + filter combination, and within that iterations can be run in parallel.
+        invarResultsTable <-
+            tibble(SAMPLE_ID = character(), PATIENT = character(),
+                   PATIENT_MUTATION_BELONGS_TO = character(),
+                   ITERATION = integer(), USING_SIZE = logical(),
+                   LOCUS_NOISE.PASS = logical(), BOTH_STRANDS.PASS = logical(),
+                   OUTLIER.PASS = logical(), CONTAMINATION_RISK.PASS = logical(),
+                   INVAR_SCORE = double(), AF_P = double(),
+                   NULL_LIKELIHOOD = double(), ALTERNATIVE_LIKELIHOOD = double(),
+                   DP = integer(), MUTATION_SUM = integer(),
+                   IMAF = double(), SMOOTH = double(),
+                   OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical())
+    }
+    else
+    {
+        mutationsInfo <- mutationsTable %>%
+            distinct(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
 
-    allFilterCombinations <-
-        crossing(OUTLIER.PASS = c(TRUE, FALSE),
-                 LOCUS_NOISE.PASS = TRUE,
-                 BOTH_STRANDS.PASS = TRUE)
+        assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
 
-    slicer <- function(n, table) { slice(table, n) }
+        mutationsFileCheck <- mutationsInfo %>%
+            mutate(MATCHING = SAMPLE_ID == scriptArgs$SAMPLE_ID & PATIENT_MUTATION_BELONGS_TO == scriptArgs$PATIENT_ID)
 
-    allFilterCombinationList <-
-        lapply(1:nrow(allFilterCombinations), slicer, allFilterCombinations)
+        assert_that(all(mutationsFileCheck$MATCHING),
+                    msg = str_c("Mutations in", scriptArgs$MUTATIONS_TABLE_FILE, "do not belong to ",
+                                scriptArgs$SAMPLE_ID, "and patient (mutation belongs to)",
+                                scriptArgs$PATIENT_ID, sep = " "))
 
-    invarResultsList <-
-        lapply(allFilterCombinationList, doMain,
-               scriptArgs, mutationsTable, sizeTable,
-               mc.set.seed = hasRNGSeed)
+        # Create a table of all combinations of variable filter, then turn this into
+        # a list of single row tibbles. lapply can then be used to work on every
+        # sample + filter combination, and within that iterations can be run in parallel.
 
-    invarResultsTable <-
-        bind_rows(invarResultsList) %>%
-        full_join(mutationsInfo, by = character()) %>%
-        select(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO,
-               ITERATION, USING_SIZE,
-               LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
-               INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
-               DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
-        arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
-                ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
+        allFilterCombinations <-
+            crossing(OUTLIER.PASS = c(TRUE, FALSE),
+                     LOCUS_NOISE.PASS = TRUE,
+                     BOTH_STRANDS.PASS = TRUE)
 
-    outputName <- str_c("invar_scores", makeSafeForFileName(mutationsInfo$SAMPLE_ID),
-                        makeSafeForFileName(mutationsInfo$PATIENT_MUTATION_BELONGS_TO), "rds", sep = ".")
+        slicer <- function(n, table) { slice(table, n) }
+
+        allFilterCombinationList <-
+            lapply(1:nrow(allFilterCombinations), slicer, allFilterCombinations)
+
+        invarResultsList <-
+            lapply(allFilterCombinationList, doMain,
+                   scriptArgs, mutationsTable, sizeTable,
+                   mc.set.seed = hasRNGSeed)
+
+        invarResultsTable <-
+            bind_rows(invarResultsList) %>%
+            full_join(mutationsInfo, by = character()) %>%
+            select(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO,
+                   ITERATION, USING_SIZE,
+                   LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
+                   INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
+                   DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
+            arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
+                    ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
+
+        if (nrow(invarResultsTable) == 0)
+        {
+            warning("No rows in INVAR results table.")
+        }
+    }
+
+    outputName <- str_c("invar_scores", makeSafeForFileName(scriptArgs$SAMPLE_ID),
+                        makeSafeForFileName(scriptArgs$PATIENT_ID), "rds", sep = ".")
 
     saveRDS(invarResultsTable, outputName)
 }
