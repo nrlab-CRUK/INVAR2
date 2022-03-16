@@ -156,7 +156,7 @@ calc_log_likelihood_with_RL <- function(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1 , 
     # This code will break if the tumour allele fraction is >1
     g = AF * (1 - e) + (1 - AF) * e
     L_0 <- (1 - e) * RL_PROB_0 * (1 - p) + (1 - g) * RL_PROB_1 * p
-    L_1 <- e * RL_PROB_0 * (1 - p) + (1 - g) * RL_PROB_1 * p
+    L_1 <- e * RL_PROB_0 * (1 - p) + (g) * RL_PROB_1 * p #changed g from (1-g) 16/03/22 EDitter
     sum(M * log(L_1) + (R - M) * log(L_0))
 }
 
