@@ -1,6 +1,8 @@
 # INVAR2
 
-A Nextflow based pipeline to do stuff.
+A Nextflow based pipeline to run the INVAR (Integration of VAriant Reads) analysis.
+
+Contact: Hui.zhao@cruk.cam.ac.uk, emma-jane.ditter@cruk.cam.ac.uk
 
 ## Documentation
 
