@@ -161,9 +161,11 @@ main <- function(scriptArgs)
         assert_that(file.exists(mutationsFile), msg = str_c(mutationsFile, " does not exist."))
     }
 
+    # Previously known as bed file
     tumourMutationTable <-
         loadTumourMutationsTable(scriptArgs$TUMOUR_MUTATIONS_FILE)
 
+    # Annotate all MUTATIONS_FILES with function loadMutationsTable
     mutationTable.all <-
         mclapply(scriptArgs$MUTATIONS_FILES,
                  loadMutationsTable,
