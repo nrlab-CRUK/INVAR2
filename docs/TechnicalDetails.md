@@ -16,9 +16,9 @@ Another dataframe with COSMIC mutation information is created for the same genom
 
 Returning to the raw data, a dataframe containing every read in the supplied bam files that overlaps with the genomic regions defined in the bed file/tumour mutations file is then annotated with all this information and more (tabix, cosmic, trinucleotide) in the "INVAR2/python/1_parse/addTabixAndTrinucleotides.py" script.
 
-createMutationsTable.R annotates if the bases on each read for each sample passes the cosmic and 1000genomes threshold and removes those with MQSB < defined threshold and blacklists those that have >=3 alt alleles or insufficient/too much depth. This function outputs a hidden mutation_table.filtered.rds file (to find the locaton type ```find -name mutation_table.filtered.rds``` while in the INVAR2 directory).
+The dataframe above is then filtered by the defined MQSB threshold and blacklists loci that have more than 3 alt alleles or insufficient/too much depth. It also annotates dataframe with True/False values if the loci passes the COSMIC and 1000 genomes thresholds. Done by "INVAR2/R/1-parse/createMutationsTable.R", it outputs a hidden mutation_table.filtered.rds file (to find the locaton type ```find -name mutation_table.filtered.rds``` while in the INVAR2 directory).
 
-offTargetErrorRates.R
+The error rates of each loci are then calculated in "INVAR2/R/1-parse/offTargetErrorRates.R" 
 Calls mutationTable which is 
 
 
