@@ -9,14 +9,14 @@ Before INVAR2 begins processing the input data, high level software checks are m
 
 The process begins by in "INVAR2/processes/1_parse.nf"
 
-The bed file is processed with slop in "INVAR2/templates/1_parse/slopPatientInfo.sh", and the bam files are processed such that only the regions defined in the bed file (tumour mutation file) is conserved. The pileups are done in "INVAR2/templates/1_parse/mpileup.sh"
+The bed file (tumour mutation file) is processed with slop in "INVAR2/templates/1_parse/slopPatientInfo.sh", and the bam files are processed such that only the regions defined in the bed file (tumour mutation file) is conserved. The pileups are done in "INVAR2/templates/1_parse/mpileup.sh"
 The multiallelic sites are split into biallelic records and the columns of interest are conserved ("INVAR2/templates/1_parse/biallelic.sh").
-A dataframe containing every loci of interest selected in the pileup (here +/- 10bp from the loci defined in the tumour mutations file) is created with the tabix information defining if it is a SNP as known from the tabix database.  (found via "INVAR2/templates/1_parse/tabix.sh").
-Another dataframe for COSMIC mutations in the same genomic positions is made.
+A dataframe containing every base pair in the pileup (here +/- 10bp from the loci defined in the tumour mutations file) is created and annotated with the tabix information defining if it is a SNP as known from the tabix database (tabix dataframe used). ("INVAR2/templates/1_parse/tabix.sh").
+Another dataframe with COSMIC mutation information is created for the same genomic positions.
 
-The raw data dataframe (every read in the supplied bam files that overlaps with the genomic regions defined in the bed file/tumour mutations file) is then annotated with all this information (tabix, cosmic, trinucleotide) with the "INVAR2/python/1_parse/addTabixAndTrinucleotides.py" script.
+Returning to the raw data, a dataframe containing every read in the supplied bam files that overlaps with the genomic regions defined in the bed file/tumour mutations file is then annotated with all this information and more (tabix, cosmic, trinucleotide) in the "INVAR2/python/1_parse/addTabixAndTrinucleotides.py" script.
 
-CreateMutationsTable.R annotates the bases on each read for each sample with cosmic, tabic, trinucleotide info and removes those with MQSB < threshold and blacklists those that have >=3 alt alleles or insufficient /too much depth. This function outputs a hidden mutation_table.filtered.rds file (to find the locaton type ```find -name mutation_table.filtered.rds``` in the INVAR2 directory).
+createMutationsTable.R annotates if the bases on each read for each sample passes the cosmic and 1000genomes threshold and removes those with MQSB < defined threshold and blacklists those that have >=3 alt alleles or insufficient/too much depth. This function outputs a hidden mutation_table.filtered.rds file (to find the locaton type ```find -name mutation_table.filtered.rds``` while in the INVAR2 directory).
 
 offTargetErrorRates.R
 Calls mutationTable which is 
