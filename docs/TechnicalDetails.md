@@ -34,13 +34,18 @@ Calls mutationTable which is
 
 ## Step 2
 
+Size Characterisation step: it quantifies the fragment length of all fragments in the pile up. 
+
 ## Step 3
 
 ## Step 4
 
-## Step 5
+The script "GeneralisedLikelihoodRatioTest.R" calculated the log likelihood of ctDNAbeing present in each sample, and outputs it as an INVAR score. It calculated an INVAR score for when the fragment size distribution is taken into account, and an INVAR score for when the fragment sizes are neglected. An INVAR score is calculated for each sample when called against the their own patient specific panel, and an invar score is calculated when other patient samples are called against the patient specific panel, to act as controls. 
 
-The script "GeneralisedLikelihoodRatioTest.R" calculated the loglikelihood of ctDNAbeing present in each sample, and outputs it as an INVAR score. It calculated an INVAR score for when the fragment size distribution is taken into account, and an INVAR score for when the fragment sizes are neglected. The script reads in INVAR2/results/mutation_table.rds and calculates the distribution of fragment lengths of all samples and removes the fragments belonging to the sample in question (to avoid a circular calculation). It calculates the probability distribution of reads for healthy and mutant reads in the range of the predefined read lengths ( minFragmentLength to maxFragmentLength as defined in the parameters). There is the posibility of weighting non-mutant molecules to a constant. \textcolor{red}{WHY IS IT 0.1?}. The probabilities of each length are kept as probabilities if the read is mutant, and set to 0.1 if not. \textcolor{red}{WHY ARE THERE MUTANT READS IN HEALTHY DISTRIBUTION?!!! line 205 in generaliseLikelihoodRatioTest.R excludes mutant. Does it mean to exclude "cases"?}.
+The script reads in the individual mutation_table.outliersuppressed.*.rds from each sample passed through 3-outlier_suppression.nf (these are intermediate files hidden within /work/ and can be found by '''find -name mutation_table.outliersuppressed.*.rds). It then calculates the distribution of fragment lengths of all samples and removes the fragments belonging to the sample in question (to avoid a circular calculation). It calculates the probability distribution of reads for healthy and mutant reads across all samples (only includes case reads) in the range of the predefined read lengths (minFragmentLength to maxFragmentLength as defined in the parameters). There is the posibility of weighting non-mutant molecules to a constant. \textcolor{red}{WHY IS IT 0.1?}. The probabilities of each length are kept as probabilities if the read is mutant, and set to 0.1 if not. 
+This is then fed into the calc_likelihood_ratio_with_RL function which calculated the log likelihood of ctDNA being present in the sample given an estimate of the ctDNA from the expectation maximisation algorithm. This outputs a constant, which is output as the INVAR score for that sample. Each patient panel is called against the patient sample, and a patient specific INVAR score is output, and against other patient samples, outputting a control INVAR score. This latter step is repeated 10 times. 
+
+## Step 5
 
 
 

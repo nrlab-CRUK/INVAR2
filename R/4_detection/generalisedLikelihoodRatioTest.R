@@ -447,7 +447,7 @@ main <- function(scriptArgs)
     {
         mutationsInfo <- mutationsTable %>%
             distinct(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
-
+        # MutationsInfo should be 1x3 
         assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
 
         mutationsFileCheck <- mutationsInfo %>%
@@ -468,10 +468,12 @@ main <- function(scriptArgs)
                      BOTH_STRANDS.PASS = TRUE)
 
         slicer <- function(n, table) { slice(table, n) }
-
+        
+        # False True True, or True True True
         allFilterCombinationList <-
             lapply(1:nrow(allFilterCombinations), slicer, allFilterCombinations)
 
+        # Loop over list of files and allFilterCombinationList options
         invarResultsList <-
             lapply(allFilterCombinationList, doMain,
                    scriptArgs, mutationsTable, sizeTable,

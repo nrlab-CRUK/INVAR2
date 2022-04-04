@@ -160,7 +160,7 @@ calc_log_likelihood_with_RL <- function(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1 , 
     sum(M * log(L_1) + (R - M) * log(L_0))
 }
 
-## generates a list with the probability to get  a fragment length L, given fragment length counts from a tissue
+## generates a list with the probability to get a fragment length L, given fragment length counts from a tissue
 estimate_real_length_probability <- function(fragment_length, counts, bw_adjust = 0.03,
                                              min_length, max_length, error_tolerence = 1e-10)
 {
@@ -172,7 +172,7 @@ estimate_real_length_probability <- function(fragment_length, counts, bw_adjust 
         if (length(counts) > 1)
         {
             weights <- counts / sum(counts)
-
+            # KDE of fragment length function
             den <- density(fragment_length, weights = weights, adjust = bw_adjust,from = min_length - 0.5, to = max_length + 0.5)
             den_function <- approxfun(den)
 
