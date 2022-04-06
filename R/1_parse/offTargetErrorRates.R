@@ -78,18 +78,18 @@ richTestOptions <- function()
 #
 createLociErrorRateTable <- function(mutationTable,
                                      layoutTable,
-                                     proportion_of_controls,
-                                     max_background_mean_AF,
-                                     is.blood_spot)
+                                     proportionOfControls,
+                                     maxBackgroundMeanAF,
+                                     isBloodSpot)
 {
-    assert_that(is.number(proportion_of_controls), msg = "proportion_of_controls must be a number.")
-    assert_that(is.number(max_background_mean_AF), msg = "max_background_mean_AF must be a number.")
-    assert_that(is.flag(is.blood_spot), msg = "is.blood_spot must be a logical.")
+    assert_that(is.number(proportionOfControls), msg = "proportionOfControls must be a number.")
+    assert_that(is.number(maxBackgroundMeanAF), msg = "maxBackgroundMeanAF must be a number.")
+    assert_that(is.flag(isBloodSpot), msg = "isBloodSpot must be a logical.")
 
-    if (is.blood_spot)
+    if (isBloodSpot)
     {
-        message("sWGS/blood spot mutationTable, do not set a max_background_mean_AF value as it is not appropriate in the low unique depth setting")
-        max_background_mean_AF <- 1
+        message("sWGS/blood spot mutationTable, do not set a maxBackgroundMeanAF value as it is not appropriate in the low unique depth setting")
+        maxBackgroundMeanAF <- 1
     }
 
     layoutTable.cases <- layoutTable %>%
@@ -98,19 +98,17 @@ createLociErrorRateTable <- function(mutationTable,
     errorRateTable <- mutationTable %>%
         filter(SAMPLE_ID %in% layoutTable.cases$SAMPLE_ID) %>%
         mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SAMPLE_ID, NA)) %>%
-        group_by(UNIQUE_POS, TRINUCLEOTIDE) %>%
+        group_by(CHROM, POS, TRINUCLEOTIDE) %>%
         summarize(MUTATION_SUM = sum(ALT_F) + sum(ALT_R),
                   DP_SUM = sum(DP),
                   BACKGROUND_AF = MUTATION_SUM / DP_SUM,
                   N_SAMPLES = n_distinct(SAMPLE_ID),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
-        separate(UNIQUE_POS, sep = ':', into = c('CHROM', 'POS')) %>%
-        mutate(POS = as.integer(POS)) %>%
         select(CHROM, POS, TRINUCLEOTIDE, BACKGROUND_AF, MUTATION_SUM, DP_SUM,
                N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
-        mutate(LOCUS_NOISE.PASS = (N_SAMPLES_WITH_SIGNAL / N_SAMPLES) < proportion_of_controls &
-                                  BACKGROUND_AF < max_background_mean_AF)
+        mutate(LOCUS_NOISE.PASS = (N_SAMPLES_WITH_SIGNAL / N_SAMPLES) < proportionOfControls &
+                                  BACKGROUND_AF < maxBackgroundMeanAF)
 
     errorRateTable
 }
@@ -235,9 +233,9 @@ main <- function(scriptArgs)
     lociErrorRateTable <- mutationTable %>%
         filterForOffTarget(FALSE) %>%
         createLociErrorRateTable(layoutTable,
-                                 proportion_of_controls = scriptArgs$CONTROL_PROPORTION,
-                                 max_background_mean_AF = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY,
-                                 is.blood_spot = scriptArgs$BLOODSPOT)
+                                 proportionOfControls = scriptArgs$CONTROL_PROPORTION,
+                                 maxBackgroundMeanAF = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY,
+                                 isBloodSpot = scriptArgs$BLOODSPOT)
 
     saveRDS(lociErrorRateTable, 'locus_error_rates.off_target.rds')
 
