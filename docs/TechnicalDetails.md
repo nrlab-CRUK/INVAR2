@@ -11,7 +11,8 @@ More details in the working of each script is given below.
 
 ## Step 1
 
-The process begins by in "INVAR2/processes/1_parse.nf"
+This step parse's the input bam files to select the regions defined in the mutation file, create the pile up's and annotates each read with COSMIC, 1000genome and trinucleotide information. It is run in "INVAR2/processes/1_parse.nf".
+It creates a dataframe where each read (r_1, or forward read, and r_2, or reverse read) feature on each row, and are annotated with the trinucleotide context, COSMIC information at that location, and information from the 1000genomes project if the position is a known SNP. The error rates at each locus are output into a .rds file (results/locus_error_rates.on_target.rds) as are the off target, ie not patient specific genomic region error rates in results/error_rates.off_target.[no_/]cosmic.rds. 
 
 The bed file (tumour mutation file) is processed with slop in "INVAR2/templates/1_parse/slopPatientInfo.sh", and the bam files are processed such that only the regions defined in the bed file (tumour mutation file) is conserved. The pileups are done in "INVAR2/templates/1_parse/mpileup.sh"
 The multiallelic sites are split into biallelic records and the columns of interest are conserved ("INVAR2/templates/1_parse/biallelic.sh").
@@ -22,23 +23,26 @@ Returning to the raw data, a dataframe containing every read in the supplied bam
 
 The dataframe above is then filtered by the defined MQSB threshold and blacklists loci that have more than 3 alt alleles or insufficient/too much depth. It also annotates dataframe with True/False values if the loci passes the COSMIC and 1000 genomes thresholds. Done by "INVAR2/R/1-parse/createMutationsTable.R", it outputs a hidden mutation_table.filtered.rds file (to find the location type ```find -name mutation_table.filtered.rds``` while in the INVAR2 directory).
 
-The first of three filter flags (LOCUS_NOISE.PASS) is defined in "INVAR2/R/1-parse/offTargetErrorRates.R" where the error rates of each loci are then calculated in "INVAR2/R/1-parse/offTargetErrorRates.R". This mean the information of each base pair on each read is condensed into one row in the dataframe that corresponds to a single genomic location in the tumour mutations file (ie the read information is condensed into a single set of metrics). The loci error rates dataframes are saved by COSMIC on_target or off_target flag in "INVAR2/Results/error_rates.off_target.*.rds".
-
-
-Calls mutationTable which is 
-
-
-
-
+The first of three filter flags (LOCUS_NOISE.PASS) is defined in "INVAR2/R/1-parse/offTargetErrorRates.R" where the error rates of each loci are then calculated in "INVAR2/R/1-parse/offTargetErrorRates.R". This means the information of each base pair on each read is condensed into one row in the dataframe that corresponds to a single genomic location in the tumour mutations file (ie the read information is condensed into a single set of metrics). The loci error rates dataframes are saved by COSMIC on_target or off_target flag in "INVAR2/Results/error_rates.off_target.*.rds".
 
 
 ## Step 2
 
-Size Characterisation step: it quantifies the fragment length of all fragments in the pile up. 
+This step annotates the dataframe create above with the size information of each read, and summarises the size distribution of all reads into a dataframe. This process is run from  "INVAR2/processes/2_size_annotation.nf". 
+
+%The dataframe of all reads at the genomic regions of interest is annotated with the size of the fragment. An additional dataframe is created which counts the frequency of reads of each given length. This outputs /results/size_characterisation.rds dataframe. 
 
 ## Step 3
 
+This step performs outlier suppression on loci with abnormal signal. 
+
+%Runs INVAR2/R/3_outlier_suppression/outlierSuppression.R
+
+%Runs INVAR2/R/3_outlier_suppression/sizeCharacterisation.R which imports the osMutationsFile s from ???. Annotates dataframe with PATIENT_SPECIFIC flag (T/F) and binds for all sample. outputs INVAR2/results/size_characterisation.rds. 
+
 ## Step 4
+
+This step performs the generalised likelihood ration test on each sample and outputs an invar score. 
 
 The script "GeneralisedLikelihoodRatioTest.R" calculated the log likelihood of ctDNAbeing present in each sample, and outputs it as an INVAR score. It calculated an INVAR score for when the fragment size distribution is taken into account, and an INVAR score for when the fragment sizes are neglected. An INVAR score is calculated for each sample when called against the their own patient specific panel, and an invar score is calculated when other patient samples are called against the patient specific panel, to act as controls. 
 
