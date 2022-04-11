@@ -1,11 +1,11 @@
 # In depth details on INVAR2 functioning
 
 
-The INVAR2 pipeline is run through invar.nf, available to the top level of the GitHub directory.
+The INVAR2 pipeline is run through invar.nf, available to the top level of the GitHub directory, with inputs and constants defined in the nextflow.config text-like document. 
 
 Before INVAR2 begins processing the input data, high level software checks are made to ensure the input files can be located, the layout table is in the correct format, and all parameters have been defined.
 
-All the genomic locations that are in the patient panels are extracted from the input bam files and are annotated with COSMIC SNV and 1000 genome SNP information. The remaining loci then pass through 3 filters, LOCUS_NOISE.PASS that removes noisy loci with too many alt alleles or mutated in too many samples, BOTH_STRANDS.PASS, which makes sure the alt allele is found on both the forward and reverse strand, and OUTLIER_SUPPRESSION.PASS, which removes loci who's signal is an outlier. The remaining loci are then used to estimate the quantity of ctDNA in a sample, which is used to calculate the log likelihood of a mutation being present in the sample. The lo likelihood value is used to calculate an INVAR score, and detection is determined based on a threshold of 95\% specificity on the healthy control samples. 
+All the genomic locations that are in the patient panels are extracted from the input bam files and are annotated with COSMIC SNV and 1000 genome SNP information. The remaining loci then pass through 3 filters, LOCUS_NOISE.PASS that removes noisy loci with too many alt alleles or mutated in too many samples, BOTH_STRANDS.PASS, which makes sure the alt allele is found on both the forward and reverse strand, and OUTLIER_SUPPRESSION.PASS, or PASS, which removes loci who's signal is an outlier. The strength of the outlier suppression step is defined in the nextflow.config input "OUTLIER_SUPPRESSION_THRESHOLD", with default 0.05. The remaining loci are then used to estimate the quantity of ctDNA in a sample, which is used to calculate the log likelihood of a mutation being present in the sample. The log likelihood value is used to calculate an INVAR score, and detection is determined based on a threshold of 95\% specificity on the healthy control samples. 
 
 More details in the working of each script is given below. 
 
@@ -30,15 +30,12 @@ The first of three filter flags (LOCUS_NOISE.PASS) is defined in "INVAR2/R/1-par
 
 This step annotates the dataframe create above with the size information of each read, and summarises the size distribution of all reads into a dataframe. This process is run from  "INVAR2/processes/2_size_annotation.nf". 
 
-%The dataframe of all reads at the genomic regions of interest is annotated with the size of the fragment. An additional dataframe is created which counts the frequency of reads of each given length. This outputs /results/size_characterisation.rds dataframe. 
 
 ## Step 3
 
-This step performs outlier suppression on loci with abnormal signal. 
+This step performs outlier suppression on all loci based on the outlier suppression constant defined in nextflow.config file. The default value is 0.05 and helps define the last of three filter: the PASS filter. 
 
-%Runs INVAR2/R/3_outlier_suppression/outlierSuppression.R
-
-%Runs INVAR2/R/3_outlier_suppression/sizeCharacterisation.R which imports the osMutationsFile s from ???. Annotates dataframe with PATIENT_SPECIFIC flag (T/F) and binds for all sample. outputs INVAR2/results/size_characterisation.rds. 
+INVAR2/R/3_outlier_suppression/outlierSuppression.R imports the osMutationsFile's from hidden directory in work/ and calculates the quantity of circulating tumour DNA in the sample through the expectation maximisation algorithm. Using the estimated quantity of ctDNA, the binomial probability of seeing N mutant reads is calculated. The final filter, the PASS filter, is then defined as the probability of seeing a mutation greater than the outlier suppression constant (default 0.05) divided by the number of loci in that sample (multiple hypothesis testing). 
 
 ## Step 4
 
@@ -51,6 +48,10 @@ This is then fed into the calc_likelihood_ratio_with_RL function which calculate
 
 ## Step 5
 
+This step produces the plots available in INVAR2/analysis/ . 
 
+A .Rmd file is produced to explain the outputs in greater details. This step is open to further personalisation depending on individual use cases. 
+
+Note all modifications of this final step requires the whole of the pipeline to be rerun. 
 
 
