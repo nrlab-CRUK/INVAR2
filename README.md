@@ -11,3 +11,4 @@ Contact: Hui.zhao@cruk.cam.ac.uk, emma-jane.ditter@cruk.cam.ac.uk
 3. [Running INVAR2.](docs/Running.md)
 4. [Results and Analysis.](docs/ResultsAndAnalysis.md)
 5. [Indepth Technical Details.](docs/TechnicalDetails.md)
+6. [Running Instructions for Rosenfeld Lab members.](docs/RunningInstructionsRosenfeldLab.md)
