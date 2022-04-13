@@ -12,7 +12,8 @@ Change the paths to where you have stored your bam files (Note they MUST be on s
 
 ## Run it :)
 
-in your directory with all the files, run ```nextflow run nrlab-CRUK/INVAR2 -profile slurm```
+In your directory with all the files, run ```nextflow run nrlab-CRUK/INVAR2 -profile slurm```
+
 If any of your input .csv files are incorrectly filled in then red warnings will pop up and the process will stop. Else a list of processes will appear and will update as the code progresses. For a sample size of 36 patients, it takes approximately 60mins to run.
 
 
