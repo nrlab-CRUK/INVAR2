@@ -8,6 +8,22 @@ output:
     toc_float: TRUE
 ---
 
+INVAR2 aims to detect and quantify known patient-specific mutations in custom capture liquid biopsy data. 
+
+Pileups are performed with the input reads at patient-specific loci, which are annotated with trinucleotide context-specific error rates, 1000 genomes and COSMIC SNP information, and tumour allele fraction. The annotated dataframe is then split between on target data for patient-specific locations and non-patient-specific data based on initial mutation list. The size information of each of the mutant and wild-type reads is determined for the future weighing of mutations. A patient specific outlier suppression calculation is applied, which identifies noise based on knowledge of a large number of patient-specific loci. The INVAR2 algorithm then generates a score for each sample which includes the features mentioned above. Control samples are used to determine a threshold for the INVAR score.
+
+This document summarizes and explains the results of the pipeline.
+
+
+## Input data overview
+
+## Mutations per patient captured and passing pipeline filters
+
+```{r fig.width = 6, fig.height = 7, echo = FALSE}
+plots$P3
+```
+
+
 ## On Target Locus Error Rates
 
 Locus error rate = overall background error rate per locus, aggregated across control samples
@@ -28,11 +44,6 @@ plots$P1
 plots$P2
 ```
 
-## Mutations per patient captured and passing pipeline filters
-
-```{r fig.width = 6, fig.height = 7, echo = FALSE}
-plots$P3
-```
 
 ## Mutation class distribution by cohort
 
