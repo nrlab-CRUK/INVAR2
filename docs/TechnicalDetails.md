@@ -33,6 +33,8 @@ The first of three filter flags (LOCUS_NOISE.PASS) is defined in "INVAR2/R/1-par
 
 This step annotates the dataframe create above with the size information of each read, and summarises the size distribution of all reads into a dataframe. This process is run from  "INVAR2/processes/2_size_annotation.nf". 
 
+The step starts by creating a temporary file mutationlist.bed using the INVAR2/R/1_parse/patientListCsvToBed.R script from Step 1. This is then piped into INVAR2/templates/2_size_annotation/getFragmentSize.sh which runs INVAR2/python/2_size_annotation/getFragmentSize.py. getFragmentSize.py analyses each read in the pileup and analyses it with the alt allele and the size of the fragment as calculated by pysam version 0.17.0. Finally, the information is collated with the main data frame by INVAR2/R/2_size_annotation/sizeAnnotation.R
+
 
 ## Step 3
 
@@ -54,10 +56,14 @@ This is then fed into the calc_likelihood_ratio_with_RL function which calculate
 
 ## Step 5
 
-This step produces the plots available in INVAR2/analysis/ . 
+This step produces the plots available in analysis/ . 
+The plots in analysis/ are produced by INVAR2/R/5_analysis/analysis.R and calls NVAR2/R/5_analysis/analysisCalculations.R and INVAR2/R/5_analysis/analysisPlots.R
 
-A .Rmd file is produced to explain the outputs in greater details. This step is open to further personalisation depending on individual use cases. 
+A .Rmd file is produced to explain the outputs in greater details. 
 
-Note all modifications of this final step requires the whole of the pipeline to be rerun. 
+Step 5 is open to further personalisation depending on individual use cases. All modifications of this final step requires the whole of the pipeline to be rerun. 
+
+
+Note: any feedback or suggested improvements that might be useful to the wider community are appreciated. Please email: emma-jane.ditter@cruk.cam.ac.uk, hui.Zhao@cruk.cam.ac.uk or rosenfeld@cruk.cam.ac.uk. 
 
 
