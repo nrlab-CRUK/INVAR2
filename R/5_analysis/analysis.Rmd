@@ -17,7 +17,7 @@ This document summarizes and explains the results of the pipeline.
 
 ## Input data overview
 
-## Mutations per patient captured and passing pipeline filters
+## Mutations per patient captured and passing all pipeline filters
 
 ```{r fig.width = 6, fig.height = 7, echo = FALSE}
 plots$P3

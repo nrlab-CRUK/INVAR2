@@ -160,6 +160,12 @@ main <- function(scriptArgs)
         summarise(MUTATIONS = n_distinct(PATIENT, UNIQUE_POS), .groups = "drop") %>%
         arrange(PATIENT, MUTATIONS)
 
+    inputMutationsTable <- mutationsTable %>%
+        filter(PATIENT_SPECIFIC) %>%
+        group_by(PATIENT) %>%
+        summarise(INPUT_MUTATIONS = n_distinct(PATIENT, UNIQUE_POS), .groups = "drop") %>%
+        arrange(PATIENT, INPUT_MUTATIONS)
+    
     errorRatesINV042 <-
         calculateErrorRatesINV042(offTargetErrorRatesList[['PREFILTER']], layoutTable)
 
