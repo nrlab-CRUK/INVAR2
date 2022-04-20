@@ -40,7 +40,8 @@ loadLayoutTable <- function(layoutFile)
     #     mutate(SAMPLE_ID = str_c(SLX_ID, str_replace(BARCODE, '-', '_'), sep = '_'), .before = "SLX_ID") %>%
     #     select(-SLX_ID, -BARCODE)
 
-    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE))
+    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, col_types = cols(.default = "c"))) %>%
+        mutate(across(INPUT_INTO_LIBRARY_NG, as.double))
 }
 
 ##

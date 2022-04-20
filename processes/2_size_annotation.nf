@@ -52,7 +52,7 @@ process createSNVList
 
 process getFragmentSize
 {
-    memory '30g'
+    time '2h'
 
     tag "${sampleId}"
 

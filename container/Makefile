@@ -2,8 +2,8 @@
 version ?= latest
 
 build:
-	docker build --tag crukcibioinformatics/invar2:${version} .
+	docker build --tag nrlabcruk/invar2:${version} .
 
 release: build
-	docker push crukcibioinformatics/invar2:${version}
+	docker push nrlabcruk/invar2:${version}
 
