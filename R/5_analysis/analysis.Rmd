@@ -15,49 +15,105 @@ Pileups are performed with the input reads at patient-specific loci, which are a
 This document summarizes and explains the results of the pipeline.
 
 
-## Input data overview
+
+# Detection Results
+
+The output of INVAR2 is the classification of samples where cancer is either detected or not detected. 
+
+The table below summarises the output results of the pipeline. 
+
+### PLOT NEW RESULTS table
+
+INVAR2 classifies samples by comparing their INVAR score to a threshold value. The threshold value is established on the healthy controls such that a specificity of 95% is obtained. As the INVAR scores are continuous, a ROC curve can be plotted for different thresholds, as shown below. 
+
+## Receiver Operating Characteristic (ROC) Plots
+
+This ROC curve compared the INVAR scores when the fragment size information is taken into consideration. The black line compares the patient specific data when controlled against other patient data, whereas the red line shows patient specific data when controlled against healthy samples. 
+
+```{r fig.width = 4, fig.height = 3, echo = FALSE}
+plots$P13a
+```
+
+ROC curve when the INVAR score does not include fragment size information:
+
+```{r fig.width = 4, fig.height = 3, echo = FALSE}
+plots$P13b
+```
+
+
+# Input data overview
+
+A quick overview of the input data and output results are provided in the subsequent three figures. This will allow the users to rapidly check the quality of the pipeline outputs and debug most major issues. 
 
 ## Mutations per patient captured after read quality filtering and after all pipeline filters
+
+The histogram below shows the number of mutations per patient before and after the filtering steps. The INPUT_MUTATIONS corresponds to the number of mutations in a patient's panel, and MUTATIONS corresponds to the number of mutations conserved after the three filtering steps. Assuming a correctly designed panel and depending on the outlier suppression setting used, the vast majority (approximately 80-95%) of input mutations should be conserved after filtering.
 
 ```{r fig.width = 6, fig.height = 7, echo = FALSE}
 plots$P3_1
 ```
 
+## Fragment size distribution
+The fragment size distribution of the cohort is expected to follow the typical circulating tumour DNA pattern, with a mono-nucleosomal peak around 166bp, and a di-nucleosomal peak around 332bp. The plot below shows the fragment length distribution for mutant and non-mutant molecules in the supplied input samples. 
+```{r fig.width = 6, fig.height = 5, echo = FALSE}
+plots$P11
+```
+
+# Mutation Tracking
+
+The table below tracks the number of loci per input sample across the progression of the pipeline. The final four columns gives the classification of the sample as defined by the specified filter conditions. 
+```{r, echo = FALSE}
+if (nrow(mutationTrackingTable) > 0) {
+    toYesNo <- function(v) { ifelse(v, 'Yes', 'No' ) }
+    mutationTrackingTable %>%
+        mutate_if(is.logical, toYesNo) %>%
+        kable()
+}
+```
+
+# Outlier suppression plots
+
+## Data retained
+
+The effect of the outlier suppression parameter, OUTLIER_SUPPRESSION_THRESHOLD, as defined in the input parameters, is shown below. The higher the outlier suppression value is, the more severe the filtering, hence fewer loci are conserved. 
+```{r fig.width = 5, fig.height = 6, echo = FALSE}
+plots$P6
+```
+
+The three subsequent plots explore the relationship between the allele fraction of loci (as measured in the tumour or the sample) and the applied filters in INVAR2 (LOCUS_NOISE.PASS, BOTH_STRANDS, and OUTLIER_SUPPRESSION.PASS). 
 
 ## On Target Locus Error Rates
 
-Locus error rate = overall background error rate per locus, aggregated across control samples
-
+The plot below show the background locus error rates of all loci and coloured according to the LOCUS_NOISE.PASS filter threshold. The locus error rate was taken as the overall background error rate aggregated across all control samples. 
+The figure shows that loci with high background error rates are correctly removed from the cohort by the LOCUS_NOISE.PASS filter, as would be expected. 
 ```{r fig.width = 11, fig.height = 7, echo = FALSE}
 plots$P0
 ```
 
-## Cohort by Mutant Context
+## Background polishing
 
-```{r fig.width = 6, fig.height = 5, echo = FALSE}
-plots$P1
+The plot below shows the mutant allele fraction of each loci for each patient in the study. Each point is coloured in accordance to whether it has passed the outlier suppression filter PASS. This is done for both patient specific and non patient specific loci. 
+Our studies show that there is no correlation between mutant allele fraction and the outcome of the outlier suppression filter. Hence, loci with a range of VAF can be used in a patient panel and for signal detection. 
+
+```{r fig.width = 15, fig.height = 12, echo = FALSE}
+plots$P8
 ```
 
-## AF by mutation class
+## Tumour AF in observed and unobserved loci.
 
-```{r fig.width = 6, fig.height = 7, echo = FALSE}
-plots$P2
+This plot compares the detection rate of the tumour mutations in plasma data as a function of allele fraction. The data is split between patient and non-patient specific loci, and coloured according to if the mutations are observed in the plasma. 
+Our studies show that there is quasi no correlation between the AF and the detection rates of tumour mutations in the plasma. This confirms the conclusion that a range of AF can be used in the patient panel design, once detection limits are taken into considerations.
+```{r fig.width = 5, fig.height = 4, echo = FALSE}
+plots$P10
 ```
 
-
-## Mutation class distribution by cohort
-
-```{r fig.width = 6, fig.height = 5, echo = FALSE}
-plots$P4
-```
+# Summary plots of the background error rates
 
 ## Case vs control error rates
 
 ```{r fig.width = 8, fig.height = 4, echo = FALSE}
 plots$P5
 ```
-
-# Summary Plots
 
 ## Background error rates
 
@@ -89,35 +145,32 @@ plots$P9c
 plots$P20
 ```
 
-# Outlier suppression plots
 
-## Data retained
+# Mutation Context across samples
 
-```{r fig.width = 5, fig.height = 6, echo = FALSE}
-plots$P6
-```
-
-## Background polishing
-
-```{r fig.width = 15, fig.height = 12, echo = FALSE}
-plots$P8
-```
-
-# Tumour AF in observed and unobserved loci.
-
-```{r fig.width = 5, fig.height = 4, echo = FALSE}
-plots$P10
-```
-
-# Fragment size per cohort
-
-With different levels of error-suppression.
+Exploratory analysis of the effect of mutation context on detection, error rates and 
+## Cohort by Mutant Context
 
 ```{r fig.width = 6, fig.height = 5, echo = FALSE}
-plots$P11
+plots$P1
 ```
 
-# Enrichment level
+## AF by mutation class
+
+```{r fig.width = 6, fig.height = 7, echo = FALSE}
+plots$P2
+```
+
+
+## Mutation class distribution by cohort
+
+```{r fig.width = 6, fig.height = 5, echo = FALSE}
+plots$P4
+```
+
+# Additional Features
+
+## Enrichment level
 
 ```{r fig.width = 6, fig.height = 5, echo = FALSE}
 if (is.null(plots$P12)) {
@@ -125,20 +178,6 @@ if (is.null(plots$P12)) {
 } else {
     plots$P12
 }
-```
-
-# Receiver Operating Characteristic (ROC) Plots
-
-With size:
-
-```{r fig.width = 4, fig.height = 3, echo = FALSE}
-plots$P13a
-```
-
-Without size:
-
-```{r fig.width = 4, fig.height = 3, echo = FALSE}
-plots$P13b
 ```
 
 # IR (depth) to IMAF
@@ -183,13 +222,3 @@ if (is.null(plots$P17)) {
 }
 ```
 
-# Mutation Tracking
-
-```{r, echo = FALSE}
-if (nrow(mutationTrackingTable) > 0) {
-    toYesNo <- function(v) { ifelse(v, 'Yes', 'No' ) }
-    mutationTrackingTable %>%
-        mutate_if(is.logical, toYesNo) %>%
-        kable()
-}
-```
