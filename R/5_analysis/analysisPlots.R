@@ -91,6 +91,31 @@ mutationsPerPatientPlot <- function(patientSummaryTable, study)
     plot
 }
 
+inUsedMutationsPerPatientPlot <- function(patientSummaryTable, inputMutationsTable, study)
+{
+    assert_that(is.character(study), msg = "Study is expected to be a string")
+    
+    # Making dataframe for plotting
+    summaryTable <- left_join(patientSummaryTable, inputMutationsTable, by="PATIENT")
+    df_in <- stack(summaryTable[,2:3])
+    df_in=cbind(df_in ,patient=c(summaryTable[,1]))
+    
+    # Changing values for better understanding
+    colnames(df_in) = c("N_MUTATIONS" , "MUT_TYPE"  ,   "PATIENT")
+    # df_in[df_in=="MUTATIONS"]="MUTATIONS_POST_FILTERS"
+    # df_in <- data.frame(lapply(df_in, function(x) {gsub("[!INPUT_MUTATIONS]", "MUTATIONS_POST_FILTERS", x)}))
+    
+    plot <- df_in %>%
+        ggplot() + 
+        geom_bar(aes(x=PATIENT, y= N_MUTATIONS, fill=MUT_TYPE ), stat="identity",position = "dodge") +
+        theme_classic()+
+        labs(x = "Patient",
+             y = "Tumour mutations",
+             title = str_c("Tumour mutation count in ", study, " cohort"))
+    
+    plot    
+}
+
 mutationClassByCohortPlot <- function(contextMutationsTable, study)
 {
     contextMutationsClassSummary <- contextMutationsTable %>%

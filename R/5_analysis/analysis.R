@@ -209,6 +209,9 @@ main <- function(scriptArgs)
 
     # plot mutations per patient captured and passing pipeline filters
     plots$P3 <- mutationsPerPatientPlot(patientSummaryTable, study = scriptArgs$STUDY)
+    
+    # plot mutations per patient captured and passing pipeline filters
+    plots$P3_1 <- inUsedMutationsPerPatientPlot(patientSummaryTable, inputMutationsTable, study = scriptArgs$STUDY)
 
     # plot mutation class distribution by cohort
     plots$P4 <- mutationClassByCohortPlot(contextMutationsTable, study = scriptArgs$STUDY)
