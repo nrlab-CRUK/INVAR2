@@ -13,18 +13,7 @@
 
 loadTumourMutationsTable <- function(tumourMutationsFile)
 {
-    # When reading from an unconverted file, it was:
-    # read_csv(tumourMutationsFile, col_types = 'ciccd', show_col_types = FALSE) %>%
-    #     select(-contains('uniq'), -any_of('mut')) %>%
-    #     rename_with(str_trim) %>%
-    #     rename_with(str_to_upper) %>%
-    #     rename(CHROM = CHR) %>%
-    #     mutate(MUTATION_CLASS = str_c(REF, ALT, sep='/'),
-    #            UNIQUE_POS = str_c(CHROM, POS, sep=':'),
-    #            UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION_CLASS, sep='_'),
-    #            UNIQUE_PATIENT_POS = str_c(PATIENT, UNIQUE_POS, sep='_'))
-
-    read_csv(tumourMutationsFile, col_types = 'ciccd', show_col_types = FALSE) %>%
+    read_csv(tumourMutationsFile, col_names = TRUE, col_types = cols(POS = 'i', TUMOUR_AF = 'd', .default = 'c')) %>%
         mutate(MUTATION_CLASS = str_c(REF, ALT, sep='/'),
                UNIQUE_POS = str_c(CHROM, POS, sep=':'),
                UNIQUE_ALT = str_c(UNIQUE_POS, MUTATION_CLASS, sep='_'),
@@ -33,15 +22,8 @@ loadTumourMutationsTable <- function(tumourMutationsFile)
 
 loadLayoutTable <- function(layoutFile)
 {
-    # When reading from an unconverted file, it was:
-    # suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, show_col_types = FALSE)) %>%
-    #     rename_with(str_trim) %>%
-    #     rename_with(str_to_upper) %>%
-    #     mutate(SAMPLE_ID = str_c(SLX_ID, str_replace(BARCODE, '-', '_'), sep = '_'), .before = "SLX_ID") %>%
-    #     select(-SLX_ID, -BARCODE)
-
-    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE, col_types = cols(.default = "c"))) %>%
-        mutate(across(INPUT_INTO_LIBRARY_NG, as.double))
+    suppressWarnings(read_csv(file = layoutFile, col_names = TRUE,
+                              col_types = cols(INPUT_INTO_LIBRARY_NG = 'd', .default = 'c')))
 }
 
 ##

@@ -73,31 +73,6 @@ parseOptions <- function()
     scriptOptions
 }
 
-# Test options for my (Rich) local set up in RStudio.
-
-richTestOptions <- function()
-{
-    base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/generalisedLikelihoodRatioTest/source/')
-
-    list(
-        # Sample 1 is PARA_002. Sample 3 is PARA_028.
-
-        #MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.SLX19721SXTLI001.1.rds'),
-        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.outliersuppressed.SLX19721SXTLI001.3.rds'),
-        SIZE_CHARACTERISATION_FILE = str_c(base, 'size_characterisation.rds'),
-        SAMPLE_ID = 'SLX-19721:SXTLI001',
-        PATIENT_ID = 'PARA_028',
-        BLOODSPOT = FALSE,
-        OUTLIER_SUPPRESSION = 0.05,
-        THREADS = 4L,
-        MINIMUM_FRAGMENT_LENGTH = 60L,
-        MAXIMUM_FRAGMENT_LENGTH = 300L,
-        SMOOTHING = 0.25,
-        ONLY_WEIGH_MUTANTS = TRUE,
-        SAMPLING_SEED = 1024L
-    )
-}
-
 
 ##
 # From TAPAS_functions.R, originally calculate_IMAFv2.
@@ -447,7 +422,7 @@ main <- function(scriptArgs)
     {
         mutationsInfo <- mutationsTable %>%
             distinct(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
-        # MutationsInfo should be 1x3 
+        # MutationsInfo should be 1x3
         assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
 
         mutationsFileCheck <- mutationsInfo %>%
@@ -468,7 +443,7 @@ main <- function(scriptArgs)
                      BOTH_STRANDS.PASS = TRUE)
 
         slicer <- function(n, table) { slice(table, n) }
-        
+
         # False True True, or True True True
         allFilterCombinationList <-
             lapply(1:nrow(allFilterCombinations), slicer, allFilterCombinations)
@@ -504,10 +479,4 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
-    # Rich's machine
-    setwd('/home/data/INVAR')
-    invisible(main(richTestOptions()))
-} else {
-    invisible(main(parseOptions()))
-}
+invisible(main(parseOptions()))

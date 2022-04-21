@@ -55,22 +55,6 @@ parseOptions <- function()
     scriptOptions
 }
 
-# Test options for my (Rich) local set up in RStudio.
-
-richTestOptions <- function()
-{
-    base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/annotateMutationsWithFragmentSize/source/')
-
-    list(
-        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.on_target.rds'),
-        FRAGMENT_SIZES_FILE = str_c(base, 'SLX19721SXTLI001.inserts.tsv'),
-        SAMPLE_ID = 'SLX-19721:SXTLI001',
-        OUTLIER_SUPPRESSION = 0.05,
-        SAMPLING_SEED = 1024L,
-        THREADS = 2L
-    )
-}
-
 
 ##
 # Calculation functions.
@@ -348,10 +332,4 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
-    # Rich's machine
-    setwd('/home/data/INVAR')
-    invisible(main(richTestOptions()))
-} else {
-    invisible(main(parseOptions()))
-}
+invisible(main(parseOptions()))

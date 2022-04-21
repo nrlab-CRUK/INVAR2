@@ -173,7 +173,7 @@ estimate_real_length_probability <- function(fragment_length, counts, bw_adjust 
         {
             # Weights take into account the TOTAL number of reads of all sizes
             weights <- counts / sum(counts)
-            
+
             # KDE of fragment length function
             # but KDE only includes reads from min to max fragment length defined
             den <- density(fragment_length, weights = weights, adjust = bw_adjust,from = min_length - 0.5, to = max_length + 0.5)

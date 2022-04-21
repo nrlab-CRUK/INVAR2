@@ -82,30 +82,6 @@ parseOptions <- function()
     scriptOptions
 }
 
-# Test options for my (Rich) local set up in RStudio.
-
-richTestOptions <- function()
-{
-    testhome <- str_c(Sys.getenv('INVAR_HOME'), '/emptytesting/testdata/')
-    base <- str_c(testhome, 'runAnalysis/source/')
-
-    list(
-        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.rds'),
-        ERROR_RATES_FILE = str_c(base, 'background_error_rates.rds'),
-        ON_TARGET_LOCUS_ERROR_RATES_FILE = str_c(base, 'locus_error_rates.on_target.rds'),
-        OFF_TARGET_ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
-        SIZE_CHARACTERISATION_FILE = str_c(base, 'size_characterisation.rds'),
-        INVAR_SCORES_FILE = str_c(base, 'invar_scores.rds'),
-        TUMOUR_MUTATIONS_FILE = str_c(testhome, 'invar_source/PARADIGM_mutation_list_full_cohort_hg19.v2.csv'),
-        LAYOUT_FILE = str_c(testhome, 'invar_source/combined.SLX_table_with_controls_031220.v2.csv'),
-        STUDY = 'PARADIGM',
-        TAPAS_SETTING = 'f0.9_s2.BQ_20.MQ_40',
-        ERROR_SUPPRESSION = 'f0.9_s2',
-        FAMILY_SIZE = 2L,
-        OUTLIER_SUPPRESSION = 0.05
-    )
-}
-
 
 ##
 # The main script, wrapped as a function.
@@ -165,7 +141,7 @@ main <- function(scriptArgs)
         group_by(PATIENT) %>%
         summarise(INPUT_MUTATIONS = n_distinct(PATIENT, UNIQUE_POS), .groups = "drop") %>%
         arrange(PATIENT, INPUT_MUTATIONS)
-    
+
     errorRatesINV042 <-
         calculateErrorRatesINV042(offTargetErrorRatesList[['PREFILTER']], layoutTable)
 
@@ -503,10 +479,4 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
-    # Rich's machine
-    setwd('/home/data/INVAR/analysis')
-    invisible(main(richTestOptions()))
-} else {
-    invisible(main(parseOptions()))
-}
+invisible(main(parseOptions()))

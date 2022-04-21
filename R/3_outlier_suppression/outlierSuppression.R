@@ -49,21 +49,6 @@ parseOptions <- function()
     scriptOptions
 }
 
-# Test options for my (Rich) local set up in RStudio.
-
-richTestOptions <- function()
-{
-    base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/markOutliers/source/')
-
-    list(
-        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.with_sizes.SLX19721SLXLI001.PARA_002.rds'),
-        SAMPLE_ID = 'SLX-19721:SXTLI001',
-        PATIENT_ID = 'PARA_002',
-        OUTLIER_SUPPRESSION = 0.05,
-        SAMPLING_SEED = 1024L
-    )
-}
-
 
 ##
 # From TAPAS_functions.R
@@ -168,10 +153,4 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
-    # Rich's machine
-    setwd('/home/data/INVAR')
-    invisible(main(richTestOptions()))
-} else {
-    invisible(main(parseOptions()))
-}
+invisible(main(parseOptions()))

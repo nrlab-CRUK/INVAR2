@@ -60,21 +60,6 @@ parseOptions <- function()
     scriptOptions
 }
 
-# Test options for my (Rich) local set up in RStudio.
-
-richTestOptions <- function()
-{
-    testhome <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/')
-    base <- str_c(testhome, 'createOnTargetMutationsTable/source/')
-
-    list(
-        MUTATIONS_TABLE_FILE = str_c(base, 'mutation_table.filtered.rds'),
-        ERROR_RATES_FILE = str_c(base, 'error_rates.off_target.no_cosmic.rds'),
-        TUMOUR_MUTATIONS_FILE = str_c(testhome, 'invar_source/PARADIGM_mutation_list_full_cohort_hg19.v2.csv'),
-        LAYOUT_FILE = str_c(testhome, 'invar_source/combined.SLX_table_with_controls_031220.v2.csv')
-    )
-}
-
 
 ##
 # From TAPAS_functions.R "combine_classes_in_rds"
@@ -419,10 +404,4 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
-    # Rich's machine
-    setwd('/home/data/INVAR')
-    invisible(main(richTestOptions()))
-} else {
-    invisible(main(parseOptions()))
-}
+invisible(main(parseOptions()))

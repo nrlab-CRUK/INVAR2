@@ -50,21 +50,6 @@ parseOptions <- function()
     scriptOptions
 }
 
-# Test options for my (Rich) local set up in RStudio.
-
-richTestOptions <- function()
-{
-    base <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/annotateMutationsWithOutlierSuppression/source')
-
-    files = list.files(base, pattern = "\\.os.rds$", full.names = TRUE)
-
-    list(
-        MUTATIONS_TABLE_FILE = str_c(base, '/mutation_table.on_target.rds'),
-        MUTATIONS_TABLE_FILES = files,
-        THREADS = 4L
-    )
-}
-
 
 ##
 # Extract just the outlier pass flag from the mutation table file from
@@ -135,10 +120,4 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
-    # Rich's machine
-    setwd('/home/data/INVAR')
-    invisible(main(richTestOptions()))
-} else {
-    invisible(main(parseOptions()))
-}
+invisible(main(parseOptions()))

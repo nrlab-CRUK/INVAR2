@@ -66,26 +66,6 @@ parseOptions <- function()
     scriptOptions
 }
 
-# Test options for my (Rich) local set up in RStudio.
-
-richTestOptions <- function()
-{
-    testhome <- str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/')
-    base <- str_c(testhome, 'createMutationsTable/source/')
-
-    list(
-        MUTATIONS_FILES = str_c(base, 'mutation_table.tsv'),
-        TUMOUR_MUTATIONS_FILE = str_c(testhome, 'invar_source/PARADIGM_mutation_list_full_cohort_hg19.v2.csv'),
-        COSMIC_THRESHOLD = 0L,
-        MQSB_THRESHOLD = 0.01,
-        MAX_DEPTH = 2000L,
-        MIN_REF_DEPTH = 10L,
-        ALT_ALLELES_THRESHOLD = 3L,
-        MINOR_ALT_ALLELES_THRESHOLD = 2L,
-        THREADS = 1L
-    )
-}
-
 
 ##
 # Loading functions.
@@ -232,10 +212,4 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
-    # Rich's machine in RStudio
-    setwd('/home/data/INVAR')
-    invisible(main(richTestOptions()))
-} else {
-    invisible(main(parseOptions()))
-}
+invisible(main(parseOptions()))

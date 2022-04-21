@@ -47,19 +47,6 @@ parseOptions <- function()
     scriptOptions
 }
 
-# Test options for my (Rich) local set up in RStudio.
-
-richTestOptions <- function()
-{
-    files = list.files(str_c(Sys.getenv('INVAR_HOME'), '/testing/testdata/sizeCharacterisation/source'),
-                       pattern = "\\.rds$", full.names = TRUE)
-
-    list(
-        MUTATIONS_TABLE_FILES = files,
-        THREADS = 1L
-    )
-}
-
 
 ##
 # Calculate the size characterisation per file.
@@ -118,10 +105,4 @@ main <- function(scriptArgs)
 
 # Launch it.
 
-if (system2('hostname', '-s', stdout = TRUE) == 'nm168s011789' && rstudioapi::isAvailable()) {
-    # Rich's machine
-    setwd('/home/data/INVAR')
-    invisible(main(richTestOptions()))
-} else {
-    invisible(main(parseOptions()))
-}
+invisible(main(parseOptions()))
