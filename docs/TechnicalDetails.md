@@ -15,23 +15,23 @@ More details in the working of each script is given below.
 ## Step 1
 
 This step parse's the input bam files to select the regions defined in the mutation file, create the pile up's and annotates each read with COSMIC, 1000genome and trinucleotide information. It is run in "INVAR2/processes/1_parse.nf".
-It creates a dataframe where each read (r_1, or forward read, and r_2, or reverse read) feature on each row, and are annotated with the trinucleotide context, COSMIC information at that location, and information from the 1000genomes project if the position is a known SNP. The error rates at each locus are output into a .rds file (results/locus_error_rates.on_target.rds) as are the off target, ie not patient specific genomic region error rates in results/error_rates.off_target.[no_/]cosmic.rds. 
+It creates a data frame where each read (r_1, or forward read, and r_2, or reverse read) feature on each row, and are annotated with the trinucleotide context, COSMIC information at that location, and information from the 1000genomes project if the position is a known SNP. The error rates at each locus are output into a .rds file (results/locus_error_rates.on_target.rds) as are the off target, ie not patient specific genomic region error rates in results/error_rates.off_target.[no_/]cosmic.rds. 
 
 The bed file (tumour mutation file) is processed with slop in "INVAR2/templates/1_parse/slopPatientInfo.sh", and the bam files are processed such that only the regions defined in the bed file (tumour mutation file) is conserved. The pileups are done in "INVAR2/templates/1_parse/mpileup.sh"
 The multiallelic sites are split into biallelic records and the columns of interest are conserved ("INVAR2/templates/1_parse/biallelic.sh").
-A dataframe containing every base pair in the pileup (here +/- 10bp from the loci defined in the tumour mutations file) is created and annotated with the tabix information defining if it is a SNP as known from the tabix database (tabix dataframe used). ("INVAR2/templates/1_parse/tabix.sh").
-Another dataframe with COSMIC mutation information is created for the same genomic positions.
+A data frame containing every base pair in the pileup (here +/- 10bp from the loci defined in the tumour mutations file) is created and annotated with the tabix information defining if it is a SNP as known from the tabix database (tabix data frame used). ("INVAR2/templates/1_parse/tabix.sh").
+Another data frame with COSMIC mutation information is created for the same genomic positions.
 
-Returning to the raw data, a dataframe containing every read in the supplied bam files that overlaps with the genomic regions defined in the bed file/tumour mutations file is then annotated with all this information and more (tabix, cosmic, trinucleotide) in the "INVAR2/python/1_parse/addTabixAndTrinucleotides.py" script.
+Returning to the raw data, a tsv dataframe containing every read in the supplied bam files that overlaps with the genomic regions defined in the bed file/tumour mutations file is then annotated with all this information and more (tabix, cosmic, trinucleotide) in the "INVAR2/python/1_parse/addTabixAndTrinucleotides.py" script.
 
-The dataframe above is then filtered by the defined MQSB threshold and blacklists loci that have more than 3 alt alleles or insufficient/too much depth. It also annotates dataframe with True/False values if the loci passes the COSMIC and 1000 genomes thresholds. Done by "INVAR2/R/1-parse/createMutationsTable.R", it outputs a hidden mutation_table.filtered.rds file (to find the location type ```find -name mutation_table.filtered.rds``` while in the INVAR2 directory).
+The data frame above is then filtered by the defined MQSB threshold and blacklists loci that have more than 3 alt alleles or insufficient/too much depth. It also annotates data frame with True/False values if the loci passes the COSMIC and 1000 genomes thresholds. Done by "INVAR2/R/1-parse/createMutationsTable.R", it outputs a hidden mutation_table.filtered.rds file per input sample (to find the location type ```find -name mutation_table.filtered.rds``` while in the INVAR2 directory).
 
-The first of three filter flags (LOCUS_NOISE.PASS) is defined in "INVAR2/R/1-parse/offTargetErrorRates.R" where the error rates of each loci are then calculated in "INVAR2/R/1-parse/offTargetErrorRates.R". This means the information of each base pair on each read is condensed into one row in the dataframe that corresponds to a single genomic location in the tumour mutations file (ie the read information is condensed into a single set of metrics). The loci error rates dataframes are saved by COSMIC on_target or off_target flag in "INVAR2/Results/error_rates.off_target.*.rds".
+The first of three filter flags (LOCUS_NOISE.PASS) is defined in "INVAR2/R/1-parse/offTargetErrorRates.R" where the error rates of each loci are then calculated in "INVAR2/R/1-parse/offTargetErrorRates.R". The information of each base pair on each read is condensed into one row in the data frame that corresponds to a single genomic location in the tumour mutations file (ie the read information is condensed into a single set of metrics). The on target locations (patient specific genomic locations) are saved in locus_error_rates.on_target.rds. For off target loci (control sample loci or non patient specific case loci) the background error rates are calculated for COSMIC flag equals True or False, and saved in "INVAR2/Results/error_rates.off_target.*.rds". 
 
 
 ## Step 2
 
-This step annotates the dataframe create above with the size information of each read, and summarises the size distribution of all reads into a dataframe. This process is run from  "INVAR2/processes/2_size_annotation.nf". 
+This step annotates the data frame create above with the size information of each read, and summarises the size distribution of all reads into a data frame. This process is run from  "INVAR2/processes/2_size_annotation.nf". 
 
 The step starts by creating a temporary file mutationlist.bed using the INVAR2/R/1_parse/patientListCsvToBed.R script from Step 1. This is then piped into INVAR2/templates/2_size_annotation/getFragmentSize.sh which runs INVAR2/python/2_size_annotation/getFragmentSize.py. getFragmentSize.py analyses each read in the pileup and analyses it with the alt allele and the size of the fragment as calculated by pysam version 0.17.0. Finally, the information is collated with the main data frame by INVAR2/R/2_size_annotation/sizeAnnotation.R
 
@@ -56,8 +56,10 @@ This is then fed into the calc_likelihood_ratio_with_RL function which calculate
 
 ## Step 5
 
-This step produces the plots available in analysis/ . 
-The plots in analysis/ are produced by INVAR2/R/5_analysis/analysis.R and calls NVAR2/R/5_analysis/analysisCalculations.R and INVAR2/R/5_analysis/analysisPlots.R
+This step determines the final classification of the samples and produces the plots available in analysis/ . 
+
+The classification step is done by the function ```adjustInvarScores```line 118 of analysisCalculations.R. It uses all non patient specific INVAR scores (healthy samples and the 10 iterations of the non-patient specific data) to determine the threshold INVAR score that would give a specificity of 95\% on said data. This threshold score is then used on the patient specific INVAR scores the classify if cancer is detected in the sample or not. 
+The plots in analysis/ are produced by INVAR2/R/5_analysis/analysis.R and calls INVAR2/R/5_analysis/analysisCalculations.R and INVAR2/R/5_analysis/analysisPlots.R
 
 A .Rmd file is produced to explain the outputs in greater details. 
 
