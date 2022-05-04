@@ -312,7 +312,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         mutationsTable <- mutationsTable %>%
             filter(OUTLIER.PASS)
     }
-
+    
     # Retune size characterisation table.
 
     sizeTable <- leaveOneOutFilter(mutationsTable, sizeTable)
@@ -401,6 +401,9 @@ main <- function(scriptArgs)
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
+    
+    # LUCID trick - filter for CONTAMINATION_RISK.PASS==TRUE values
+    mutationsTable <- filter(mutationsTable, CONTAMINATION_RISK.PASS)
 
     sizeTable <-
         readRDS(scriptArgs$SIZE_CHARACTERISATION_FILE) %>%
