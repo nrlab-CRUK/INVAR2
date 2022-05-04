@@ -325,16 +325,20 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         filter(TUMOUR_AF > 0 & SIZE > scriptArgs$MINIMUM_FRAGMENT_LENGTH & SIZE <= scriptArgs$MAXIMUM_FRAGMENT_LENGTH) %>%
         mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF > 0, BACKGROUND_AF, 1 / BACKGROUND_DP))
 
+    # Filter out mutations that fail contamination test.
+
+    mutationsTable <- filter(mutationsTable, CONTAMINATION_RISK.PASS)
+    
+    assert_that(nrow(mutationsTable) >= 1, msg = "After filtering out mutations that fail contamination filter, there is nothing left.")
+    
     # determine whether there are any mutant reads in the table for calculation of ctDNA
 
-    mutantReadsPresent = any(mutationsTable$MUTANT)
+    mutantReadsPresent <- any(mutationsTable$MUTANT)
 
-    # Removing the below as it makes the LUCID data crash
-    contaminationRisk = unique(mutationsTable$CONTAMINATION_RISK.PASS)
-    assert_that(length(contaminationRisk) == 1, msg = "Have mix of CONTAMINATION_RISK.PASS flags in mutations table rows")
-    # mutationsTable <- filter(mutationsTable, CONTAMINATION_RISK.PASS==TRUE)
-    # contaminationRisk = unique(mutationsTable$CONTAMINATION_RISK.PASS)
-    
+    # The filter above implies that contaminationRisk is always only FALSE.
+
+    contaminationRisk <- unique(mutationsTable$CONTAMINATION_RISK.PASS)
+    assert_that(length(contaminationRisk) == 1, msg = "Have mix of CONTAMINATION_RISK.PASS flags in mutations table rows.")
     
     # There are two rows per molecule, so from the sorted table we can
     # slice out every other row to give a row per molecule.

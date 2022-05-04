@@ -189,11 +189,6 @@ main <- function(scriptArgs)
     mutationTable.filtered <- mutationTable.filtered %>%
         mutate(CONTAMINATION_RISK.PASS = !SAMPLE_ID %in% contaminatedSamples$SAMPLE_ID)
 
-    if (nrow(mutationTable.filtered) == 0)
-    {
-        warning("There are no mutations left after filtering out those from contaminated samples.")
-    }
-
     mutationTable.filtered %>%
         removeMutationTableDerivedColumns() %>%
         arrangeMutationTableForExport() %>%
