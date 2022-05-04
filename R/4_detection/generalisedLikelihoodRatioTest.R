@@ -330,10 +330,10 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
     mutantReadsPresent = any(mutationsTable$MUTANT)
 
     # Removing the below as it makes the LUCID data crash
-    #contaminationRisk = unique(mutationsTable$CONTAMINATION_RISK.PASS)
-    #assert_that(length(contaminationRisk) == 1, msg = "Have mix of CONTAMINATION_RISK.PASS flags in mutations table rows. Filtering for only TRUE values. %f reads removed.")
-    mutationsTable <- filter(mutationsTable, CONTAMINATION_RISK.PASS==TRUE)
     contaminationRisk = unique(mutationsTable$CONTAMINATION_RISK.PASS)
+    assert_that(length(contaminationRisk) == 1, msg = "Have mix of CONTAMINATION_RISK.PASS flags in mutations table rows")
+    # mutationsTable <- filter(mutationsTable, CONTAMINATION_RISK.PASS==TRUE)
+    # contaminationRisk = unique(mutationsTable$CONTAMINATION_RISK.PASS)
     
     
     # There are two rows per molecule, so from the sorted table we can
