@@ -312,7 +312,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         mutationsTable <- mutationsTable %>%
             filter(OUTLIER.PASS)
     }
-
+    
     # Retune size characterisation table.
 
     sizeTable <- leaveOneOutFilter(mutationsTable, sizeTable)
@@ -357,7 +357,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
     iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, 10)
 
     allIterations <-
-        mclapply(1:iterations, singleIteration,
+        lapply(1:iterations, singleIteration,
                  mutationsTable.perMolecule, sizeTable,
                  minFragmentLength = scriptArgs$MINIMUM_FRAGMENT_LENGTH,
                  maxFragmentLength = scriptArgs$MAXIMUM_FRAGMENT_LENGTH,
@@ -405,6 +405,9 @@ main <- function(scriptArgs)
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
+    
+    # LUCID trick - filter for CONTAMINATION_RISK.PASS==TRUE values
+    mutationsTable <- filter(mutationsTable, CONTAMINATION_RISK.PASS)
 
     sizeTable <-
         readRDS(scriptArgs$SIZE_CHARACTERISATION_FILE) %>%
