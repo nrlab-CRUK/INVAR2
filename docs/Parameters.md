@@ -81,12 +81,14 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | PROPORTION_OF_CONTROLS         | num  | 0.1                       | Blacklist loci that have signal in &gt; P of the non-patient specific samples. |
 | MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY | num | 0.01             | Filter loci with a background allele frequency in controls greater than this value. |
 | ALLELE_FREQUENCY_THRESHOLD     | num  | 0.01                      | Maximum allele frequency value for acceptable samples.    |
-| IS_BLOODSPOT                   | bool | false                     | Only change to true if you are running blood spot data through the pipeline. This omits outlier-suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
+| MAXIMUM_MUTANT_READS           | int  | 10                        | Maximum number of reads acceptable for outlier suppression trying to detect MRD. |
+| IS_BLOODSPOT                   | bool | false                     | Only change to true if you are running blood spot data through the pipeline. This omits outlier suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
 | OUTLIER_SUPPRESSION_THRESHOLD  | num  | 0.05                      | Outlier suppression threshold.                            |
 | MINIMUM_FRAGMENT_LENGTH        | int  | 60                        | Minimum fragment length.                                  |
 | MAXIMUM_FRAGMENT_LENGTH        | int  | 300                       | Maximum fragment length.                                  |
 | SMOOTHING                      | num  | 0.25                      | Smoothing function for size profile (width of smoothing). |
 | ONLY_WEIGH_MUTANTS             | bool | true                      | Only weigh ctDNA signal based on mutant fragments.        |
+| SCORE_SPECIFICITY              | num  | 0.95                      | Score specificity for ROC plot.                           |
 
 `BAM_PATH` is a list of directories in which the BAM files can be found. It is
 handled very much like the _`PATH`_ environment variable one is familiar with
