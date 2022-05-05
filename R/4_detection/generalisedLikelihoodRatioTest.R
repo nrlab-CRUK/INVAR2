@@ -286,20 +286,33 @@ singleIteration <- function(iteration, mutationsTable, sizeTable,
 # This can be the case where either there are no mutations
 # after whole table filtering on entry to this function or when,
 # for a subset of conditions, there are no rows left.
+# This can optionally be an empty table for pre join (no SAMPLE_ID,
+# PATIENT or PATIENT_MUTATION_BELONGS_TO) or post join (with these columns).
 #
 
-emptyInvarTable <- function()
+emptyInvarTable <- function(allColumns)
 {
-    tibble(SAMPLE_ID = character(), PATIENT = character(),
-           PATIENT_MUTATION_BELONGS_TO = character(),
-           ITERATION = integer(), USING_SIZE = logical(),
-           LOCUS_NOISE.PASS = logical(), BOTH_STRANDS.PASS = logical(),
-           OUTLIER.PASS = logical(), CONTAMINATION_RISK.PASS = logical(),
-           INVAR_SCORE = double(), AF_P = double(),
-           NULL_LIKELIHOOD = double(), ALTERNATIVE_LIKELIHOOD = double(),
-           DP = integer(), MUTATION_SUM = integer(),
-           IMAF = double(), SMOOTH = double(),
-           OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical())
+    assert_that(is.logical(allColumns), msg = "allColumns must be a logical")
+
+    table <-
+        tibble(ITERATION = integer(), USING_SIZE = logical(),
+               LOCUS_NOISE.PASS = logical(), BOTH_STRANDS.PASS = logical(),
+               OUTLIER.PASS = logical(), CONTAMINATION_RISK.PASS = logical(),
+               INVAR_SCORE = double(), AF_P = double(),
+               NULL_LIKELIHOOD = double(), ALTERNATIVE_LIKELIHOOD = double(),
+               DP = integer(), MUTATION_SUM = integer(),
+               IMAF = double(), SMOOTH = double(),
+               OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical())
+     
+    if (allColumns)
+    {
+        table <- table %>%
+            add_column(SAMPLE_ID = character(), PATIENT = character(),
+                       PATIENT_MUTATION_BELONGS_TO = character(),
+                       .before = 1)
+    }
+    
+    table
 }
 
 ##
@@ -353,7 +366,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         warning("No mutations left after filtering for LOCUS_NOISE.PASS = ", criteria$LOCUS_NOISE.PASS,
                 ", BOTH_STRANDS.PASS = ", criteria$BOTH_STRANDS.PASS, ", OUTLIER.PASS = ", criteria$OUTLIER.PASS)
 
-        return(emptyInvarTable())
+        return(emptyInvarTable(FALSE))
     }
 
     # determine whether there are any mutant reads in the table for calculation of ctDNA
@@ -455,7 +468,7 @@ main <- function(scriptArgs)
 
         # Create an empty table for saving.
 
-        invarResultsTable <- emptyInvarTable()
+        invarResultsTable <- emptyInvarTable(TRUE)
     }
     else
     {
@@ -494,24 +507,26 @@ main <- function(scriptArgs)
                    scriptArgs, mutationsTable, sizeTable,
                    mc.set.seed = hasRNGSeed)
 
-        # Make sure there is at least one row by using right_join to give the join fields,
-        # even though the values will all be NA.
-        # by = character() doesn't work when the invarResultsList contains only empty tibbles.
-        # right_join(mutationsInfo, by = c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO')) %>%
-
-        invarResultsTable <-
-            bind_rows(invarResultsList) %>%
-            select(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO,
-                   ITERATION, USING_SIZE,
-                   LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
-                   INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
-                   DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
-            arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
-                    ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
-
+        invarResultsTable <- bind_rows(invarResultsList)
+        
+        # If there a no rows at all, return an empty table.
+        
         if (nrow(invarResultsTable) == 0)
         {
             warning("No rows in INVAR results table.")
+            invarResultsTable <- emptyInvarTable(TRUE)
+        }
+        else
+        {
+            invarResultsTable <- invarResultsTable %>%
+                full_join(mutationsInfo, by = character()) %>%
+                select(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO,
+                       ITERATION, USING_SIZE,
+                       LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
+                       INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
+                       DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
+                arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
+                        ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
         }
     }
 
