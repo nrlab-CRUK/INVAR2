@@ -353,7 +353,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
     iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, 10)
 
     allIterations <-
-        mclapply(1:iterations, singleIteration,
+        lapply(1:iterations, singleIteration,
                  mutationsTable.perMolecule, sizeTable,
                  minFragmentLength = scriptArgs$MINIMUM_FRAGMENT_LENGTH,
                  maxFragmentLength = scriptArgs$MAXIMUM_FRAGMENT_LENGTH,
