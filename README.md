@@ -1,6 +1,12 @@
 # INVAR2
 
-A Nextflow based software tool to run the INVAR (Integration of VAriant Reads) analysis pipeline. Previously available [here.](https://bitbucket.org/nrlab/invar/wiki/Home)
+A Nextflow based software tool to run the INVAR (Integration of VAriant Reads)
+analysis pipeline. Previously available [here.](https://bitbucket.org/nrlab/invar/wiki/Home)
+
+The pipeline seeks to detect minimal residual disease signal in patient liquid biopsy data,
+and outputs a classifcation based on a threshold score established on a cohort of healthy
+samples. A general cohort size should range from around 20+ individual patients. More
+details are available in the links below.
 
 Contact: Hui.zhao@cruk.cam.ac.uk, emma-jane.ditter@cruk.cam.ac.uk
 
