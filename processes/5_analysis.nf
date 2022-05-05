@@ -38,7 +38,8 @@ process runAnalysis
             --tapas="!{tapasSetting}" \
             --error-suppression="!{params.ERROR_SUPPRESSION_NAME}" \
             --family-size="!{params.FAMILY_SIZE}" \
-            --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD}
+            --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD} \
+            --score-specificity=!{params.SCORE_SPECIFICITY}
         """
 }
 

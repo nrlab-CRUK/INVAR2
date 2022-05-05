@@ -61,7 +61,10 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--outlier-suppression"), type="double", metavar="number",
                     dest="OUTLIER_SUPPRESSION", help="The outlier suppression threshold",
-                    default=0.05))
+                    default=0.05),
+        make_option(c("--score-specificity"), type="double", metavar="number",
+                    dest="SCORE_SPECIFICITY", help="Score specificity for ROC plot.",
+                    default=0.95))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -209,7 +212,7 @@ main <- function(scriptArgs)
 
     # plot mutations per patient captured and passing pipeline filters
     plots$P3 <- mutationsPerPatientPlot(patientSummaryTable, study = scriptArgs$STUDY)
-    
+
     # plot mutations per patient captured and passing pipeline filters
     plots$P3_1 <- inUsedMutationsPerPatientPlot(patientSummaryTable, inputMutationsTable, study = scriptArgs$STUDY)
 
@@ -259,12 +262,14 @@ main <- function(scriptArgs)
     plots$P13a <- receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
                                                       withSizes = TRUE,
                                                       study = scriptArgs$STUDY,
-                                                      familySize = scriptArgs$FAMILY_SIZE)
+                                                      familySize = scriptArgs$FAMILY_SIZE,
+                                                      scoreSpecificity = scriptArgs$SCORE_SPECIFICITY)
 
     plots$P13b <- receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
                                                       withSizes = FALSE,
                                                       study = scriptArgs$STUDY,
-                                                      familySize = scriptArgs$FAMILY_SIZE)
+                                                      familySize = scriptArgs$FAMILY_SIZE,
+                                                      scoreSpecificity = scriptArgs$SCORE_SPECIFICITY)
 
     # IR (depth) to IMAF plot
 

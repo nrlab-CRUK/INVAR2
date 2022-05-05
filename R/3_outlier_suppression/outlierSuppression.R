@@ -28,7 +28,13 @@ parseOptions <- function()
                     default=defaultMarker),
         make_option(c("--outlier-suppression"), type="double", metavar="number",
                     dest="OUTLIER_SUPPRESSION", help="The outlier suppression threshold",
-                    default=0.05))
+                    default=0.05),
+        make_option(c("--allele-frequency-threshold"), type="double", metavar="num",
+                    dest="ALLELE_FREQUENCY_THRESHOLD", help="Maximum allele frequency value for acceptable samples",
+                    default=0.01),
+        make_option(c("--maximum-mutant-reads"), type="integer", metavar="int",
+                    dest="MAXIMUM_MUTANT_READS", help="Maximum number of reads acceptable for trying to detect MRD",
+                    default=10L))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -54,11 +60,11 @@ parseOptions <- function()
 # From TAPAS_functions.R
 #
 
-repolish <- function(mutationsTable, outlierSuppressionThreshold)
+repolish <- function(mutationsTable, outlierSuppressionThreshold, alleleFrequencyThreshold, maximumMutantReads)
 {
     assert_that(is.number(outlierSuppressionThreshold), msg = "outlierSuppressionThreshold must be a number")
 
-    # do not include loci with AF>0.25 or with >10 mutant reads as we are trying to detect MRD.
+    # do not include loci with AF>alleleFrequencyThreshold or with >maximumMutantReads mutant reads as we are trying to detect MRD.
     # If there are loci with high AF, then there will also be some loci with lower AF (given sufficient loci).
     # If error classes have zero error rate, increase error rate to 1 / BACKGROUND_DP
     # Original code provided a list of 1 for the 'R' parameter. This corresponds to the
@@ -72,7 +78,8 @@ repolish <- function(mutationsTable, outlierSuppressionThreshold)
     }
 
     mutationsTable.forPEstimate <- mutationsTable %>%
-        filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & AF < 0.25 & MUTATION_SUM < 10 & TUMOUR_AF > 0) %>%
+        filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & AF <= alleleFrequencyThreshold &
+               MUTATION_SUM <= maximumMutantReads & TUMOUR_AF > 0) %>%
         mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF == 0, 1 / BACKGROUND_DP, BACKGROUND_AF),
                DP = 1) %>%
         summarise(P_THRESHOLD = outlierSuppressionThreshold / n_distinct(UNIQUE_POS),
@@ -137,7 +144,9 @@ main <- function(scriptArgs)
                                 scriptArgs$PATIENT_ID, sep = " "))
 
         mutationsTable <- mutationsTable %>%
-            repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION)
+            repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION,
+                     alleleFrequencyThreshold = scriptArgs$ALLELE_FREQUENCY_THRESHOLD,
+                     maximumMutantReads = scriptArgs$MAXIMUM_MUTANT_READS)
     }
 
     outputName <- str_c('mutation_table.outliersuppressed',

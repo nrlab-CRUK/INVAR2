@@ -159,7 +159,7 @@ calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
 
     mutationsTable <- mutationsTable %>%
         mutate(DP = 1)
-    
+
     # Filter dataframe to include only minFragmentLength:maxFragmentLength fragments - affects the weight normalisation
     sizeTable <- filter(sizeTable, SIZE>=minFragmentLength, SIZE<=maxFragmentLength)
 
@@ -333,7 +333,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         mutationsTable <- mutationsTable %>%
             filter(OUTLIER.PASS)
     }
-    
+
     # Retune size characterisation table.
 
     sizeTable <- leaveOneOutFilter(mutationsTable, sizeTable)
@@ -349,13 +349,13 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
     if (nrow(mutationsTable) == 0)
     {
         # If there is nothing left, return an empty INVAR scores table and print a warning.
-        
+
         warning("No mutations left after filtering for LOCUS_NOISE.PASS = ", criteria$LOCUS_NOISE.PASS,
                 ", BOTH_STRANDS.PASS = ", criteria$BOTH_STRANDS.PASS, ", OUTLIER.PASS = ", criteria$OUTLIER.PASS)
-        
+
         return(emptyInvarTable())
     }
-    
+
     # determine whether there are any mutant reads in the table for calculation of ctDNA
 
     mutantReadsPresent <- any(mutationsTable$MUTANT)
@@ -365,7 +365,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
 
     contaminationRisk <- unique(mutationsTable$CONTAMINATION_RISK.PASS)
     assert_that(length(contaminationRisk) == 1, msg = "Have mix of CONTAMINATION_RISK.PASS flags in mutations table rows.")
-    
+
     # There are two rows per molecule, so from the sorted table we can
     # slice out every other row to give a row per molecule.
 

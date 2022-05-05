@@ -115,7 +115,7 @@ calculateSizeCharacterisationSummary <- function(sizeCharacterisationTable, layo
 # Originally get.INVAR_score in TAPAS_functions.R
 #
 
-adjustInvarScores <- function(invarScoresTable, layoutTable)
+adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
 {
     adjustThreshold <- function(row, conditions, adjustedScoresTable, scoreSpecificity)
     {
@@ -157,7 +157,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable)
         distinct(USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
 
     adjustedList <- lapply(1:nrow(uniqueConditions), adjustThreshold,
-                           uniqueConditions, adjustedScoresTable, scoreSpecificity = 0.95)
+                           uniqueConditions, adjustedScoresTable, scoreSpecificity)
 
     adjustedScoresTable <-
         bind_rows(adjustedList) %>%

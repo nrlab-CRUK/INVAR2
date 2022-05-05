@@ -21,7 +21,9 @@ process markOutliers
             --mutations="!{mutationsFile}" \
             --sample="!{sampleId}" \
             --patient="!{patientMutationBelongsTo}" \
-            --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD}
+            --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD} \
+            --allele-frequency-threshold=!{params.ALLELE_FREQUENCY_THRESHOLD} \
+            --maximum-mutant-reads=!{params.MAXIMUM_MUTANT_READS}
         """
 }
 

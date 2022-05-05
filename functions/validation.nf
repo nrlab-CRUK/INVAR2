@@ -363,6 +363,34 @@ def validateParameters(params)
             errors = true
         }
 
+        if (isNumber(ALLELE_FREQUENCY_THRESHOLD))
+        {
+            if (ALLELE_FREQUENCY_THRESHOLD <= 0d)
+            {
+                log.error "ALLELE_FREQUENCY_THRESHOLD must be a positive number."
+                errors = true
+            }
+        }
+        else
+        {
+            log.error "ALLELE_FREQUENCY_THRESHOLD must be a number."
+            errors = true
+        }
+
+        if (isInteger(MAXIMUM_MUTANT_READS))
+        {
+            if (MAXIMUM_MUTANT_READS <= 0)
+            {
+                log.error "MAXIMUM_MUTANT_READS must be a positive integer."
+                errors = true
+            }
+        }
+        else
+        {
+            log.error "MAXIMUM_MUTANT_READS must be a positive integer."
+            errors = true
+        }
+
         if (!isBoolean(IS_BLOODSPOT))
         {
             log.error "IS_BLOODSPOT must be true or false."
@@ -435,6 +463,20 @@ def validateParameters(params)
         if (!isBoolean(ONLY_WEIGH_MUTANTS))
         {
             log.error "ONLY_WEIGH_MUTANTS must be true or false."
+            errors = true
+        }
+
+        if (isNumber(SCORE_SPECIFICITY))
+        {
+            if (SCORE_SPECIFICITY < 0d || SCORE_SPECIFICITY > 1d)
+            {
+                log.error "SCORE_SPECIFICITY must be a number 0 <= SCORE_SPECIFICITY <= 1"
+                errors = true
+            }
+        }
+        else
+        {
+            log.error "SCORE_SPECIFICITY must be a number."
             errors = true
         }
     }
