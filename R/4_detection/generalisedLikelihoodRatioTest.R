@@ -282,6 +282,27 @@ singleIteration <- function(iteration, mutationsTable, sizeTable,
 }
 
 ##
+# Function to return an INVAR scores table with headers but no rows.
+# This can be the case where either there are no mutations
+# after whole table filtering on entry to this function or when,
+# for a subset of conditions, there are no rows left.
+#
+
+emptyInvarTable <- function()
+{
+    tibble(SAMPLE_ID = character(), PATIENT = character(),
+           PATIENT_MUTATION_BELONGS_TO = character(),
+           ITERATION = integer(), USING_SIZE = logical(),
+           LOCUS_NOISE.PASS = logical(), BOTH_STRANDS.PASS = logical(),
+           OUTLIER.PASS = logical(), CONTAMINATION_RISK.PASS = logical(),
+           INVAR_SCORE = double(), AF_P = double(),
+           NULL_LIKELIHOOD = double(), ALTERNATIVE_LIKELIHOOD = double(),
+           DP = integer(), MUTATION_SUM = integer(),
+           IMAF = double(), SMOOTH = double(),
+           OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical())
+}
+
+##
 # Do the main processing for a single sample and patient mutation pair and
 # outlier filter value.
 #
@@ -325,13 +346,22 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         filter(TUMOUR_AF > 0 & SIZE > scriptArgs$MINIMUM_FRAGMENT_LENGTH & SIZE <= scriptArgs$MAXIMUM_FRAGMENT_LENGTH) %>%
         mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF > 0, BACKGROUND_AF, 1 / BACKGROUND_DP))
 
-    assert_that(nrow(mutationsTable) >= 1, msg = "After filtering out mutations that fail contamination filter, there is nothing left.")
+    if (nrow(mutationsTable) == 0)
+    {
+        # If there is nothing left, return an empty INVAR scores table and print a warning.
+        
+        warning("No mutations left after filtering for LOCUS_NOISE.PASS = ", criteria$LOCUS_NOISE.PASS,
+                ", BOTH_STRANDS.PASS = ", criteria$BOTH_STRANDS.PASS, ", OUTLIER.PASS = ", criteria$OUTLIER.PASS)
+        
+        return(emptyInvarTable())
+    }
     
     # determine whether there are any mutant reads in the table for calculation of ctDNA
 
     mutantReadsPresent <- any(mutationsTable$MUTANT)
 
-    # The filter above implies that contaminationRisk is always only FALSE.
+    # The main method's filter on CONTAMINATION_RISK.PASS
+    # implies that contaminationRisk is always only FALSE.
 
     contaminationRisk <- unique(mutationsTable$CONTAMINATION_RISK.PASS)
     assert_that(length(contaminationRisk) == 1, msg = "Have mix of CONTAMINATION_RISK.PASS flags in mutations table rows.")
@@ -353,7 +383,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
     iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, 10)
 
     allIterations <-
-        lapply(1:iterations, singleIteration,
+        mclapply(1:iterations, singleIteration,
                  mutationsTable.perMolecule, sizeTable,
                  minFragmentLength = scriptArgs$MINIMUM_FRAGMENT_LENGTH,
                  maxFragmentLength = scriptArgs$MAXIMUM_FRAGMENT_LENGTH,
@@ -401,37 +431,37 @@ main <- function(scriptArgs)
     mutationsTable <-
         readRDS(scriptArgs$MUTATIONS_TABLE_FILE) %>%
         addMutationTableDerivedColumns()
-    
-    # LUCID trick - filter for CONTAMINATION_RISK.PASS==TRUE values
-    mutationsTable <- filter(mutationsTable, CONTAMINATION_RISK.PASS)
+
+    if (nrow(mutationsTable) == 0)
+    {
+        warning("Have no mutations in ", basename(scriptArgs$MUTATIONS_TABLE_FILE))
+    }
 
     sizeTable <-
         readRDS(scriptArgs$SIZE_CHARACTERISATION_FILE) %>%
         filter(PATIENT_SPECIFIC) %>%
         select(MUTANT, SIZE, COUNT, TOTAL, PROPORTION)
 
+    # For the time being, remove all rows that fail CONTAMINATION_RISK.PASS
+    # Might want to revisit this decision, and possibly make it a condition
+    # in the "crossing" table below.
+
+    mutationsTable <- mutationsTable %>%
+        filter(CONTAMINATION_RISK.PASS)
+
     if (nrow(mutationsTable) == 0)
     {
-        warning("Have no mutations in ", basename(scriptArgs$MUTATIONS_TABLE_FILE))
+        warning("Have no mutations in ", basename(scriptArgs$MUTATIONS_TABLE_FILE), " after filtering for contamination.")
 
         # Create an empty table for saving.
 
-        invarResultsTable <-
-            tibble(SAMPLE_ID = character(), PATIENT = character(),
-                   PATIENT_MUTATION_BELONGS_TO = character(),
-                   ITERATION = integer(), USING_SIZE = logical(),
-                   LOCUS_NOISE.PASS = logical(), BOTH_STRANDS.PASS = logical(),
-                   OUTLIER.PASS = logical(), CONTAMINATION_RISK.PASS = logical(),
-                   INVAR_SCORE = double(), AF_P = double(),
-                   NULL_LIKELIHOOD = double(), ALTERNATIVE_LIKELIHOOD = double(),
-                   DP = integer(), MUTATION_SUM = integer(),
-                   IMAF = double(), SMOOTH = double(),
-                   OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical())
+        invarResultsTable <- emptyInvarTable()
     }
     else
     {
         mutationsInfo <- mutationsTable %>%
             distinct(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
+
         # MutationsInfo should be 1x3
         assert_that(nrow(mutationsInfo) == 1, msg = "Do not have unique SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO in mutations table file.")
 
@@ -464,9 +494,13 @@ main <- function(scriptArgs)
                    scriptArgs, mutationsTable, sizeTable,
                    mc.set.seed = hasRNGSeed)
 
+        # Make sure there is at least one row by using right_join to give the join fields,
+        # even though the values will all be NA.
+        # by = character() doesn't work when the invarResultsList contains only empty tibbles.
+        # right_join(mutationsInfo, by = c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO')) %>%
+
         invarResultsTable <-
             bind_rows(invarResultsList) %>%
-            full_join(mutationsInfo, by = character()) %>%
             select(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO,
                    ITERATION, USING_SIZE,
                    LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
