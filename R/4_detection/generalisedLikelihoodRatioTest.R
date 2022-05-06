@@ -4,6 +4,7 @@ suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(readr))
 suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(tibble))
 suppressPackageStartupMessages(library(tidyr))
 
 source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
