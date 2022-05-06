@@ -300,9 +300,9 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
          INVAR_SCORE_THRESHOLD = ifelse(invarScoreThreshold == 0, 1e-31, invarScoreThreshold))
 }
 
-getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable)
+getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable, scoreSpecificity)
 {
-    adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable) %>%
+    adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable, scoreSpecificity) %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS)
 
     scaledInvarResultsList <-
@@ -370,7 +370,7 @@ annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patien
 # From Emma's track_n_mut_v2.R script, translated for the new tibble structures.
 #
 
-mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, invarScoresTable)
+mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, invarScoresTable, scoreSpecificity)
 {
     assert_that("PATIENT_SPECIFIC" %in% colnames(invarScoresTable),
                 msg = "invarScoresTable lacking derived PATIENT_SPECIFIC column.")
@@ -394,7 +394,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
     # set up, so they don't need to be included in this table.
 
     invarScoresTable <- invarScoresTable %>%
-        adjustInvarScores(layoutTable) %>%
+        adjustInvarScores(layoutTable, scoreSpecificity) %>%
         filter(PATIENT_SPECIFIC) %>%
         select(SAMPLE_ID, PATIENT, USING_SIZE, OUTLIER.PASS, DETECTION)
 

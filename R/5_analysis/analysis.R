@@ -155,7 +155,7 @@ main <- function(scriptArgs)
     ifPatientData <-
         tryCatch(
         {
-            getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable)
+            getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable, scriptArgs$SCORE_SPECIFICITY)
         },
         error = function(cond)
         {
@@ -171,7 +171,7 @@ main <- function(scriptArgs)
     }
 
     mutationTrackingTable <-
-        mutationTracking(mutationsTable, layoutTable, tumourMutationsTable, invarScoresTable)
+        mutationTracking(mutationsTable, layoutTable, tumourMutationsTable, invarScoresTable, scriptArgs$SCORE_SPECIFICITY)
 
     ## Saving some tables as part of analysis.
 
