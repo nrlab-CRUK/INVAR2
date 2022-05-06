@@ -20,9 +20,7 @@ This document summarizes and explains the results of the pipeline.
 
 The output of INVAR2 is the classification of samples where cancer is either detected or not detected. 
 
-The table below summarises the output results of the pipeline. 
-
-### PLOT NEW RESULTS table
+The plots below summarise the output results of the pipeline. 
 
 INVAR2 classifies samples by comparing their INVAR score to a threshold value. The threshold value is established on the healthy controls such that a specificity of 95% is obtained. As the INVAR scores are continuous, a ROC curve can be plotted for different thresholds, as shown below. 
 
