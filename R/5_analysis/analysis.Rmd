@@ -24,11 +24,16 @@ The table below summarises the output results of the pipeline.
 
 ### PLOT NEW RESULTS table
 
-INVAR2 classifies samples by comparing their INVAR score to a threshold value. The threshold value is established on the healthy controls such that a specificity of 95% is obtained. As the INVAR scores are continuous, a ROC curve can be plotted for different thresholds, as shown below. 
+INVAR2 classifies samples by comparing their INVAR score to a threshold value. The threshold value is
+established on the healthy controls such that a specificity of `r round(scriptArgs$SCORE_SPECIFICITY * 100)`%
+is obtained. As the INVAR scores are continuous, a ROC curve can be plotted for different thresholds,
+as shown below. 
 
 ## Receiver Operating Characteristic (ROC) Plots
 
-This ROC curve compared the INVAR scores when the fragment size information is taken into consideration. The black line compares the patient specific data when controlled against other patient data, whereas the red line shows patient specific data when controlled against healthy samples. 
+This ROC curve compared the INVAR scores when the fragment size information is taken into consideration.
+The black line compares the patient specific data when controlled against other patient data, whereas the
+red line shows patient specific data when controlled against healthy samples. 
 
 ```{r fig.width = 4, fig.height = 3, echo = FALSE}
 plots$P13a
