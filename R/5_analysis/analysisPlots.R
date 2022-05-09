@@ -542,7 +542,7 @@ depthToIMAFPlot <- function(ifPatientData)
             labs(x = "IR",
                  y = "IMAF",
                  colour = "Detected with size",
-                 title = "PBCP IR vs IMAF plot")
+                 title = "IR vs IMAF plot")
 
     plot
 }
