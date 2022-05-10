@@ -648,3 +648,19 @@ savePlotSafely <- function(plot, filename, width, height)
         NULL
     })
 }
+
+# P21
+IMAFvsDetectedByStage <- function(ifPatientData)
+{
+    assert_that(is.character(study), msg = "Study is expected to be a string")
+    
+    plot <- ifPatientData %>%
+        ggplot(aes(x = reorder(PATIENT, IMAF), y = IMAF), colour=DETECTED) +
+        geom_bar(stat = "identity") +
+        theme_classic()+
+        labs(x = "Patient",
+             y = "Tumour mutations",
+             title = str_c("Tumour mutation count in ", study, " cohort"))
+    
+    plot
+}

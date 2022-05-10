@@ -101,7 +101,7 @@ repolish <- function(mutationsTable, outlierSuppressionThreshold, alleleFrequenc
         mutate(BINOMIAL_PROB = binom(x = MUTATION_SUM, n = DP, p = P_ESTIMATE)) %>%
         ungroup() %>% # Removes the "rowwise" grouping
         mutate(OUTLIER.PASS = BINOMIAL_PROB > P_THRESHOLD) %>%
-        select(-P_THRESHOLD, -P_ESTIMATE, -BINOMIAL_PROB)
+        select(-P_THRESHOLD, -BINOMIAL_PROB) # removing this: 10/05 -P_ESTIMATE
 
     mutationsTable.withTest
 }
