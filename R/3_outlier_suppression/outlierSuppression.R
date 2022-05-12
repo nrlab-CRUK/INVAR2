@@ -147,6 +147,11 @@ main <- function(scriptArgs)
             repolish(outlierSuppressionThreshold = scriptArgs$OUTLIER_SUPPRESSION,
                      alleleFrequencyThreshold = scriptArgs$ALLELE_FREQUENCY_THRESHOLD,
                      maximumMutantReads = scriptArgs$MAXIMUM_MUTANT_READS)
+                     
+       if (any(is.na(mutationsTable$P_ESTIMATE)))
+       {
+           stop("Have NA introduced in P_ESTIMATE for ", scriptArgs$SAMPLE_ID, " ", scriptArgs$PATIENT_ID)
+       }
     }
 
     outputName <- str_c('mutation_table.outliersuppressed',

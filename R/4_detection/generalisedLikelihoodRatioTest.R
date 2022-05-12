@@ -139,11 +139,15 @@ leaveOneOutFilter <- function(mutationsTable, sizeTable)
         arrange(SIZE)
 }
 
-likelihoodRatioListToTibble <- function(likelihoodRatio)
+likelihoodRatioListToTibble <- function(likelihoodRatio, mutationsTable)
 {
+    assert_that('P_ESTIMATE' %in% colnames(mutationsTable), msg = "Lost P_ESTIMATE likelihoodRatioListToTibble")
+    assert_that(length(unique(mutationsTable$P_ESTIMATE)) == 1, msg = "Have more than one distinct P_ESTIMATE in mutations table.")
+
     as_tibble(likelihoodRatio) %>%
         rename_at(vars(ends_with(".no_size")), ~ str_replace_all(., '\\.no_size', '')) %>%
-        rename_with(str_to_upper)
+        rename_with(str_to_upper) %>%
+        mutate(P_ESTIMATE = unique(mutationsTable$P_ESTIMATE))
 }
 
 calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
@@ -222,7 +226,7 @@ calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
                                       RL_PROB_0 = mutationsTable$REAL_LENGTH_PROB_NORMAL,
                                       RL_PROB_1 = mutationsTable$REAL_LENGTH_PROB_MUTANT)
 
-    likelihoodRatioListToTibble(likelihoodRatio)
+    likelihoodRatioListToTibble(likelihoodRatio, mutationsTable)
 }
 
 calculateLikelihoodRatioForSampleWithoutSize <- function(mutationsTable, sizeTable)
@@ -240,7 +244,7 @@ calculateLikelihoodRatioForSampleWithoutSize <- function(mutationsTable, sizeTab
                               AF = mutationsTable$TUMOUR_AF,
                               e = mutationsTable$BACKGROUND_AF)
 
-    likelihoodRatioListToTibble(likelihoodRatio)
+    likelihoodRatioListToTibble(likelihoodRatio, mutationsTable)
 }
 
 
