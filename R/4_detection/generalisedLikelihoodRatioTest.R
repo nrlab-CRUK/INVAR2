@@ -141,13 +141,15 @@ leaveOneOutFilter <- function(mutationsTable, sizeTable)
 
 likelihoodRatioListToTibble <- function(likelihoodRatio, mutationsTable)
 {
-    assert_that('P_ESTIMATE' %in% colnames(mutationsTable), msg = "Lost P_ESTIMATE likelihoodRatioListToTibble")
-    assert_that(length(unique(mutationsTable$P_ESTIMATE)) == 1, msg = "Have more than one distinct P_ESTIMATE in mutations table.")
+    p_estimate <- mutationsTable %>%
+        distinct(P_ESTIMATE)
+        
+    assert_that(nrow(p_estimate) == 1, msg = "Have more than one distinct P_ESTIMATE in mutations table.")
 
     as_tibble(likelihoodRatio) %>%
         rename_at(vars(ends_with(".no_size")), ~ str_replace_all(., '\\.no_size', '')) %>%
         rename_with(str_to_upper) %>%
-        mutate(P_ESTIMATE = unique(mutationsTable$P_ESTIMATE))
+        bind_cols(p_estimate)
 }
 
 calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
@@ -303,11 +305,11 @@ emptyInvarTable <- function(allColumns)
         tibble(ITERATION = integer(), USING_SIZE = logical(),
                LOCUS_NOISE.PASS = logical(), BOTH_STRANDS.PASS = logical(),
                OUTLIER.PASS = logical(), CONTAMINATION_RISK.PASS = logical(),
-               INVAR_SCORE = double(), AF_P = double(),
+               INVAR_SCORE = double(), P_ESTIMATE = double(), AF_P = double(),
                NULL_LIKELIHOOD = double(), ALTERNATIVE_LIKELIHOOD = double(),
                DP = integer(), MUTATION_SUM = integer(),
                IMAF = double(), SMOOTH = double(),
-               OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical(), P_ESTIMATE = double())
+               OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical())
      
     if (allColumns)
     {
@@ -528,8 +530,8 @@ main <- function(scriptArgs)
                 select(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO,
                        ITERATION, USING_SIZE,
                        LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
-                       INVAR_SCORE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
-                       DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT, P_ESTIMATE) %>%
+                       INVAR_SCORE, P_ESTIMATE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
+                       DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
                 arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
                         ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
         }
