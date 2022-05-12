@@ -71,7 +71,7 @@ getMutationOutlierFlags <- function(mutationTableFileName)
         group_by(SAMPLE_ID, CHROM, POS) %>%
         slice_head(n = 1) %>%
         ungroup() %>%
-        select(SAMPLE_ID, CHROM, POS, OUTLIER.PASS)
+        select(SAMPLE_ID, CHROM, POS, OUTLIER.PASS, P_ESTIMATE)
 
     reducedTable
 }
