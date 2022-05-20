@@ -25,3 +25,4 @@ Contact: Hui.zhao@cruk.cam.ac.uk, emma-jane.ditter@cruk.cam.ac.uk
 4. [Results and Analysis.](docs/ResultsAndAnalysis.md)
 5. [Indepth Technical Details.](docs/TechnicalDetails.md)
 6. [Running Instructions for Rosenfeld Lab members.](docs/RunningInstructionsRosenfeldLab.md)
+7. [FAQ's](docs/TechnicalNotes_FAQ.md)
