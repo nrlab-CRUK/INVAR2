@@ -168,7 +168,7 @@ calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
         mutate(DP = 1)
 
     # Filter dataframe to include only minFragmentLength:maxFragmentLength fragments - affects the weight normalisation
-    sizeTable <- filter(sizeTable, SIZE>=minFragmentLength, SIZE<=maxFragmentLength)
+#    sizeTable <- filter(sizeTable, SIZE>=minFragmentLength, SIZE<=maxFragmentLength)
 
     ## read length probabilites for mutant reads
 
