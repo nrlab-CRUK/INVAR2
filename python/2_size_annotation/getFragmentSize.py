@@ -33,9 +33,9 @@ parser.add_argument("SNV_list", help="List of SNV positions (.txt), reference an
 
 parser.add_argument("output", help="Name of your output file")
 
-parser.add_argument("minLength", help="Minimum length of fragment to be considered")
+parser.add_argument("minLength", type=int, help="Minimum length of fragment to be considered")
 
-parser.add_argument("maxLength", help="Maximum length of fragment to be considered")
+parser.add_argument("maxLength", type=int, help="Maximum length of fragment to be considered")
 
 # optional variables
 parser.add_argument("--max-depth", dest="max_depth", type=int, default=1000000,
