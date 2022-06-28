@@ -16,4 +16,6 @@ fi
 python3 "!{params.projectHome}/python/2_size_annotation/getFragmentSize.py" \
         "!{bamFile}" \
         "!{snvList}" \
-        "!{insertsFile}"
+        "!{insertsFile}" \
+	"!{params.MINIMUM_FRAGMENT_LENGTH}" \
+	"!{params.MAXIMUM_FRAGMENT_LENGTH}"
