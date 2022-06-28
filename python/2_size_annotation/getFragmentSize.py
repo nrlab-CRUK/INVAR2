@@ -19,7 +19,6 @@ def processPileUps(samfile, output_file, chrom, pos, ref, alt, args):
                     size = abs(read.alignment.template_length)
                     
                     if (size>=args.minLength) & (size<=args.maxLength):
-
                         output_file.write("{}\t{:d}\t{}\t{}\t{}\t{:d}\n".format(chrom, pos, ref, alt, SNV_base, size))
 
 
