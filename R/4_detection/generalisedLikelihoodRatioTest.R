@@ -285,8 +285,7 @@ singleIteration <- function(iteration, mutationsTable, sizeTable,
 
     bind_rows(usingSize, noSize) %>%
         rename(INVAR_SCORE = LR, AF_P = P_MLE) %>%
-        mutate(ITERATION = iteration) %>%
-        mutate(NUM_LOCI = dim(sampled)[1])
+        mutate(ITERATION = iteration)
 }
 
 ##
