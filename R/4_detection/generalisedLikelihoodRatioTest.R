@@ -213,10 +213,13 @@ calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
     {
         # If only weighting mutants, set mutations that are not mutants to a fixed
         # probability.
+      
+      # Setting probability of seeing a read of length X to be equal across whole read length range
+        fragment_length_range <-(scriptArgs$MAXIMUM_FRAGMENT_LENGTH - scriptArgs$MINIMUM_FRAGMENT_LENGTH)+1
 
         mutationsTable <- mutationsTable %>%
-            mutate(REAL_LENGTH_PROB_NORMAL = ifelse(MUTANT, REAL_LENGTH_PROB_NORMAL, 0.1),
-                   REAL_LENGTH_PROB_MUTANT = ifelse(MUTANT, REAL_LENGTH_PROB_MUTANT, 0.1))
+            mutate(REAL_LENGTH_PROB_NORMAL = ifelse(MUTANT, REAL_LENGTH_PROB_NORMAL, fragment_length_range),
+                   REAL_LENGTH_PROB_MUTANT = ifelse(MUTANT, REAL_LENGTH_PROB_MUTANT, fragment_length_range))
     }
 
     likelihoodRatio <-
