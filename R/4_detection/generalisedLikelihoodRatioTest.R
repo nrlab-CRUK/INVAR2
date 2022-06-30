@@ -416,7 +416,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
                  mc.cores = scriptArgs$THREADS, mc.set.seed = mc.set.seed)
 
     mutationsTableSummary <- mutationsTable %>%
-        summarise(N_INFORMATIVE_READS = n(), MUTATION_SUM = sum(MUTANT))
+        summarise(DP = n(), MUTATION_SUM = sum(MUTANT))
 
     combinedResults <-
         bind_rows(allIterations) %>%
@@ -534,7 +534,8 @@ main <- function(scriptArgs)
                        ITERATION, USING_SIZE,
                        LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
                        INVAR_SCORE, P_ESTIMATE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
-                       N_INFORMATIVE_READS, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
+                       DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
+                rename(N_INFORMATIVE_READS = DP) %>%
                 arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
                         ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
         }
