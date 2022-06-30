@@ -310,7 +310,7 @@ emptyInvarTable <- function(allColumns)
                OUTLIER.PASS = logical(), CONTAMINATION_RISK.PASS = logical(),
                INVAR_SCORE = double(), P_ESTIMATE = double(), AF_P = double(),
                NULL_LIKELIHOOD = double(), ALTERNATIVE_LIKELIHOOD = double(),
-               N_INFORMATIVE_READS = integer(), MUTATION_SUM = integer(),
+               DP = integer(), MUTATION_SUM = integer(),
                IMAF = double(), SMOOTH = double(),
                OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical())
      
@@ -535,7 +535,6 @@ main <- function(scriptArgs)
                        LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS, CONTAMINATION_RISK.PASS,
                        INVAR_SCORE, P_ESTIMATE, AF_P, NULL_LIKELIHOOD, ALTERNATIVE_LIKELIHOOD,
                        DP, MUTATION_SUM, IMAF, SMOOTH, OUTLIER_SUPPRESSION, MUTANT_READS_PRESENT) %>%
-                rename(N_INFORMATIVE_READS = DP) %>%
                 arrange(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO,
                         ITERATION, USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
         }
