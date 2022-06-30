@@ -215,7 +215,7 @@ calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
         # probability.
       
       # Setting probability of seeing a read of length X to be equal across whole read length range
-        fragment_length_range <-1/((scriptArgs$MAXIMUM_FRAGMENT_LENGTH - scriptArgs$MINIMUM_FRAGMENT_LENGTH)+1)
+        fragment_length_range <- 1/((maxFragmentLength - minFragmentLength)+1)
 
         mutationsTable <- mutationsTable %>%
             mutate(REAL_LENGTH_PROB_NORMAL = ifelse(MUTANT, REAL_LENGTH_PROB_NORMAL, fragment_length_range),
