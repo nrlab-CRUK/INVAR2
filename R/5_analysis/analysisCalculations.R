@@ -143,7 +143,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
   layoutTable <- layoutTable %>%
     select(SAMPLE_ID, CASE_OR_CONTROL, SAMPLE_TYPE, TIMEPOINT)
   
-  assert_that(!any(invarScoresTable$N_INFORMATIVE_READS < 0), msg = "Have negative DP.")
+  assert_that(!any(invarScoresTable$DP < 0), msg = "Have negative DP.")
   
   # setting ctDNA level to 1/# molecules where p_mle (AF_P) < 1/# molecules (last mutate)
   
@@ -151,7 +151,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
     left_join(layoutTable, by = 'SAMPLE_ID') %>%
     mutate(ADJUSTED_INVAR_SCORE = ifelse(MUTANT_READS_PRESENT, INVAR_SCORE, 0),
            ADJUSTED_IMAF = ifelse(MUTANT_READS_PRESENT, IMAF, 0)) %>%
-    mutate(ADJUSTED_IMAF = ifelse(ADJUSTED_IMAF < 1 / N_INFORMATIVE_READS, 1 / N_INFORMATIVE_READS, ADJUSTED_IMAF))
+    mutate(ADJUSTED_IMAF = ifelse(ADJUSTED_IMAF < 1 / DP, 1 / DP, ADJUSTED_IMAF))
   
   uniqueConditions <- invarScoresTable %>%
     distinct(USING_SIZE, LOCUS_NOISE.PASS, BOTH_STRANDS.PASS, OUTLIER.PASS)
@@ -188,7 +188,7 @@ scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 2000
   
   nonSpecific.noSize <- nonSpecific %>%
     filter(!USING_SIZE) %>%
-    select(all_of(joinColumns), ADJUSTED_INVAR_SCORE, N_INFORMATIVE_READS)
+    select(all_of(joinColumns), ADJUSTED_INVAR_SCORE, DP)
   
   nonSpecific.withSize <- nonSpecific %>%
     filter(USING_SIZE) %>%
@@ -197,13 +197,13 @@ scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 2000
   beforeAfter.nonSpecific <- nonSpecific.noSize %>%
     left_join(nonSpecific.withSize, joinColumns, suffix = joinSuffix) %>%
     mutate(ADJUSTED_INVAR_SCORE.WITH_SIZE = ifelse(is.na(ADJUSTED_INVAR_SCORE.WITH_SIZE), 0, ADJUSTED_INVAR_SCORE.WITH_SIZE)) %>%
-    filter(N_INFORMATIVE_READS > lowSensitivityThreshold)
+    filter(DP > lowSensitivityThreshold)
   
   joinColumns <- 'SAMPLE_ID'
   
   specific.noSize <- specific %>%
     filter(!USING_SIZE) %>%
-    select(all_of(joinColumns), PATIENT, PATIENT_MUTATION_BELONGS_TO, ADJUSTED_INVAR_SCORE, N_INFORMATIVE_READS, MUTATION_SUM, TIMEPOINT)
+    select(all_of(joinColumns), PATIENT, PATIENT_MUTATION_BELONGS_TO, ADJUSTED_INVAR_SCORE, DP, MUTATION_SUM, TIMEPOINT)
   
   specific.withSize <- specific %>%
     filter(USING_SIZE) %>%
@@ -252,9 +252,9 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
   assert_that(is.numeric(lowSensitivityThreshold), msg = "lowSensitivityThreshold my be a number")
   
   invarScoreColumn <- ifelse(useSize, 'ADJUSTED_INVAR_SCORE.WITH_SIZE', 'ADJUSTED_INVAR_SCORE.NO_SIZE')
-  useColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', invarScoreColumn, 'N_INFORMATIVE_READS')
+  useColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', invarScoreColumn, 'DP')
   
-  minimumSpecificDP <- ifelse(nrow(specificInvarScores) == 0, 0, min(specificInvarScores$N_INFORMATIVE_READS))
+  minimumSpecificDP <- ifelse(nrow(specificInvarScores) == 0, 0, min(specificInvarScores$DP))
   
   # low sensitivity threshold based on lowest patient sample
   
@@ -262,7 +262,7 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
     select(all_of(useColumns)) %>%
     mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO) %>%
     rename(ADJUSTED_INVAR_SCORE = {{ invarScoreColumn }}) %>%
-    filter(N_INFORMATIVE_READS >= minimumSpecificDP)
+    filter(DP >= minimumSpecificDP)
   
   # optimal.cutpoints does not like a tibble!
   
@@ -282,7 +282,7 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
   maximumSpecificity <- max(cutPointInfo$MaxSpSe$Global$optimal.cutoff$Sp)
   
   scoresForQuantile <- nonSpecificInvarScores  %>%
-    filter(N_INFORMATIVE_READS >= minimumSpecificDP) %>%
+    filter(DP >= minimumSpecificDP) %>%
     select({{ invarScoreColumn }})
   
   quantileResult <- quantile(scoresForQuantile[[1]], probs = maximumSpecificity)
@@ -321,9 +321,9 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable,
   
   ifPatientData <- patientSpecificGLRT %>%
     left_join(patientSummaryTable, by = 'PATIENT') %>%
-    mutate(UNIQUE_MOLECULES = N_INFORMATIVE_READS / MUTATIONS,
+    mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
            NG_ON_SEQ = UNIQUE_MOLECULES / 300,
-           LOW_SENSITIVITY = N_INFORMATIVE_READS < 20000 & !DETECTED.WITH_SIZE) %>%
+           LOW_SENSITIVITY = DP < 20000 & !DETECTED.WITH_SIZE) %>%
     arrange(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
   
   thresholds <- as_tibble(c(0,20000,66666)) %>%
@@ -332,10 +332,10 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable,
   thresholdEffects <- patientSpecificGLRT %>%
     crossing(thresholds) %>%
     group_by(THRESHOLD) %>%
-    summarise(CASES = sum(N_INFORMATIVE_READS >= THRESHOLD),
-              DETECTED = sum(N_INFORMATIVE_READS >= THRESHOLD & DETECTED.WITH_SIZE),
-              NOT_DETECTED = sum(N_INFORMATIVE_READS >= THRESHOLD & !DETECTED.WITH_SIZE),
-              DISCARDED = sum(N_INFORMATIVE_READS < THRESHOLD),
+    summarise(CASES = sum(DP >= THRESHOLD),
+              DETECTED = sum(DP >= THRESHOLD & DETECTED.WITH_SIZE),
+              NOT_DETECTED = sum(DP >= THRESHOLD & !DETECTED.WITH_SIZE),
+              DISCARDED = sum(DP < THRESHOLD),
               .groups = "drop") %>%
     mutate(ALL_CASES = nrow(patientSpecificGLRT),
            ALL_DETECTED = sum(patientSpecificGLRT$DETECTED.WITH_SIZE),
