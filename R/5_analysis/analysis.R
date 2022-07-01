@@ -181,14 +181,18 @@ main <- function(scriptArgs)
   
   if (!is.null(ifPatientData))
   {
-    exportCSV(ifPatientData$PATIENT_SPECIFIC_GLRT, 'patient_specific_GLRT.csv')
-    exportCSV(ifPatientData$IF_PATIENT_DATA, 'IF_patient_data.csv')
+#    exportCSV(ifPatientData$PATIENT_SPECIFIC_GLRT, 'patient_specific_GLRT.csv')
+#    exportCSV(ifPatientData$IF_PATIENT_DATA, 'IF_patient_data.csv')
     exportCSV(ifPatientData$THRESHOLD_EFFECTS, 'IR_threshold_effects.csv')
   }
   
   if (!is.null(annotatedPatientSpecificGLRT))
   {
-    exportCSV(annotatedPatientSpecificGLRT, 'annotated_patient_specific_GLRT.csv')
+    annotatedPatientSpecificGLRT <- annotatedPatientSpecificGLRT %>%
+      mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
+             NG_ON_SEQ = UNIQUE_MOLECULES / 300,
+             LOW_SENSITIVITY = DP < 20000 & !DETECTED.WITH_SIZE)
+    exportCSV(annotatedPatientSpecificGLRT, 'Results_summary.csv')
   }
   
   mutationTrackingTable %>%
