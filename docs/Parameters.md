@@ -48,7 +48,7 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 |---------------------------|------|------------------------------------------------------------|
 | STUDY                     |string| The name of the study being processed.                     |
 | ERROR_SUPPRESSION_NAME    |string| Setting giving the description of the error suppression mechanism used in processing the BAM files. e.g. "f0.9_s2". The variable is used in the title of the output plots, allowing users to easily compare two INVAR runs with differently processed bam files. |
-| FAMILY_SIZE               | int  | The family size.                                           |
+| FAMILY_SIZE               | int  | The family size used when deduplicating the BAM file. Used to annotate output plots and is not used in numerical calculation of results.                                           |
 | LAYOUT_TABLE              |      | The path to the layout table file.                         |
 | TUMOUR_MUTATIONS_CSV      |      | The path to the patient tumour mutations file.             |
 | FASTA_REFERENCE           |      | Path to the reference genome FASTQ file.                   |
