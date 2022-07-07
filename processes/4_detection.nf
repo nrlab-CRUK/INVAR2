@@ -33,6 +33,7 @@ process generalisedLikelihoodRatioTest
             --minimum-fragment-length=!{params.MINIMUM_FRAGMENT_LENGTH} \
             --maximum-fragment-length=!{params.MAXIMUM_FRAGMENT_LENGTH} \
             --smoothing=!{params.SMOOTHING} \
+            --iterations=!{params.ITERATIONS} \
             !{params.ONLY_WEIGH_MUTANTS ? "--only-weigh-mutants" : ""}
         """
 }
