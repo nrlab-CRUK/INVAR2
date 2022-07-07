@@ -49,6 +49,9 @@ parseOptions <- function()
         make_option(c("--smoothing"), type="double", metavar="number",
                     dest="SMOOTHING", help="Width of smoothing.",
                     default=0.03),
+        make_option(c("--iterations"), type="double", metavar="number",
+                    dest="ITERATIONS", help="Number of sub-sampled iterations when running non-ptspec data.",
+                    default=10),
         make_option(c("--only-weigh-mutants"), action="store_true", default=FALSE,
                     dest="ONLY_WEIGH_MUTANTS", help="Only weigh ctDNA signal based on mutant fragments."),
         make_option(c("--sampling-seed"), type="integer", metavar="number",
@@ -403,7 +406,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         summarise(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO)
     assert_that(nrow(patientSpecific) == 1, msg = "Have more than one patient + patient mutation belongs to pairing in file")
 
-    iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, 10)
+    iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, ITERATIONS)
 
     allIterations <-
         mclapply(1:iterations, singleIteration,
