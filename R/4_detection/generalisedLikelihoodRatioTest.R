@@ -406,7 +406,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         summarise(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO)
     assert_that(nrow(patientSpecific) == 1, msg = "Have more than one patient + patient mutation belongs to pairing in file")
 
-    iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, ITERATIONS)
+    iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, scriptArgs$ITERATIONS)
 
     allIterations <-
         mclapply(1:iterations, singleIteration,
