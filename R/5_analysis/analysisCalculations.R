@@ -386,7 +386,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
     mutate(UNIQUE_PATIENT_POS = str_c(UNIQUE_POS, UNIQUE_ALT, sep = '_'),
            UNIQUE_IF_MUTANT_SPECIFIC = ifelse(MUTANT & PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
            UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
-           UNIQUE_IF_MUTANT_CASE_OR_CONTROL = ifelse(CASE_OR_CONTROL == 'case', !is.na(UNIQUE_IF_MUTANT_SPECIFIC), !is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
+           # UNIQUE_IF_MUTANT_CASE_OR_CONTROL = ifelse(CASE_OR_CONTROL == 'case', !is.na(UNIQUE_IF_MUTANT_SPECIFIC), !is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
            PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0)
   
   # Only interested in patient specific rows from INVAR scores.
@@ -400,29 +400,69 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
   
   mutationTracking <- mutationsTable %>%
     group_by(SAMPLE_ID, PATIENT, CASE_OR_CONTROL) %>%
-    summarise(LOCUS_NOISE.PASS = sum(LOCUS_NOISE.PASS & PATIENT_SPECIFIC),
-              MUTANTS_PATIENT_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
-              MUTANTS_NON_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
-              MUTANT_OUTLIER.PASS = sum(UNIQUE_IF_MUTANT_CASE_OR_CONTROL & OUTLIER.PASS),
-              SPECIFIC.PASS = sum(PATIENT_SPECIFIC & PASS_ALL),
-              NON_SPECIFIC.PASS = sum(!PATIENT_SPECIFIC & PASS_ALL),
+    summarise(N_LOCI_MUTATED_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
+              N_LOCI_MUTATED_NON_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
+              N_READS_MUTATED_PTSPEC = sum(!is.nan(UNIQUE_IF_MUTANT_SPECIFIC)), # To check if its the same as two lines above
+              N_READS_MUTATED_NON_PTSPEC = sum(!is.nan(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
+              #
+              N_LOCI_MUTATED_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC & LOCUS_NOISE.PASS, na.rm = TRUE),
+              N_LOCI_MUTATED_NON_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC & LOCUS_NOISE.PASS, na.rm = TRUE),
+              #
+              N_READS_MUTATED_PTSPEC_LNP = sum(!is.nan(UNIQUE_IF_MUTANT_SPECIFIC) & LOCUS_NOISE.PASS), # To check if its the same as two lines above
+              N_READS_MUTATED_NON_PTSPEC_LNP = sum(!is.nan(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS),
+              #
+              N_LOCI_MUTATED_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC & PASS_ALL, na.rm = TRUE),
+              N_LOCI_MUTATED_NON_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC & PASS_ALL, na.rm = TRUE),
+              #
+              N_READS_MUTATED_PTSPEC_AllFilt = sum(PATIENT_SPECIFIC & PASS_ALL),
+              N_READS_MUTATED_NON_PTSPEC_AllFilt = sum(!PATIENT_SPECIFIC & PASS_ALL),
               .groups = "drop") %>%
     left_join(layoutTableTimepoint, by = "SAMPLE_ID") %>%
     left_join(tumourMutationTableSummary, by = "PATIENT") %>%
     full_join(invarScoresTable, by = c('SAMPLE_ID', 'PATIENT')) %>%
-    mutate(INITIAL_MUTATIONS = ifelse(CASE_OR_CONTROL == 'case', INITIAL_MUTATIONS, 0)) %>%
+    mutate(INITIAL_N_MUTATIONS = ifelse(CASE_OR_CONTROL == 'case', INITIAL_MUTATIONS, 0)) %>%
     mutate(USING_SIZE = ifelse(USING_SIZE, 'WITH_SIZE', 'NO_SIZE'),
            OUTLIER.PASS = ifelse(OUTLIER.PASS, 'PASS', 'FAIL')) %>%
     pivot_wider(names_from = c(USING_SIZE, OUTLIER.PASS),
-                names_glue = "{USING_SIZE}.OUTLIER_{OUTLIER.PASS}",
+                names_glue = "DETECTED.{USING_SIZE}.OUTLIER_{OUTLIER.PASS}",
                 values_from = DETECTION) %>%
     select(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
-           INITIAL_MUTATIONS, LOCUS_NOISE.PASS,
-           MUTANTS_PATIENT_SPECIFIC, MUTANTS_NON_SPECIFIC,
-           MUTANT_OUTLIER.PASS, SPECIFIC.PASS, NON_SPECIFIC.PASS,
-           any_of(c('WITH_SIZE.OUTLIER_PASS', 'NO_SIZE.OUTLIER_PASS',
-                    'WITH_SIZE.OUTLIER_FAIL', 'NO_SIZE.OUTLIER_FAIL'))) %>%
+           INITIAL_N_MUTATIONS, 
+           N_LOCI_MUTATED_PTSPEC, N_LOCI_MUTATED_NON_PTSPEC,
+           N_READS_MUTATED_PTSPEC, N_READS_MUTATED_NON_PTSPEC,
+           N_LOCI_MUTATED_PTSPEC_LNP, N_LOCI_MUTATED_NON_PTSPEC_LNP,
+           N_READS_MUTATED_PTSPEC_LNP, N_READS_MUTATED_NON_PTSPEC_LNP,
+           N_LOCI_MUTATED_PTSPEC_AllFilt, N_LOCI_MUTATED_NON_PTSPEC_AllFilt,
+           N_READS_MUTATED_PTSPEC_AllFilt, N_READS_MUTATED_NON_PTSPEC_AllFilt,
+           any_of(c('DETECTED.WITH_SIZE.OUTLIER_PASS', 'DETECTED.NO_SIZE.OUTLIER_PASS',
+                    'DETECTED.WITH_SIZE.OUTLIER_FAIL', 'DETECTED.NO_SIZE.OUTLIER_FAIL'))) %>%
     arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
+  
+  # mutationTracking <- mutationsTable %>%
+  #   group_by(SAMPLE_ID, PATIENT, CASE_OR_CONTROL) %>%
+  #   summarise(LOCUS_NOISE.PASS = sum(LOCUS_NOISE.PASS & PATIENT_SPECIFIC),
+  #             MUTANTS_PATIENT_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
+  #             MUTANTS_NON_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
+  #             MUTANT_OUTLIER.PASS = sum(UNIQUE_IF_MUTANT_CASE_OR_CONTROL & OUTLIER.PASS),
+  #             SPECIFIC.PASS = sum(PATIENT_SPECIFIC & PASS_ALL),
+  #             NON_SPECIFIC.PASS = sum(!PATIENT_SPECIFIC & PASS_ALL),
+  #             .groups = "drop") %>%
+  #   left_join(layoutTableTimepoint, by = "SAMPLE_ID") %>%
+  #   left_join(tumourMutationTableSummary, by = "PATIENT") %>%
+  #   full_join(invarScoresTable, by = c('SAMPLE_ID', 'PATIENT')) %>%
+  #   mutate(INITIAL_MUTATIONS = ifelse(CASE_OR_CONTROL == 'case', INITIAL_MUTATIONS, 0)) %>%
+  #   mutate(USING_SIZE = ifelse(USING_SIZE, 'WITH_SIZE', 'NO_SIZE'),
+  #          OUTLIER.PASS = ifelse(OUTLIER.PASS, 'PASS', 'FAIL')) %>%
+  #   pivot_wider(names_from = c(USING_SIZE, OUTLIER.PASS),
+  #               names_glue = "{USING_SIZE}.OUTLIER_{OUTLIER.PASS}",
+  #               values_from = DETECTION) %>%
+  #   select(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
+  #          INITIAL_MUTATIONS, LOCUS_NOISE.PASS,
+  #          MUTANTS_PATIENT_SPECIFIC, MUTANTS_NON_SPECIFIC,
+  #          MUTANT_OUTLIER.PASS, SPECIFIC.PASS, NON_SPECIFIC.PASS,
+  #          any_of(c('WITH_SIZE.OUTLIER_PASS', 'NO_SIZE.OUTLIER_PASS',
+  #                   'WITH_SIZE.OUTLIER_FAIL', 'NO_SIZE.OUTLIER_FAIL'))) %>%
+  #   arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
   
   mutationTracking
 }
