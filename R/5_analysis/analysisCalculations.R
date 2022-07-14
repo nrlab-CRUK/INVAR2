@@ -405,14 +405,14 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
               N_READS_MUTATED_PTSPEC = sum(!is.nan(UNIQUE_IF_MUTANT_SPECIFIC)), # To check if its the same as two lines above
               N_READS_MUTATED_NON_PTSPEC = sum(!is.nan(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
               #
-              N_LOCI_MUTATED_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC & LOCUS_NOISE.PASS, na.rm = TRUE),
-              N_LOCI_MUTATED_NON_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC & LOCUS_NOISE.PASS, na.rm = TRUE),
+              N_LOCI_MUTATED_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[LOCUS_NOISE.PASS], na.rm = TRUE),
+              N_LOCI_MUTATED_NON_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[LOCUS_NOISE.PASS], na.rm = TRUE),
               #
               N_READS_MUTATED_PTSPEC_LNP = sum(!is.nan(UNIQUE_IF_MUTANT_SPECIFIC) & LOCUS_NOISE.PASS), # To check if its the same as two lines above
               N_READS_MUTATED_NON_PTSPEC_LNP = sum(!is.nan(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS),
               #
-              N_LOCI_MUTATED_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC & PASS_ALL, na.rm = TRUE),
-              N_LOCI_MUTATED_NON_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC & PASS_ALL, na.rm = TRUE),
+              N_LOCI_MUTATED_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[PASS_ALL], na.rm = TRUE),
+              N_LOCI_MUTATED_NON_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[PASS_ALL], na.rm = TRUE),
               #
               N_READS_MUTATED_PTSPEC_AllFilt = sum(PATIENT_SPECIFIC & PASS_ALL),
               N_READS_MUTATED_NON_PTSPEC_AllFilt = sum(!PATIENT_SPECIFIC & PASS_ALL),
