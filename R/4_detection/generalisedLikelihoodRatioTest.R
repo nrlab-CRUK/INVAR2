@@ -49,6 +49,9 @@ parseOptions <- function()
         make_option(c("--smoothing"), type="double", metavar="number",
                     dest="SMOOTHING", help="Width of smoothing.",
                     default=0.03),
+        make_option(c("--iterations"), type="double", metavar="number",
+                    dest="ITERATIONS", help="Number of sub-sampled iterations when running non-ptspec data.",
+                    default=10),
         make_option(c("--only-weigh-mutants"), action="store_true", default=FALSE,
                     dest="ONLY_WEIGH_MUTANTS", help="Only weigh ctDNA signal based on mutant fragments."),
         make_option(c("--sampling-seed"), type="integer", metavar="number",
@@ -168,7 +171,7 @@ calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
         mutate(DP = 1)
 
     # Filter dataframe to include only minFragmentLength:maxFragmentLength fragments - affects the weight normalisation
-    sizeTable <- filter(sizeTable, SIZE>=minFragmentLength, SIZE<=maxFragmentLength)
+#    sizeTable <- filter(sizeTable, SIZE>=minFragmentLength, SIZE<=maxFragmentLength)
 
     ## read length probabilites for mutant reads
 
@@ -213,10 +216,13 @@ calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
     {
         # If only weighting mutants, set mutations that are not mutants to a fixed
         # probability.
+      
+      # Setting probability of seeing a read of length X to be equal across whole read length range
+        fragment_length_range <- 1/((maxFragmentLength - minFragmentLength)+1)
 
         mutationsTable <- mutationsTable %>%
-            mutate(REAL_LENGTH_PROB_NORMAL = ifelse(MUTANT, REAL_LENGTH_PROB_NORMAL, 0.1),
-                   REAL_LENGTH_PROB_MUTANT = ifelse(MUTANT, REAL_LENGTH_PROB_MUTANT, 0.1))
+            mutate(REAL_LENGTH_PROB_NORMAL = ifelse(MUTANT, REAL_LENGTH_PROB_NORMAL, fragment_length_range),
+                   REAL_LENGTH_PROB_MUTANT = ifelse(MUTANT, REAL_LENGTH_PROB_MUTANT, fragment_length_range))
     }
 
     likelihoodRatio <-
@@ -363,7 +369,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
     # just so that the background error estimate isn't zero
 
     mutationsTable <- mutationsTable %>%
-        filter(TUMOUR_AF > 0 & SIZE > scriptArgs$MINIMUM_FRAGMENT_LENGTH & SIZE <= scriptArgs$MAXIMUM_FRAGMENT_LENGTH) %>%
+        filter(TUMOUR_AF > 0) %>%
         mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF > 0, BACKGROUND_AF, 1 / BACKGROUND_DP))
 
     if (nrow(mutationsTable) == 0)
@@ -400,7 +406,7 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
         summarise(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO)
     assert_that(nrow(patientSpecific) == 1, msg = "Have more than one patient + patient mutation belongs to pairing in file")
 
-    iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, 10)
+    iterations <- ifelse(patientSpecific$PATIENT_SPECIFIC, 1, scriptArgs$ITERATIONS)
 
     allIterations <-
         mclapply(1:iterations, singleIteration,

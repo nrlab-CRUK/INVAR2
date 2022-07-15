@@ -148,7 +148,7 @@ calc_likelihood_ratio_with_RL <- function(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1,
 calc_log_likelihood <- function(M, R, AF, e, p)
 {
     q = AF * (1 - e) * p + (1 - AF) * e * p + e * (1 - p)
-    sum(lchoose(R, M) + M * log(q) + (R - M) * log(1 - q))
+    sum(lchoose(R, M) + M * log(q) + (R - M) * log(1 - q))/length(R)
 }
 
 calc_log_likelihood_with_RL <- function(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1 , p)
@@ -157,7 +157,7 @@ calc_log_likelihood_with_RL <- function(M, R, AF, e, RL, RL_PROB_0, RL_PROB_1 , 
     g = AF * (1 - e) + (1 - AF) * e
     L_0 <- (1 - e) * RL_PROB_0 * (1 - p) + (1 - g) * RL_PROB_1 * p
     L_1 <- e * RL_PROB_0 * (1 - p) + (g) * RL_PROB_1 * p #changed g from (1-g) 16/03/22 EDitter
-    sum(M * log(L_1) + (R - M) * log(L_0))
+    sum(M * log(L_1) + (R - M) * log(L_0))/length(R)
 }
 
 ## generates a list with the probability to get a fragment length L, given fragment length counts from a tissue
