@@ -67,17 +67,20 @@ plots$P11
 The table below tracks the number of loci per input sample across the progression of the pipeline. The final four columns gives the classification of the sample as defined by the specified filter conditions. 
 
 INITIAL_N_MUTATIONS : is the number of mutations (and number of individual loci) given per patient in the tumour mutations .csv file.
-N_LOCI_LOCUS_NOISE.PASS : is the number of those loci that pass the LOCUS_NOISE filter. ie the number of loci that have mutations in less than "PROPORTION_OF_CONTROLS" loci (parameter set in the nextflow.config file).
-MUTANT_LOCI_PATIENT_SPECIFIC : is the number of patient specific LOCI in a sample that have mutations.
-MUTANT_LOCI_NON_PATIENT_SPECIFIC : is the number of non-patient specific LOCI in a sample that have mutations.
-N_READS_MUTATED_PTSPEC : is the number of mutated reads found in the loci that passed the LOCUS_NOISE filter. 
+N_LOCI_MUTATED_PTSPEC : number of those loci that have a mutation in the patient panel.
+N_LOCI_MUTATED_NON_PTSPEC : number of those loci that have a mutation in other patients panel (in non-patient specific loci).
+N_READS_MUTATED_PTSPEC : how many mutated reads at the patient specific loci.
+N_READS_MUTATED_NON_PTSPEC : how many mutated reads at the non patient specific loci.
 
-, N_READS_MUTATED_NONPTSPEC, 
-           N_READS_MUTATED_PRE_OS_PTSPEC, N_READS_MUTATED_PRE_OS_NONPTSPEC,
-           # MUTANT_OUTLIER.PASS, 
+N_LOCI_MUTATED_PTSPEC_LNP :  number of loci with mutations that have passed the LOCUS_NOISE.PASS filter, in the patient specific loci.
+N_LOCI_MUTATED_NON_PTSPEC_LNP :  number of loci with mutations that have passed the LOCUS_NOISE.PASS filter, in non-patient specific loci.
+N_READS_MUTATED_PTSPEC_LNP : number of mutated reads across the patient specific loci that pass the LOCUS_NOISE.PASS filter.
+N_READS_MUTATED_NON_PTSPEC_LNP : number of mutated reads across other patient panel loci that pass the LOCUS_NOISE.PASS filter.
+N_LOCI_MUTATED_PTSPEC_AllFilt : number of loci with mutations that have passed all filters (LOCUS_NOISE.PASS and OUTLIER_SUPRESSION), in the patient specific loci.
+N_LOCI_MUTATED_NON_PTSPEC_AllFilt  : number of loci with mutations that have passed all filters (LOCUS_NOISE.PASS and OUTLIER_SUPRESSION), in non-patient specific loci.
+N_READS_MUTATED_PTSPEC_AllFilt : number of mutated reads in the patient sample that pass all filters. 
+N_READS_MUTATED_NON_PTSPEC_AllFilt : number of mutated reads in the non-patient specific data that pass all filters. 
 
-PATIENT_SPECIFIC.PASS_AL : is number of patient specific READS (not loci!!) that pass all filters and are mutated.
-NON_SPECIFIC.PASS_ALL : is number of non-patient specific READS (not loci!!) that pass all filters and are mutated.
 
 ```{r, echo = FALSE}
 if (nrow(mutationTrackingTable) > 0) {
