@@ -404,16 +404,16 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
               N_LOCI_MUTATED_NON_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
               N_READS_MUTATED_PTSPEC = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC)), # To check if its the same as two lines above
               N_READS_MUTATED_NON_PTSPEC = sum(!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
-              #
+              # Number of loci that pass the LOCUS_NOISE.PASS filter
               N_LOCI_MUTATED_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[LOCUS_NOISE.PASS], na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[LOCUS_NOISE.PASS], na.rm = TRUE),
-              #
+              # Number of reads that pass the LOCUS_NOISE.PASS filter
               N_READS_MUTATED_PTSPEC_LNP = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC)[LOCUS_NOISE.PASS]), # To check if its the same as two lines above
               N_READS_MUTATED_NON_PTSPEC_LNP = sum(!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS),
-              #
+              # Number of loci that pass all filters
               N_LOCI_MUTATED_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[PASS_ALL], na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[PASS_ALL], na.rm = TRUE),
-              #
+              # Number of loci that pass all filters
               N_READS_MUTATED_PTSPEC_AllFilt = sum(PATIENT_SPECIFIC & PASS_ALL),
               N_READS_MUTATED_NON_PTSPEC_AllFilt = sum(!PATIENT_SPECIFIC & PASS_ALL),
               .groups = "drop") %>%
