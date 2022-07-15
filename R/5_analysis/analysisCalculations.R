@@ -402,14 +402,14 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
     group_by(SAMPLE_ID, PATIENT, CASE_OR_CONTROL) %>%
     summarise(N_LOCI_MUTATED_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
-              N_READS_MUTATED_PTSPEC = sum(!is.nan(UNIQUE_IF_MUTANT_SPECIFIC)), # To check if its the same as two lines above
-              N_READS_MUTATED_NON_PTSPEC = sum(!is.nan(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
+              N_READS_MUTATED_PTSPEC = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC)), # To check if its the same as two lines above
+              N_READS_MUTATED_NON_PTSPEC = sum(!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
               #
               N_LOCI_MUTATED_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[LOCUS_NOISE.PASS], na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[LOCUS_NOISE.PASS], na.rm = TRUE),
               #
-              N_READS_MUTATED_PTSPEC_LNP = sum(!is.nan(UNIQUE_IF_MUTANT_SPECIFIC) & LOCUS_NOISE.PASS), # To check if its the same as two lines above
-              N_READS_MUTATED_NON_PTSPEC_LNP = sum(!is.nan(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS),
+              N_READS_MUTATED_PTSPEC_LNP = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC)[LOCUS_NOISE.PASS]), # To check if its the same as two lines above
+              N_READS_MUTATED_NON_PTSPEC_LNP = sum(!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS),
               #
               N_LOCI_MUTATED_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[PASS_ALL], na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[PASS_ALL], na.rm = TRUE),
@@ -429,10 +429,10 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
     select(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
            INITIAL_N_MUTATIONS, 
            N_LOCI_MUTATED_PTSPEC, N_LOCI_MUTATED_NON_PTSPEC,
-           N_READS_MUTATED_PTSPEC, N_READS_MUTATED_NON_PTSPEC,
            N_LOCI_MUTATED_PTSPEC_LNP, N_LOCI_MUTATED_NON_PTSPEC_LNP,
-           N_READS_MUTATED_PTSPEC_LNP, N_READS_MUTATED_NON_PTSPEC_LNP,
            N_LOCI_MUTATED_PTSPEC_AllFilt, N_LOCI_MUTATED_NON_PTSPEC_AllFilt,
+           N_READS_MUTATED_PTSPEC, N_READS_MUTATED_NON_PTSPEC,
+           N_READS_MUTATED_PTSPEC_LNP, N_READS_MUTATED_NON_PTSPEC_LNP,
            N_READS_MUTATED_PTSPEC_AllFilt, N_READS_MUTATED_NON_PTSPEC_AllFilt,
            any_of(c('DETECTED.WITH_SIZE.OUTLIER_PASS', 'DETECTED.NO_SIZE.OUTLIER_PASS',
                     'DETECTED.WITH_SIZE.OUTLIER_FAIL', 'DETECTED.NO_SIZE.OUTLIER_FAIL'))) %>%
