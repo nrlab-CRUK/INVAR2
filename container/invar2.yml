@@ -5,8 +5,8 @@ channels:
   - defaults
 dependencies:
   - bioconda::bedtools=2.30.0
-  - bioconda::samtools=1.14
-#  - bioconda::bcftools=1.14
+  - bioconda::samtools=1.15
+  - bioconda::bcftools=1.15
   - bioconda::pysam=0.17.0
   - bioconda::picard=2.26.10-0
   - conda-forge::pandoc=2.16.1
