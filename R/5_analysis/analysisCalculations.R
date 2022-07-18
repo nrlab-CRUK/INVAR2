@@ -262,7 +262,7 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
     select(all_of(useColumns)) %>%
     mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO) %>%
     rename(ADJUSTED_INVAR_SCORE = {{ invarScoreColumn }}) %>%
-    filter(DP >= minimumSpecificDP)
+    filter(DP >= minimumSpecificDP) # depth can't be lower then lowest ptspec depth
   
   # optimal.cutpoints does not like a tibble!
   
