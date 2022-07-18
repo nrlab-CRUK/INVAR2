@@ -12,5 +12,5 @@ so whether it is a loci as defined in the tumour mutation file or not (ie if the
 * Invar scores are given for each sample as called against each panel, and are the log likelihoods of there being mutations in the sample given the signal at the pre-chosen loci
 * Ideally, we would measure very low scores for non patient specific measurements (ex: patient A's data as called against patient B's panel, ie low levels of background noise for randomly chosen loci) and high scores when measuring signal across the patient specific panel (ie a high prevalence of the tumour mutations detectable in the plasma)
 * A threshold value is selected to give our results a specificity (true negative) score of eg. 95%. 
-* The threshold score is used to classify the each sample based on the sample's patient specific INVAR score. 
+* The threshold score is used to classify each sample based on the sample's patient specific INVAR score. 
 
