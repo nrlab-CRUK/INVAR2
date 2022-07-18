@@ -14,10 +14,7 @@ RUN curl https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-x
 COPY invar2.yml .
 RUN /opt/conda/bin/conda env create -f invar2.yml
 
-COPY invar2_bcftools.yml .
-RUN /opt/conda/bin/conda env create -f invar2_bcftools.yml
-
 RUN /opt/conda/bin/conda clean -a
 
-ENV PATH /opt/conda/envs/invar2/bin:/opt/conda/envs/invar2_bcftools/bin:$PATH
+ENV PATH /opt/conda/envs/invar2/bin:$PATH
 
