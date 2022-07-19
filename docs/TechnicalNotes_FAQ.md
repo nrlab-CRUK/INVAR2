@@ -16,4 +16,5 @@ so whether it is a loci as defined in the tumour mutation file or not (ie if the
 
 # In Results_summary.csv, what is MUTATION_SUM and MUTATIONS
 MUTATION_SUM is the number of alt base pairs measured in the +/- 10bp region of the loci of interest. Ideally we would expect the number to be close to 0, however if there is a second mutation close (ie within 10 bp, or the limit as defined in the aprameters) to a mutation selected as part of the patient specific panel, then the number could be significantly higher. 
-MUTATIONS is
+
+MUTATIONS = n_distinct(PATIENT, UNIQUE_POS) so number of input mutations or loci of interest.
