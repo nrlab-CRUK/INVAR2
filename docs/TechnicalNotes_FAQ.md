@@ -14,3 +14,7 @@ so whether it is a loci as defined in the tumour mutation file or not (ie if the
 * A threshold value is selected to give our results a specificity (true negative) score of eg. 95%. 
 * The threshold score is used to classify each sample based on the sample's patient specific INVAR score. 
 
+# In Results_summary.csv, what is MUTATION_SUM and MUTATIONS
+MUTATION_SUM = sum(MUTANT) , so number of mutated reads but with no filtering conditions.  
+
+MUTATIONS = n_distinct(PATIENT, UNIQUE_POS) so number of input mutations or loci of interest.

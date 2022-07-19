@@ -387,7 +387,8 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
            UNIQUE_IF_MUTANT_SPECIFIC = ifelse(MUTANT & PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
            UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
            # UNIQUE_IF_MUTANT_CASE_OR_CONTROL = ifelse(CASE_OR_CONTROL == 'case', !is.na(UNIQUE_IF_MUTANT_SPECIFIC), !is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
-           PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0)
+           PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0,
+           All_IR = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS)
   
   # Only interested in patient specific rows from INVAR scores.
   # LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS are all true for the current
@@ -416,6 +417,8 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
               # Number of loci that pass all filters
               N_READS_MUTATED_PTSPEC_AllFilt = sum(PATIENT_SPECIFIC & PASS_ALL),
               N_READS_MUTATED_NON_PTSPEC_AllFilt = sum(!PATIENT_SPECIFIC & PASS_ALL),
+              # Number of informative reads per sample after all filtering
+              N_IR = length(All_IR),
               .groups = "drop") %>%
     left_join(layoutTableTimepoint, by = "SAMPLE_ID") %>%
     left_join(tumourMutationTableSummary, by = "PATIENT") %>%
@@ -433,7 +436,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
            N_LOCI_MUTATED_PTSPEC_AllFilt, N_LOCI_MUTATED_NON_PTSPEC_AllFilt,
            N_READS_MUTATED_PTSPEC, N_READS_MUTATED_NON_PTSPEC,
            N_READS_MUTATED_PTSPEC_LNP, N_READS_MUTATED_NON_PTSPEC_LNP,
-           N_READS_MUTATED_PTSPEC_AllFilt, N_READS_MUTATED_NON_PTSPEC_AllFilt,
+           N_READS_MUTATED_PTSPEC_AllFilt, N_READS_MUTATED_NON_PTSPEC_AllFilt, N_IR,
            any_of(c('DETECTED.WITH_SIZE.OUTLIER_PASS', 'DETECTED.NO_SIZE.OUTLIER_PASS',
                     'DETECTED.WITH_SIZE.OUTLIER_FAIL', 'DETECTED.NO_SIZE.OUTLIER_FAIL'))) %>%
     arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
