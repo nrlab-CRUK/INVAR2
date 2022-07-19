@@ -65,6 +65,12 @@ parseOptions <- function()
     make_option(c("--max-background-allele-frequency"), type="double", metavar="num",
                 dest="MAX_BACKGROUND_ALLELE_FREQUENCY", help="Filter loci with a background allele frequency in controls greater than this value",
                 default=0.01),
+    make_option(c("--allele-frequency-threshold"), type="double", metavar="num",
+                dest="ALLELE_FREQUENCY_THRESHOLD", help="Maximum allele frequency value for acceptable samples.",
+                default=0.01),
+    make_option(c("--max-mutant-reads"), type="integer", metavar="integer",
+                dest="MAXIMUM_MUTANT_READS", help="Maximum number of reads acceptable for outlier suppression trying to detect MRD",
+                default=10),
     make_option(c("--score-specificity"), type="double", metavar="number",
                 dest="SCORE_SPECIFICITY", help="Score specificity for ROC plot.",
                 default=0.95))
@@ -250,7 +256,9 @@ main <- function(scriptArgs)
   plots$P8 <- backgroundPolishingPlot(mutationsTable, layoutTable,
                                       study = scriptArgs$STUDY,
                                       errorSuppression = scriptArgs$ERROR_SUPPRESSION,
-                                      outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION)
+                                      outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION,
+                                      allele_frequency_threshold = scriptArgs$ALLELE_FREQUENCY_THRESHOLD,
+                                      MAXIMUM_MUTANT_READS = scriptArgs$MAXIMUM_MUTANT_READS)
   
   # Tumour AF in observed and unobserved loci.
   
