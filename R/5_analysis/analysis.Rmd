@@ -80,7 +80,7 @@ N_LOCI_MUTATED_PTSPEC_AllFilt : number of loci with mutations that have passed a
 N_LOCI_MUTATED_NON_PTSPEC_AllFilt  : number of loci with mutations that have passed all filters (LOCUS_NOISE.PASS and OUTLIER_SUPRESSION), in non-patient specific loci.
 N_READS_MUTATED_PTSPEC_AllFilt : number of mutated reads in the patient sample that pass all filters. 
 N_READS_MUTATED_NON_PTSPEC_AllFilt : number of mutated reads in the non-patient specific data that pass all filters. 
-
+N_IR : Total number of reads in the sample after all filtering
 
 ```{r, echo = FALSE}
 if (nrow(mutationTrackingTable) > 0) {

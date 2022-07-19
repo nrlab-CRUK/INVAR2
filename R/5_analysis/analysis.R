@@ -62,6 +62,9 @@ parseOptions <- function()
     make_option(c("--outlier-suppression"), type="double", metavar="number",
                 dest="OUTLIER_SUPPRESSION", help="The outlier suppression threshold",
                 default=0.05),
+    make_option(c("--max-background-allele-frequency"), type="double", metavar="num",
+                dest="MAX_BACKGROUND_ALLELE_FREQUENCY", help="Filter loci with a background allele frequency in controls greater than this value",
+                default=0.01),
     make_option(c("--score-specificity"), type="double", metavar="number",
                 dest="SCORE_SPECIFICITY", help="Score specificity for ROC plot.",
                 default=0.95))
@@ -155,7 +158,7 @@ main <- function(scriptArgs)
   ifPatientData <-
     tryCatch(
       {
-        getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable, scriptArgs$SCORE_SPECIFICITY)
+        getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable, scriptArgs$SCORE_SPECIFICITY, scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
       },
       error = function(cond)
       {

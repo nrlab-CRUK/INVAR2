@@ -39,6 +39,7 @@ process runAnalysis
             --error-suppression="!{params.ERROR_SUPPRESSION_NAME}" \
             --family-size="!{params.FAMILY_SIZE}" \
             --outlier-suppression=!{params.OUTLIER_SUPPRESSION_THRESHOLD} \
+            --max-background-allele-frequency=!{params.MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY} \
             --score-specificity=!{params.SCORE_SPECIFICITY}
         """
 }

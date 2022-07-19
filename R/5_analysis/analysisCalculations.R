@@ -169,7 +169,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
 # Originally scale_INVAR_size in functions.R
 #
 
-scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 20000)
+scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 20000, MAX_BACKGROUND_ALLELE_FREQUENCY )
 {
   assert_that(is.numeric(lowSensitivityThreshold), msg = "lowSensitivityThreshold my be a number")
   
@@ -177,7 +177,7 @@ scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 2000
     filter(PATIENT_SPECIFIC)
   
   contaminationRiskSamples <- specific %>%
-    filter(!USING_SIZE & ADJUSTED_IMAF > 0.01)
+    filter(!USING_SIZE & ADJUSTED_IMAF > MAX_BACKGROUND_ALLELE_FREQUENCY)
   
   nonSpecific <- adjustedScoresTable %>%
     filter(!PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case' &
@@ -300,7 +300,7 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
        INVAR_SCORE_THRESHOLD = ifelse(invarScoreThreshold == 0, 1e-31, invarScoreThreshold))
 }
 
-getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable, scoreSpecificity)
+getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable, scoreSpecificity, MAX_BACKGROUND_ALLELE_FREQUENCY)
 {
   adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable, scoreSpecificity) %>%
     filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS)
@@ -387,7 +387,8 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
            UNIQUE_IF_MUTANT_SPECIFIC = ifelse(MUTANT & PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
            UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
            # UNIQUE_IF_MUTANT_CASE_OR_CONTROL = ifelse(CASE_OR_CONTROL == 'case', !is.na(UNIQUE_IF_MUTANT_SPECIFIC), !is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
-           PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0)
+           PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0,
+           All_IR = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS)
   
   # Only interested in patient specific rows from INVAR scores.
   # LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS are all true for the current
@@ -416,6 +417,8 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
               #
               N_READS_MUTATED_PTSPEC_AllFilt = sum(PATIENT_SPECIFIC & PASS_ALL),
               N_READS_MUTATED_NON_PTSPEC_AllFilt = sum(!PATIENT_SPECIFIC & PASS_ALL),
+              # Nunmber of informative reads (ie total number of reads in a sample, post all filtering)
+              N_IR = length(All_IR),
               .groups = "drop") %>%
     left_join(layoutTableTimepoint, by = "SAMPLE_ID") %>%
     left_join(tumourMutationTableSummary, by = "PATIENT") %>%
