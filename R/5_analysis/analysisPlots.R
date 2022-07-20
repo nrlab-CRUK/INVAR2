@@ -431,7 +431,7 @@ enrichmentLevelPlot <- function(sizeCharacterisationSummary, study)
     plot
 }
 
-receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize, scoreSpecificity)
+receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize, scoreSpecificity, MINIMUM_N_INFORMATIVE_READS, MAX_BACKGROUND_ALLELE_FREQUENCY)
 {
     assert_that(is.logical(withSizes), msg = "withSizes must be a logical")
 

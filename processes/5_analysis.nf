@@ -42,6 +42,7 @@ process runAnalysis
             --max-background-allele-frequency=!{params.MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY} \
             --allele-frequency-threshold=!{params.ALLELE_FREQUENCY_THRESHOLD} \
             --max-mutant-reads=!{params.MAXIMUM_MUTANT_READS} \
+            --min-N-IR=!{params.MINIMUM_N_INFORMATIVE_READS} \
             --score-specificity=!{params.SCORE_SPECIFICITY}
         """
 }

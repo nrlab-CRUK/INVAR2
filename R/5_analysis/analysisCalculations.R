@@ -169,7 +169,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
 # Originally scale_INVAR_size in functions.R
 #
 
-scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = 20000, MAX_BACKGROUND_ALLELE_FREQUENCY )
+scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = MINIMUM_N_INFORMATIVE_READS, MAX_BACKGROUND_ALLELE_FREQUENCY )
 {
   assert_that(is.numeric(lowSensitivityThreshold), msg = "lowSensitivityThreshold my be a number")
   
@@ -300,7 +300,7 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, l
        INVAR_SCORE_THRESHOLD = ifelse(invarScoreThreshold == 0, 1e-31, invarScoreThreshold))
 }
 
-getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable, scoreSpecificity, MAX_BACKGROUND_ALLELE_FREQUENCY)
+getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable, scoreSpecificity, MINIMUM_N_INFORMATIVE_READS, MAX_BACKGROUND_ALLELE_FREQUENCY)
 {
   adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable, scoreSpecificity) %>%
     filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS)
@@ -323,10 +323,10 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable,
     left_join(patientSummaryTable, by = 'PATIENT') %>%
     mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
            NG_ON_SEQ = UNIQUE_MOLECULES / 300,
-           LOW_SENSITIVITY = DP < 20000 & !DETECTED.WITH_SIZE) %>%
+           LOW_SENSITIVITY = DP < MINIMUM_N_INFORMATIVE_READS & !DETECTED.WITH_SIZE) %>%
     arrange(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
   
-  thresholds <- as_tibble(c(0,20000,66666)) %>%
+  thresholds <- as_tibble(c(0,MINIMUM_N_INFORMATIVE_READS,66666)) %>%
     rename(THRESHOLD = 1)
   
   thresholdEffects <- patientSpecificGLRT %>%
@@ -347,7 +347,7 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable,
        THRESHOLD_EFFECTS = thresholdEffects)
 }
 
-annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patientSummaryTable)
+annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patientSummaryTable, MINIMUM_N_INFORMATIVE_READS)
 {
   layoutTable <- layoutTable %>%
     select(SAMPLE_ID, STUDY, INPUT_INTO_LIBRARY_NG) %>%
@@ -356,8 +356,8 @@ annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patien
   patientSpecificGLRT.annotated <- patientSpecificGLRT %>%
     left_join(layoutTable, by = 'SAMPLE_ID') %>%
     mutate(NOT_DETECTABLE_DPCR = ADJUSTED_IMAF < 3.3 / INPUT_INTO_LIBRARY_NG,
-           CTDNA_PLOTTING = ifelse(!DETECTED.WITH_SIZE, 1e-7, ifelse(DP < 20000, 1e-8, ADJUSTED_IMAF)),
-           LS_FILTER = ifelse(DETECTED.WITH_SIZE | DP >= 20000 , "Pass", "Fail"),
+           CTDNA_PLOTTING = ifelse(!DETECTED.WITH_SIZE, 1e-7, ifelse(DP < MINIMUM_N_INFORMATIVE_READS, 1e-8, ADJUSTED_IMAF)),
+           LS_FILTER = ifelse(DETECTED.WITH_SIZE | DP >= MINIMUM_N_INFORMATIVE_READS , "Pass", "Fail"),
            LOLLIPOP = ifelse(DETECTED.WITH_SIZE & NOT_DETECTABLE_DPCR, "non_dPCR", LS_FILTER)) %>%
     mutate_at(vars(LS_FILTER, LOLLIPOP), as.factor) %>%
     left_join(patientSummaryTable, by = 'PATIENT') %>%

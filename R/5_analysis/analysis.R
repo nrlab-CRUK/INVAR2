@@ -71,6 +71,9 @@ parseOptions <- function()
     make_option(c("--max-mutant-reads"), type="integer", metavar="integer",
                 dest="MAXIMUM_MUTANT_READS", help="Maximum number of reads acceptable for outlier suppression trying to detect MRD",
                 default=10),
+    make_option(c("--min-N-IR"), type="integer", metavar="integer",
+                dest="MINIMUM_N_INFORMATIVE_READS", help="Minimum number of informative reads per sample for it to be considered as part of the cohort",
+                default=10),
     make_option(c("--score-specificity"), type="double", metavar="number",
                 dest="SCORE_SPECIFICITY", help="Score specificity for ROC plot.",
                 default=0.95))
@@ -164,7 +167,7 @@ main <- function(scriptArgs)
   ifPatientData <-
     tryCatch(
       {
-        getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable, scriptArgs$SCORE_SPECIFICITY, scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
+        getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable, scriptArgs$SCORE_SPECIFICITY, scriptArgs$MINIMUM_N_INFORMATIVE_READS , scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
       },
       error = function(cond)
       {
@@ -176,7 +179,7 @@ main <- function(scriptArgs)
   if (!is.null(ifPatientData))
   {
     annotatedPatientSpecificGLRT <-
-      annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable)
+      annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable, scriptArgs$MINIMUM_N_INFORMATIVE_READS)
   }
   
   mutationTrackingTable <-
@@ -200,7 +203,7 @@ main <- function(scriptArgs)
     annotatedPatientSpecificGLRT <- annotatedPatientSpecificGLRT %>%
       mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
              NG_ON_SEQ = UNIQUE_MOLECULES / 300,
-             LOW_SENSITIVITY = DP < 20000 & !DETECTED.WITH_SIZE)
+             LOW_SENSITIVITY = DP < scriptArgs$MINIMUM_N_INFORMATIVE_READS & !DETECTED.WITH_SIZE)
     exportCSV(annotatedPatientSpecificGLRT, 'Results_summary.csv')
   }
   
@@ -278,13 +281,17 @@ main <- function(scriptArgs)
                                                     withSizes = TRUE,
                                                     study = scriptArgs$STUDY,
                                                     familySize = scriptArgs$FAMILY_SIZE,
-                                                    scoreSpecificity = scriptArgs$SCORE_SPECIFICITY)
+                                                    scoreSpecificity = scriptArgs$SCORE_SPECIFICITY, 
+                                                    MINIMUM_N_INFORMATIVE_READS = scriptArgs$MINIMUM_N_INFORMATIVE_READS, 
+                                                    MAX_BACKGROUND_ALLELE_FREQUENCY = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
   
   plots$P13b <- receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
                                                     withSizes = FALSE,
                                                     study = scriptArgs$STUDY,
                                                     familySize = scriptArgs$FAMILY_SIZE,
-                                                    scoreSpecificity = scriptArgs$SCORE_SPECIFICITY)
+                                                    scoreSpecificity = scriptArgs$SCORE_SPECIFICITY,
+                                                    MINIMUM_N_INFORMATIVE_READS = scriptArgs$MINIMUM_N_INFORMATIVE_READS, 
+                                                    MAX_BACKGROUND_ALLELE_FREQUENCY = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
   
   # IR (depth) to IMAF plot
   
