@@ -169,15 +169,15 @@ adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
 # Originally scale_INVAR_size in functions.R
 #
 
-scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = MINIMUM_N_INFORMATIVE_READS, MAX_BACKGROUND_ALLELE_FREQUENCY )
+scaleInvarScores <- function(adjustedScoresTable, minNInformativeReads, maxBackgroundAlleleFreq)
 {
-  assert_that(is.numeric(lowSensitivityThreshold), msg = "lowSensitivityThreshold my be a number")
+  assert_that(is.numeric(minNInformativeReads), msg = "minNInformativeReads must be a number")
   
   specific <- adjustedScoresTable %>%
     filter(PATIENT_SPECIFIC)
   
   contaminationRiskSamples <- specific %>%
-    filter(!USING_SIZE & ADJUSTED_IMAF > MAX_BACKGROUND_ALLELE_FREQUENCY)
+    filter(!USING_SIZE & ADJUSTED_IMAF > maxBackgroundAlleleFreq)
   
   nonSpecific <- adjustedScoresTable %>%
     filter(!PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case' &
@@ -197,7 +197,7 @@ scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = MINI
   beforeAfter.nonSpecific <- nonSpecific.noSize %>%
     left_join(nonSpecific.withSize, joinColumns, suffix = joinSuffix) %>%
     mutate(ADJUSTED_INVAR_SCORE.WITH_SIZE = ifelse(is.na(ADJUSTED_INVAR_SCORE.WITH_SIZE), 0, ADJUSTED_INVAR_SCORE.WITH_SIZE)) %>%
-    filter(DP > lowSensitivityThreshold)
+    filter(DP > minNInformativeReads)
   
   joinColumns <- 'SAMPLE_ID'
   
@@ -212,9 +212,9 @@ scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = MINI
   beforeAfter.specific <- specific.noSize %>%
     left_join(specific.withSize, joinColumns, suffix = joinSuffix)
   
-  cutPointInfo.withSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, TRUE, lowSensitivityThreshold)
+  cutPointInfo.withSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, TRUE, minNInformativeReads)
   
-  cutPointInfo.noSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, FALSE, lowSensitivityThreshold)
+  cutPointInfo.noSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, FALSE, minNInformativeReads)
   
   beforeAfter.nonSpecific <- beforeAfter.nonSpecific %>%
     mutate(DETECTED.NO_SIZE = ADJUSTED_INVAR_SCORE.NO_SIZE >= cutPointInfo.noSize$INVAR_SCORE_THRESHOLD,
@@ -246,10 +246,10 @@ scaleInvarScores <- function(adjustedScoresTable, lowSensitivityThreshold = MINI
 # Originally cut_point_GLRT_no_size & cut_point_GLRT in functions.R
 #
 
-cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, lowSensitivityThreshold)
+cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, minNInformativeReads)
 {
   assert_that(is.logical(useSize), msg = "useSize must be a logical.")
-  assert_that(is.numeric(lowSensitivityThreshold), msg = "lowSensitivityThreshold my be a number")
+  assert_that(is.numeric(minNInformativeReads), msg = "minNInformativeReads must be a number")
   
   invarScoreColumn <- ifelse(useSize, 'ADJUSTED_INVAR_SCORE.WITH_SIZE', 'ADJUSTED_INVAR_SCORE.NO_SIZE')
   useColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', invarScoreColumn, 'DP')

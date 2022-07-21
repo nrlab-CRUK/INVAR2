@@ -260,7 +260,7 @@ main <- function(scriptArgs)
                                       study = scriptArgs$STUDY,
                                       errorSuppression = scriptArgs$ERROR_SUPPRESSION,
                                       outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION,
-                                      allele_frequency_threshold = scriptArgs$ALLELE_FREQUENCY_THRESHOLD,
+                                      alleleFrequencyThreshold = scriptArgs$ALLELE_FREQUENCY_THRESHOLD,
                                       maxMutantReads = scriptArgs$MAXIMUM_MUTANT_READS)
   
   # Tumour AF in observed and unobserved loci.

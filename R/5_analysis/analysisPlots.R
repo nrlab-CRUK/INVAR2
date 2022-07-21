@@ -281,7 +281,7 @@ summaryCohortPlot <- function(mutationsTable, study)
     plot
 }
 
-backgroundPolishingPlot <- function(mutationsTable, layoutTable, study, errorSuppression, outlierSuppression, allele_frequency_threshold, maxMutantReads)
+backgroundPolishingPlot <- function(mutationsTable, layoutTable, study, errorSuppression, outlierSuppression, alleleFrequencyThreshold, maxMutantReads)
 {
     assert_that(is.character(study), msg = "Study is expected to be a string")
 
@@ -293,7 +293,7 @@ backgroundPolishingPlot <- function(mutationsTable, layoutTable, study, errorSup
 
     plot <- mutationsTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS &
-               AF > 0 & AF < allele_frequency_threshold & MUTATION_SUM < maxMutantReads) %>%
+               AF > 0 & AF < alleleFrequencyThreshold & MUTATION_SUM < maxMutantReads) %>%
         left_join(layoutTable, by = 'SAMPLE_ID') %>%
         mutate(COMBINED_SAMPLE_NAME = str_c(SAMPLE_NAME, " (", PATIENT_MUTATION_BELONGS_TO, ")"),
                PASS = ifelse(OUTLIER.PASS, "Yes", "No"),
