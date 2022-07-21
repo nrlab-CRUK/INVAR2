@@ -281,7 +281,7 @@ summaryCohortPlot <- function(mutationsTable, study)
     plot
 }
 
-backgroundPolishingPlot <- function(mutationsTable, layoutTable, study, errorSuppression, outlierSuppression, allele_frequency_threshold, MAXIMUM_MUTANT_READS)
+backgroundPolishingPlot <- function(mutationsTable, layoutTable, study, errorSuppression, outlierSuppression, allele_frequency_threshold, maxMutantReads)
 {
     assert_that(is.character(study), msg = "Study is expected to be a string")
 
@@ -293,7 +293,7 @@ backgroundPolishingPlot <- function(mutationsTable, layoutTable, study, errorSup
 
     plot <- mutationsTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS &
-               AF > 0 & AF < allele_frequency_threshold & MUTATION_SUM < MAXIMUM_MUTANT_READS) %>%
+               AF > 0 & AF < allele_frequency_threshold & MUTATION_SUM < maxMutantReads) %>%
         left_join(layoutTable, by = 'SAMPLE_ID') %>%
         mutate(COMBINED_SAMPLE_NAME = str_c(SAMPLE_NAME, " (", PATIENT_MUTATION_BELONGS_TO, ")"),
                PASS = ifelse(OUTLIER.PASS, "Yes", "No"),
@@ -431,7 +431,7 @@ enrichmentLevelPlot <- function(sizeCharacterisationSummary, study)
     plot
 }
 
-receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize, scoreSpecificity, MINIMUM_N_INFORMATIVE_READS, MAX_BACKGROUND_ALLELE_FREQUENCY)
+receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize, scoreSpecificity, minNInformativeReads, maxBackgroundAlleleFreq)
 {
     assert_that(is.logical(withSizes), msg = "withSizes must be a logical")
 

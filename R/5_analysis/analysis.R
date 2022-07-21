@@ -73,7 +73,7 @@ parseOptions <- function()
                 default=10),
     make_option(c("--min-N-IR"), type="integer", metavar="integer",
                 dest="MINIMUM_N_INFORMATIVE_READS", help="Minimum number of informative reads per sample for it to be considered as part of the cohort",
-                default=10),
+                default=20000),
     make_option(c("--score-specificity"), type="double", metavar="number",
                 dest="SCORE_SPECIFICITY", help="Score specificity for ROC plot.",
                 default=0.95))
@@ -261,7 +261,7 @@ main <- function(scriptArgs)
                                       errorSuppression = scriptArgs$ERROR_SUPPRESSION,
                                       outlierSuppression = scriptArgs$OUTLIER_SUPPRESSION,
                                       allele_frequency_threshold = scriptArgs$ALLELE_FREQUENCY_THRESHOLD,
-                                      MAXIMUM_MUTANT_READS = scriptArgs$MAXIMUM_MUTANT_READS)
+                                      maxMutantReads = scriptArgs$MAXIMUM_MUTANT_READS)
   
   # Tumour AF in observed and unobserved loci.
   
@@ -282,16 +282,16 @@ main <- function(scriptArgs)
                                                     study = scriptArgs$STUDY,
                                                     familySize = scriptArgs$FAMILY_SIZE,
                                                     scoreSpecificity = scriptArgs$SCORE_SPECIFICITY, 
-                                                    MINIMUM_N_INFORMATIVE_READS = scriptArgs$MINIMUM_N_INFORMATIVE_READS, 
-                                                    MAX_BACKGROUND_ALLELE_FREQUENCY = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
+                                                    minNInformativeReads = scriptArgs$MINIMUM_N_INFORMATIVE_READS, 
+                                                    maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
   
   plots$P13b <- receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
                                                     withSizes = FALSE,
                                                     study = scriptArgs$STUDY,
                                                     familySize = scriptArgs$FAMILY_SIZE,
                                                     scoreSpecificity = scriptArgs$SCORE_SPECIFICITY,
-                                                    MINIMUM_N_INFORMATIVE_READS = scriptArgs$MINIMUM_N_INFORMATIVE_READS, 
-                                                    MAX_BACKGROUND_ALLELE_FREQUENCY = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
+                                                    minNInformativeReads = scriptArgs$MINIMUM_N_INFORMATIVE_READS, 
+                                                    maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
   
   # IR (depth) to IMAF plot
   
