@@ -46,9 +46,9 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 
 | Parameter                 | Type | Description/Purpose                                        |
 |---------------------------|------|------------------------------------------------------------|
-| STUDY                     |      | The name of the study being processed.                     |
-| ERROR_SUPPRESSION_NAME    |      | Setting giving the description of the error suppression mechanism used in processing the BAM files. e.g. "f0.9_s2" |
-| FAMILY_SIZE               | int  | The family size.                                           |
+| STUDY                     |string| The name of the study being processed.                     |
+| ERROR_SUPPRESSION_NAME    |string| Setting giving the description of the error suppression mechanism used in processing the BAM files. e.g. "f0.9_s2". The variable is used in the title of the output plots, allowing users to easily compare two INVAR runs with differently processed bam files. |
+| FAMILY_SIZE               | int  | The family size used when deduplicating the BAM file. Used to annotate output plots and is not used in numerical calculation of results.                                           |
 | LAYOUT_TABLE              |      | The path to the layout table file.                         |
 | TUMOUR_MUTATIONS_CSV      |      | The path to the patient tumour mutations file.             |
 | FASTA_REFERENCE           |      | Path to the reference genome FASTQ file.                   |
@@ -78,10 +78,11 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | ALT_ALLELES_THRESHOLD          | int  | 3                         | Blacklist loci with &ge; N separate alternate alleles.    |
 | MINOR_ALT_ALLELE_THRESHOLD     | int  | 2                         | Blacklist multiallelic loci with a mutant read count of &ge; N in the minor mutant allele. |
 | COSMIC_THRESHOLD               | int  | 0                         | Loci with &gt; N entries in COSMIC are considered as COSMIC mutations. |
-| PROPORTION_OF_CONTROLS         | num  | 0.1                       | Blacklist loci that have signal in &gt; P of the non-patient specific samples. |
+| PROPORTION_OF_CONTROLS         | num  | 0.1                       | LOCUS_NOISE.PASS filter: Blacklist loci that have signal in &gt; P of the non-patient specific samples. |
 | MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY | num | 0.01             | Filter loci with a background allele frequency in controls greater than this value. |
 | ALLELE_FREQUENCY_THRESHOLD     | num  | 0.01                      | Maximum allele frequency value for acceptable samples.    |
 | MAXIMUM_MUTANT_READS           | int  | 10                        | Maximum number of reads acceptable for outlier suppression trying to detect MRD. |
+| MINIMUM_N_INFORMATIVE_READS    | int  | 20000                      | Minimum number of informative reads (reads that have passed all filters) per sample for it to be considered as part of the cohort. Ie a low sensitivity threshold (samples with fewer than MINIMUM_N_INFORMATIVE_READS after filtering will not be considered for classification).                       |
 | IS_BLOODSPOT                   | bool | false                     | Only change to true if you are running blood spot data through the pipeline. This omits outlier suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
 | OUTLIER_SUPPRESSION_THRESHOLD  | num  | 0.05                      | Outlier suppression threshold.                            |
 | MINIMUM_FRAGMENT_LENGTH        | int  | 60                        | Minimum fragment length.                                  |

@@ -449,31 +449,5 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
                     'DETECTED.WITH_SIZE.OUTLIER_FAIL', 'DETECTED.NO_SIZE.OUTLIER_FAIL'))) %>%
     arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
   
-  # mutationTracking <- mutationsTable %>%
-  #   group_by(SAMPLE_ID, PATIENT, CASE_OR_CONTROL) %>%
-  #   summarise(LOCUS_NOISE.PASS = sum(LOCUS_NOISE.PASS & PATIENT_SPECIFIC),
-  #             MUTANTS_PATIENT_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
-  #             MUTANTS_NON_SPECIFIC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
-  #             MUTANT_OUTLIER.PASS = sum(UNIQUE_IF_MUTANT_CASE_OR_CONTROL & OUTLIER.PASS),
-  #             SPECIFIC.PASS = sum(PATIENT_SPECIFIC & PASS_ALL),
-  #             NON_SPECIFIC.PASS = sum(!PATIENT_SPECIFIC & PASS_ALL),
-  #             .groups = "drop") %>%
-  #   left_join(layoutTableTimepoint, by = "SAMPLE_ID") %>%
-  #   left_join(tumourMutationTableSummary, by = "PATIENT") %>%
-  #   full_join(invarScoresTable, by = c('SAMPLE_ID', 'PATIENT')) %>%
-  #   mutate(INITIAL_MUTATIONS = ifelse(CASE_OR_CONTROL == 'case', INITIAL_MUTATIONS, 0)) %>%
-  #   mutate(USING_SIZE = ifelse(USING_SIZE, 'WITH_SIZE', 'NO_SIZE'),
-  #          OUTLIER.PASS = ifelse(OUTLIER.PASS, 'PASS', 'FAIL')) %>%
-  #   pivot_wider(names_from = c(USING_SIZE, OUTLIER.PASS),
-  #               names_glue = "{USING_SIZE}.OUTLIER_{OUTLIER.PASS}",
-  #               values_from = DETECTION) %>%
-  #   select(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
-  #          INITIAL_MUTATIONS, LOCUS_NOISE.PASS,
-  #          MUTANTS_PATIENT_SPECIFIC, MUTANTS_NON_SPECIFIC,
-  #          MUTANT_OUTLIER.PASS, SPECIFIC.PASS, NON_SPECIFIC.PASS,
-  #          any_of(c('WITH_SIZE.OUTLIER_PASS', 'NO_SIZE.OUTLIER_PASS',
-  #                   'WITH_SIZE.OUTLIER_FAIL', 'NO_SIZE.OUTLIER_FAIL'))) %>%
-  #   arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
-  
   mutationTracking
 }
