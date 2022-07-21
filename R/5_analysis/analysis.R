@@ -71,7 +71,7 @@ parseOptions <- function()
     make_option(c("--max-mutant-reads"), type="integer", metavar="integer",
                 dest="MAXIMUM_MUTANT_READS", help="Maximum number of reads acceptable for outlier suppression trying to detect MRD",
                 default=10),
-    make_option(c("--min-N-IR"), type="integer", metavar="integer",
+    make_option(c("--minimum-informative-reads"), type="integer", metavar="integer",
                 dest="MINIMUM_N_INFORMATIVE_READS", help="Minimum number of informative reads per sample for it to be considered as part of the cohort",
                 default=20000),
     make_option(c("--score-specificity"), type="double", metavar="number",
