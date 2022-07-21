@@ -117,6 +117,8 @@ calculateSizeCharacterisationSummary <- function(sizeCharacterisationTable, layo
 
 adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
 {
+  assert_that(is.numeric(scoreSpecificity), msg = "scoreSpecificity must be a number")
+
   adjustThreshold <- function(row, conditions, adjustedScoresTable, scoreSpecificity)
   {
     condition <- slice(conditions, n = row)
@@ -169,9 +171,10 @@ adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
 # Originally scale_INVAR_size in functions.R
 #
 
-scaleInvarScores <- function(adjustedScoresTable, minNInformativeReads, maxBackgroundAlleleFreq)
+scaleInvarScores <- function(adjustedScoresTable, minInformativeReads, maxBackgroundAlleleFreq)
 {
-  assert_that(is.numeric(minNInformativeReads), msg = "minNInformativeReads must be a number")
+  assert_that(is.numeric(minInformativeReads), msg = "minInformativeReads must be a number")
+  assert_that(is.numeric(maxBackgroundAlleleFreq), msg = "maxBackgroundAlleleFreq must be a number")
   
   specific <- adjustedScoresTable %>%
     filter(PATIENT_SPECIFIC)
@@ -197,7 +200,7 @@ scaleInvarScores <- function(adjustedScoresTable, minNInformativeReads, maxBackg
   beforeAfter.nonSpecific <- nonSpecific.noSize %>%
     left_join(nonSpecific.withSize, joinColumns, suffix = joinSuffix) %>%
     mutate(ADJUSTED_INVAR_SCORE.WITH_SIZE = ifelse(is.na(ADJUSTED_INVAR_SCORE.WITH_SIZE), 0, ADJUSTED_INVAR_SCORE.WITH_SIZE)) %>%
-    filter(DP > minNInformativeReads)
+    filter(DP > minInformativeReads)
   
   joinColumns <- 'SAMPLE_ID'
   
@@ -212,9 +215,9 @@ scaleInvarScores <- function(adjustedScoresTable, minNInformativeReads, maxBackg
   beforeAfter.specific <- specific.noSize %>%
     left_join(specific.withSize, joinColumns, suffix = joinSuffix)
   
-  cutPointInfo.withSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, TRUE, minNInformativeReads)
+  cutPointInfo.withSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, TRUE)
   
-  cutPointInfo.noSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, FALSE, minNInformativeReads)
+  cutPointInfo.noSize <- cutPointGLRT(beforeAfter.specific, beforeAfter.nonSpecific, FALSE)
   
   beforeAfter.nonSpecific <- beforeAfter.nonSpecific %>%
     mutate(DETECTED.NO_SIZE = ADJUSTED_INVAR_SCORE.NO_SIZE >= cutPointInfo.noSize$INVAR_SCORE_THRESHOLD,
@@ -246,10 +249,9 @@ scaleInvarScores <- function(adjustedScoresTable, minNInformativeReads, maxBackg
 # Originally cut_point_GLRT_no_size & cut_point_GLRT in functions.R
 #
 
-cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, minNInformativeReads)
+cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize)
 {
   assert_that(is.logical(useSize), msg = "useSize must be a logical.")
-  assert_that(is.numeric(minNInformativeReads), msg = "minNInformativeReads must be a number")
   
   invarScoreColumn <- ifelse(useSize, 'ADJUSTED_INVAR_SCORE.WITH_SIZE', 'ADJUSTED_INVAR_SCORE.NO_SIZE')
   useColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', invarScoreColumn, 'DP')
@@ -262,7 +264,7 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, m
     select(all_of(useColumns)) %>%
     mutate(PATIENT_SPECIFIC = PATIENT == PATIENT_MUTATION_BELONGS_TO) %>%
     rename(ADJUSTED_INVAR_SCORE = {{ invarScoreColumn }}) %>%
-    filter(DP >= minimumSpecificDP) # depth can't be lower then lowest ptspec depth
+    filter(DP >= minimumSpecificDP) # depth can't be lower then lowest patient specific depth
   
   # optimal.cutpoints does not like a tibble!
   
@@ -300,16 +302,20 @@ cutPointGLRT <- function(specificInvarScores, nonSpecificInvarScores, useSize, m
        INVAR_SCORE_THRESHOLD = ifelse(invarScoreThreshold == 0, 1e-31, invarScoreThreshold))
 }
 
-getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable, scoreSpecificity, minNInformativeReads, maxBackgroundAlleleFreq)
+getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable,
+                             scoreSpecificity, minInformativeReads, maxBackgroundAlleleFreq)
 {
+  assert_that(is.numeric(scoreSpecificity), msg = "scoreSpecificity must be a number")
+  assert_that(is.numeric(minInformativeReads), msg = "minInformativeReads must be a number")
+  assert_that(is.numeric(maxBackgroundAlleleFreq), msg = "maxBackgroundAlleleFreq must be a number")
+
   adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable, scoreSpecificity) %>%
     filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS)
   
   scaledInvarResultsList <-
     tryCatch(
       {
-        adjustedScoresTable %>%
-          scaleInvarScores()
+        scaleInvarScores(adjustedScoresTable, minInformativeReads, maxBackgroundAlleleFreq)
       },
       error = function(cond)
       {
@@ -323,10 +329,10 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable,
     left_join(patientSummaryTable, by = 'PATIENT') %>%
     mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
            NG_ON_SEQ = UNIQUE_MOLECULES / 300,
-           LOW_SENSITIVITY = DP < minNInformativeReads & !DETECTED.WITH_SIZE) %>%
+           LOW_SENSITIVITY = DP < minInformativeReads & !DETECTED.WITH_SIZE) %>%
     arrange(SAMPLE_ID, PATIENT, PATIENT_MUTATION_BELONGS_TO)
   
-  thresholds <- as_tibble(c(0,minNInformativeReads,66666)) %>%
+  thresholds <- as_tibble(c(0, minInformativeReads, 66666)) %>%
     rename(THRESHOLD = 1)
   
   thresholdEffects <- patientSpecificGLRT %>%
@@ -347,8 +353,10 @@ getIFPatientData <- function(invarScoresTable, layoutTable, patientSummaryTable,
        THRESHOLD_EFFECTS = thresholdEffects)
 }
 
-annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patientSummaryTable, minNInformativeReads)
+annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patientSummaryTable, minInformativeReads)
 {
+  assert_that(is.numeric(minInformativeReads), msg = "minInformativeReads must be a number")
+
   layoutTable <- layoutTable %>%
     select(SAMPLE_ID, STUDY, INPUT_INTO_LIBRARY_NG) %>%
     mutate_at(vars(INPUT_INTO_LIBRARY_NG), as.double)
@@ -356,8 +364,8 @@ annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patien
   patientSpecificGLRT.annotated <- patientSpecificGLRT %>%
     left_join(layoutTable, by = 'SAMPLE_ID') %>%
     mutate(NOT_DETECTABLE_DPCR = ADJUSTED_IMAF < 3.3 / INPUT_INTO_LIBRARY_NG,
-           CTDNA_PLOTTING = ifelse(!DETECTED.WITH_SIZE, 1e-7, ifelse(DP < minNInformativeReads, 1e-8, ADJUSTED_IMAF)),
-           LS_FILTER = ifelse(DETECTED.WITH_SIZE | DP >= minNInformativeReads , "Pass", "Fail"),
+           CTDNA_PLOTTING = ifelse(!DETECTED.WITH_SIZE, 1e-7, ifelse(DP < minInformativeReads, 1e-8, ADJUSTED_IMAF)),
+           LS_FILTER = ifelse(DETECTED.WITH_SIZE | DP >= minInformativeReads , "Pass", "Fail"),
            LOLLIPOP = ifelse(DETECTED.WITH_SIZE & NOT_DETECTABLE_DPCR, "non_dPCR", LS_FILTER)) %>%
     mutate_at(vars(LS_FILTER, LOLLIPOP), as.factor) %>%
     left_join(patientSummaryTable, by = 'PATIENT') %>%
@@ -388,7 +396,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
            UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
            # UNIQUE_IF_MUTANT_CASE_OR_CONTROL = ifelse(CASE_OR_CONTROL == 'case', !is.na(UNIQUE_IF_MUTANT_SPECIFIC), !is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
            PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0,
-           All_IR = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS)
+           ALL_IR = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS)
   
   # Only interested in patient specific rows from INVAR scores.
   # LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS are all true for the current
@@ -412,13 +420,13 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
               N_READS_MUTATED_PTSPEC_LNP = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC)[LOCUS_NOISE.PASS]), # To check if its the same as two lines above
               N_READS_MUTATED_NON_PTSPEC_LNP = sum(!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS),
               #
-              N_LOCI_MUTATED_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[PASS_ALL], na.rm = TRUE),
-              N_LOCI_MUTATED_NON_PTSPEC_AllFilt = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[PASS_ALL], na.rm = TRUE),
+              N_LOCI_MUTATED_PTSPEC_ALL_FILTERS = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[PASS_ALL], na.rm = TRUE),
+              N_LOCI_MUTATED_NON_PTSPEC_ALL_FILTERS = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[PASS_ALL], na.rm = TRUE),
               #
-              N_READS_MUTATED_PTSPEC_AllFilt = sum(PATIENT_SPECIFIC & PASS_ALL),
-              N_READS_MUTATED_NON_PTSPEC_AllFilt = sum(!PATIENT_SPECIFIC & PASS_ALL),
-              # Nunmber of informative reads (ie total number of reads in a sample, post all filtering)
-              N_IR = length(All_IR),
+              N_READS_MUTATED_PTSPEC_ALL_FILTERS = sum(PATIENT_SPECIFIC & PASS_ALL),
+              N_READS_MUTATED_NON_PTSPEC_ALL_FILTERS = sum(!PATIENT_SPECIFIC & PASS_ALL),
+              # Number of informative reads (ie total number of reads in a sample, post all filtering)
+              N_IR = sum(ALL_IR),
               .groups = "drop") %>%
     left_join(layoutTableTimepoint, by = "SAMPLE_ID") %>%
     left_join(tumourMutationTableSummary, by = "PATIENT") %>%
@@ -433,10 +441,10 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
            INITIAL_N_MUTATIONS, 
            N_LOCI_MUTATED_PTSPEC, N_LOCI_MUTATED_NON_PTSPEC,
            N_LOCI_MUTATED_PTSPEC_LNP, N_LOCI_MUTATED_NON_PTSPEC_LNP,
-           N_LOCI_MUTATED_PTSPEC_AllFilt, N_LOCI_MUTATED_NON_PTSPEC_AllFilt,
+           N_LOCI_MUTATED_PTSPEC_ALL_FILTERS, N_LOCI_MUTATED_NON_PTSPEC_ALL_FILTERS,
            N_READS_MUTATED_PTSPEC, N_READS_MUTATED_NON_PTSPEC,
            N_READS_MUTATED_PTSPEC_LNP, N_READS_MUTATED_NON_PTSPEC_LNP,
-           N_READS_MUTATED_PTSPEC_AllFilt, N_READS_MUTATED_NON_PTSPEC_AllFilt,
+           N_READS_MUTATED_PTSPEC_ALL_FILTERS, N_READS_MUTATED_NON_PTSPEC_ALL_FILTERS,
            any_of(c('DETECTED.WITH_SIZE.OUTLIER_PASS', 'DETECTED.NO_SIZE.OUTLIER_PASS',
                     'DETECTED.WITH_SIZE.OUTLIER_FAIL', 'DETECTED.NO_SIZE.OUTLIER_FAIL'))) %>%
     arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)

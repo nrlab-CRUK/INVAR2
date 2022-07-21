@@ -431,9 +431,14 @@ enrichmentLevelPlot <- function(sizeCharacterisationSummary, study)
     plot
 }
 
-receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize, scoreSpecificity, minNInformativeReads, maxBackgroundAlleleFreq)
+receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize,
+                                                scoreSpecificity, minInformativeReads, maxBackgroundAlleleFreq)
 {
     assert_that(is.logical(withSizes), msg = "withSizes must be a logical")
+    assert_that(is.numeric(familySize), msg = "familySize must be a number")
+    assert_that(is.numeric(scoreSpecificity), msg = "scoreSpecificity must be a number")
+    assert_that(is.numeric(minInformativeReads), msg = "minInformativeReads must be a number")
+    assert_that(is.numeric(maxBackgroundAlleleFreq), msg = "maxBackgroundAlleleFreq must be a number")
 
     cutoffName <- ifelse(withSizes, 'CUT_OFF.WITH_SIZE', 'CUT_OFF.NO_SIZE')
 
@@ -443,8 +448,7 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, w
     scaledInvarResultsList <-
         tryCatch(
         {
-            adjustedScoresTable %>%
-                scaleInvarScores()
+            scaleInvarScores(adjustedScoresTable, minInformativeReads, maxBackgroundAlleleFreq)
         },
         error = function(cond)
         {
@@ -472,7 +476,7 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, w
         healthyControlResultsList <- adjustedScoresTable %>%
             filter(PATIENT_SPECIFIC | CASE_OR_CONTROL == "control_negative") %>%
             mutate(CASE_OR_CONTROL = 'case') %>%
-            scaleInvarScores()
+            scaleInvarScores(minInformativeReads, maxBackgroundAlleleFreq)
 
         healthyCutOffInfo <- healthyControlResultsList[[cutoffName]]
 

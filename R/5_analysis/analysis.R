@@ -13,6 +13,7 @@ source(str_c(Sys.getenv('INVAR_HOME'), '/R/shared/common.R'))
 source(str_c(Sys.getenv('INVAR_HOME'), '/R/5_analysis/analysisCalculations.R'))
 source(str_c(Sys.getenv('INVAR_HOME'), '/R/5_analysis/analysisPlots.R'))
 
+options(warn = 1)
 
 ##
 # Parse options from the command line.
@@ -70,10 +71,10 @@ parseOptions <- function()
                 default=0.01),
     make_option(c("--max-mutant-reads"), type="integer", metavar="integer",
                 dest="MAXIMUM_MUTANT_READS", help="Maximum number of reads acceptable for outlier suppression trying to detect MRD",
-                default=10),
-    make_option(c("--minimum-informative-reads"), type="integer", metavar="integer",
-                dest="MINIMUM_N_INFORMATIVE_READS", help="Minimum number of informative reads per sample for it to be considered as part of the cohort",
-                default=20000),
+                default=10L),
+    make_option(c("--min-informative-reads"), type="integer", metavar="integer",
+                dest="MINIMUM_INFORMATIVE_READS", help="Minimum number of informative reads per sample for it to be considered as part of the cohort",
+                default=20000L),
     make_option(c("--score-specificity"), type="double", metavar="number",
                 dest="SCORE_SPECIFICITY", help="Score specificity for ROC plot.",
                 default=0.95))
@@ -167,7 +168,10 @@ main <- function(scriptArgs)
   ifPatientData <-
     tryCatch(
       {
-        getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable, scriptArgs$SCORE_SPECIFICITY, scriptArgs$MINIMUM_N_INFORMATIVE_READS , scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
+        getIFPatientData(invarScoresTable, layoutTable, patientSummaryTable,
+                         scoreSpecificity = scriptArgs$SCORE_SPECIFICITY,
+                         minInformativeReads = scriptArgs$MINIMUM_INFORMATIVE_READS,
+                         maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
       },
       error = function(cond)
       {
@@ -179,7 +183,8 @@ main <- function(scriptArgs)
   if (!is.null(ifPatientData))
   {
     annotatedPatientSpecificGLRT <-
-      annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable, scriptArgs$MINIMUM_N_INFORMATIVE_READS)
+      annotatePatientSpecificGLRT(ifPatientData$PATIENT_SPECIFIC_GLRT, layoutTable, patientSummaryTable,
+                                  minInformativeReads = scriptArgs$MINIMUM_INFORMATIVE_READS)
   }
   
   mutationTrackingTable <-
@@ -203,7 +208,7 @@ main <- function(scriptArgs)
     annotatedPatientSpecificGLRT <- annotatedPatientSpecificGLRT %>%
       mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
              NG_ON_SEQ = UNIQUE_MOLECULES / 300,
-             LOW_SENSITIVITY = DP < scriptArgs$MINIMUM_N_INFORMATIVE_READS & !DETECTED.WITH_SIZE)
+             LOW_SENSITIVITY = DP < scriptArgs$MINIMUM_INFORMATIVE_READS & !DETECTED.WITH_SIZE)
     exportCSV(annotatedPatientSpecificGLRT, 'Results_summary.csv')
   }
   
@@ -282,7 +287,7 @@ main <- function(scriptArgs)
                                                     study = scriptArgs$STUDY,
                                                     familySize = scriptArgs$FAMILY_SIZE,
                                                     scoreSpecificity = scriptArgs$SCORE_SPECIFICITY, 
-                                                    minNInformativeReads = scriptArgs$MINIMUM_N_INFORMATIVE_READS, 
+                                                    minInformativeReads = scriptArgs$MINIMUM_INFORMATIVE_READS, 
                                                     maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
   
   plots$P13b <- receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
@@ -290,7 +295,7 @@ main <- function(scriptArgs)
                                                     study = scriptArgs$STUDY,
                                                     familySize = scriptArgs$FAMILY_SIZE,
                                                     scoreSpecificity = scriptArgs$SCORE_SPECIFICITY,
-                                                    minNInformativeReads = scriptArgs$MINIMUM_N_INFORMATIVE_READS, 
+                                                    minInformativeReads = scriptArgs$MINIMUM_INFORMATIVE_READS, 
                                                     maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
   
   # IR (depth) to IMAF plot
