@@ -2,7 +2,7 @@
 
 A stream-of-though document to store Frequently Asked Questions and important technical information which might be useful for the wider community.
 
-# What is ON_TARGET variable
+# What is ON_TARGET variable?
 
 Defined in createMutationsTable.R, line 88: ON_TARGET = UNIQUE_POS %in% tumourMutationsTable$UNIQUE_POS
 so whether it is a loci as defined in the tumour mutation file or not (ie if the mutation is at the desired loci or at a different location in the read)?
@@ -14,7 +14,10 @@ so whether it is a loci as defined in the tumour mutation file or not (ie if the
 * A threshold value is selected to give our results a specificity (true negative) score of eg. 95%. 
 * The threshold score is used to classify each sample based on the sample's patient specific INVAR score. 
 
-# In Results_summary.csv, what is MUTATION_SUM and MUTATIONS
+# In Results_summary.csv, what is MUTATION_SUM and MUTATIONS?
 MUTATION_SUM = sum(MUTANT) , so number of mutated reads but with no filtering conditions.  
 
 MUTATIONS = n_distinct(PATIENT, UNIQUE_POS) so number of input mutations or loci of interest.
+
+# Do you have a recommended 1000 Genome SNP file?
+We have used the 1000genomes/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz file. Some users have experienced issues with templates/1_parse/tabix.sh (error message: Failed to read BGZF block data at offset) switching to the recommended file has sorted it. 
