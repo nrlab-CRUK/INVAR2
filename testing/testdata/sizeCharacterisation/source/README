@@ -1,6 +1,0 @@
-Rdata files taken from output_R/os directory and run through
-the reorganiseMutationTables.R script to create the RDS files.
-The convertEach.py script in this directory performs the
-pattern matching and looping necessary, calling the R script
-for each file.
-

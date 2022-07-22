@@ -1,5 +1,0 @@
-The same files that are used by sizeCharacterisation can be used
-by this test too.
-
-The mutation table is the output from step one, which we also have
-to hand from the source of annotateMutationsWithFragmentSize.

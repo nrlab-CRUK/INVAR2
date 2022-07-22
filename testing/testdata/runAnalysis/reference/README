@@ -1,4 +1,0 @@
-N_mutations_tracking_v2.csv taken from running the
-track_n_mut_v2.R script (not part of the pipeline: Emma's own)
-to produce this file. It's relabelled and sorted using the
-reorganiseMutationTrackingTable.R script in this directory.
