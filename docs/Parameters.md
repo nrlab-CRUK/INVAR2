@@ -90,6 +90,7 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | SMOOTHING                      | num  | 0.25                      | Smoothing function for size profile (width of smoothing). |
 | ONLY_WEIGH_MUTANTS             | bool | true                      | Only weigh ctDNA signal based on mutant fragments.        |
 | SCORE_SPECIFICITY              | num  | 0.95                      | Score specificity for ROC plot.                           |
+| ITERATIONS                     | int  | 10                        | Number of iterations when subsampling the wild-type reads (control samples) to determine a range of INVAR scores. |
 
 `BAM_PATH` is a list of directories in which the BAM files can be found. It is
 handled very much like the _`PATH`_ environment variable one is familiar with
