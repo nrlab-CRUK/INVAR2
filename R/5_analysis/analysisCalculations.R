@@ -426,7 +426,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
               N_READS_MUTATED_PTSPEC_ALL_FILTERS = sum(PATIENT_SPECIFIC & PASS_ALL),
               N_READS_MUTATED_NON_PTSPEC_ALL_FILTERS = sum(!PATIENT_SPECIFIC & PASS_ALL),
               # Number of informative reads (ie total number of reads in a sample, post all filtering)
-              N_IR = sum(ALL_IR),
+              N_INFORMATIVE_READS = sum(ALL_IR),
               .groups = "drop") %>%
     left_join(layoutTableTimepoint, by = "SAMPLE_ID") %>%
     left_join(tumourMutationTableSummary, by = "PATIENT") %>%
@@ -438,7 +438,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
                 names_glue = "DETECTED.{USING_SIZE}.OUTLIER_{OUTLIER.PASS}",
                 values_from = DETECTION) %>%
     select(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
-           INITIAL_N_MUTATIONS, 
+           INITIAL_N_MUTATIONS, N_INFORMATIVE_READS,
            N_LOCI_MUTATED_PTSPEC, N_LOCI_MUTATED_NON_PTSPEC,
            N_LOCI_MUTATED_PTSPEC_LNP, N_LOCI_MUTATED_NON_PTSPEC_LNP,
            N_LOCI_MUTATED_PTSPEC_ALL_FILTERS, N_LOCI_MUTATED_NON_PTSPEC_ALL_FILTERS,

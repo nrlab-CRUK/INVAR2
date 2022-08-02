@@ -214,7 +214,7 @@ main <- function(scriptArgs)
   
   mutationTrackingTable %>%
     arrangeMutationTableForExport() %>%
-    exportCSV('mutations_tracking.csv')
+    exportCSV('mutation_tracking.csv')
   
   ## Creating plots.
   
