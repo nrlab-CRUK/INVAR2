@@ -411,20 +411,20 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
     group_by(SAMPLE_ID, PATIENT, CASE_OR_CONTROL) %>%
     summarise(N_LOCI_MUTATED_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
-              N_READS_MUTATED_PTSPEC = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC)), # To check if its the same as two lines above
-              N_READS_MUTATED_NON_PTSPEC = sum(!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
+              N_READS_MUTATED_PTSPEC = sum(ALT_F[!is.na(UNIQUE_IF_MUTANT_SPECIFIC)] + ALT_R[!is.na(UNIQUE_IF_MUTANT_SPECIFIC)]), # Note this is number of reads NOT fragments (N_FRAGMENTS = 0.5 * N_READS)
+              N_READS_MUTATED_NON_PTSPEC = sum(ALT_F[!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)] + ALT_R[!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)]),
               #
               N_LOCI_MUTATED_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[LOCUS_NOISE.PASS], na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC_LNP = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[LOCUS_NOISE.PASS], na.rm = TRUE),
-              #
-              N_READS_MUTATED_PTSPEC_LNP = sum(!is.na(UNIQUE_IF_MUTANT_SPECIFIC)[LOCUS_NOISE.PASS]), # To check if its the same as two lines above
-              N_READS_MUTATED_NON_PTSPEC_LNP = sum(!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS),
+              # Adding the alt and reverse number of reads if UNIQUE_IF_MUTANT_SPECIFIC is not NA and LNP==TRUE
+              N_READS_MUTATED_PTSPEC_LNP = sum(ALT_F[!is.na(UNIQUE_IF_MUTANT_SPECIFIC) & LOCUS_NOISE.PASS] + ALT_R[!is.na(UNIQUE_IF_MUTANT_SPECIFIC) & LOCUS_NOISE.PASS]), # To check if its the same as two lines above
+              N_READS_MUTATED_NON_PTSPEC_LNP = sum(ALT_F[!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS] + ALT_R[!is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC) & LOCUS_NOISE.PASS]),
               #
               N_LOCI_MUTATED_PTSPEC_ALL_FILTERS = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC[PASS_ALL], na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC_ALL_FILTERS = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC[PASS_ALL], na.rm = TRUE),
               #
-              N_READS_MUTATED_PTSPEC_ALL_FILTERS = sum(PATIENT_SPECIFIC & PASS_ALL),
-              N_READS_MUTATED_NON_PTSPEC_ALL_FILTERS = sum(!PATIENT_SPECIFIC & PASS_ALL),
+              N_READS_MUTATED_PTSPEC_ALL_FILTERS = sum(ALT_F[PATIENT_SPECIFIC & PASS_ALL] + ALT_R[PATIENT_SPECIFIC & PASS_ALL]),
+              N_READS_MUTATED_NON_PTSPEC_ALL_FILTERS = sum(ALT_F[!PATIENT_SPECIFIC & PASS_ALL] + ALT_R[!PATIENT_SPECIFIC & PASS_ALL]),
               # Number of informative reads (ie total number of reads in a sample, post all filtering)
               N_INFORMATIVE_READS = sum(ALL_IR),
               .groups = "drop") %>%
