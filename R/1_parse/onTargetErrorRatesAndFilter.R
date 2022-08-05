@@ -84,16 +84,16 @@ createLociErrorRateTable <- function(mutationTable,
         filter(!PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case') %>%
         mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SAMPLE_ID, NA)) %>%
         group_by(UNIQUE_POS, MUTATION_CLASS, TRINUCLEOTIDE, PATIENT_MUTATION_BELONGS_TO, COSMIC) %>%
-        summarize(MUTATION_SUM = sum(ALT_F + ALT_R),
+        summarize(MUTATED_READS_PER_LOCI = sum(ALT_F + ALT_R),
                   DP_SUM = sum(DP),
-                  BACKGROUND_AF = MUTATION_SUM / DP_SUM,
+                  BACKGROUND_AF = MUTATED_READS_PER_LOCI / DP_SUM,
                   N_SAMPLES = n_distinct(SAMPLE_ID),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
         separate(UNIQUE_POS, sep = ':', into = c('CHROM', 'POS'), remove = FALSE) %>%
         mutate(POS = as.integer(POS)) %>%
         select(UNIQUE_POS, CHROM, POS, MUTATION_CLASS, TRINUCLEOTIDE, PATIENT_MUTATION_BELONGS_TO, COSMIC,
-               BACKGROUND_AF, MUTATION_SUM, DP_SUM, N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
+               BACKGROUND_AF, MUTATED_READS_PER_LOCI, DP_SUM, N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
         mutate(LOCUS_NOISE.PASS = (N_SAMPLES_WITH_SIGNAL / N_SAMPLES) < proportion_of_controls &
                                   BACKGROUND_AF < max_background_mean_AF)
 
@@ -111,9 +111,9 @@ getContaminatedSamples <- function(mutationTable, afThreshold)
     alleleFrequencyTable <- mutationTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS) %>%
         group_by(SAMPLE_ID, PATIENT_MUTATION_BELONGS_TO, PATIENT_SPECIFIC) %>%
-        summarise(MUTATION_SUM = sum(ALT_F + ALT_R),
+        summarise(MUTATED_READS_PER_LOCI = sum(ALT_F + ALT_R),
                   DP = sum(DP),
-                  AF = MUTATION_SUM / DP,
+                  AF = MUTATED_READS_PER_LOCI / DP,
                   .groups = 'drop') %>%
         rename(PATIENT = PATIENT_MUTATION_BELONGS_TO)
 

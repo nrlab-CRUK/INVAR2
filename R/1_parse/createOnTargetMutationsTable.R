@@ -159,7 +159,7 @@ classifyForPatientSpecificity <- function(mutationTable, tumourMutationTable, la
 calculateBackgroundError <- function(errorRatesList, layoutTable)
 {
     # If the locus noise dataframe is completely clean - this means you have either a) set the locus noise threshold too low or b) not run enough control samples
-    if (sum(errorRatesList$LOCUS_NOISE$MUTATION_SUM) == 0)
+    if (sum(errorRatesList$LOCUS_NOISE$MUTATED_READS_PER_LOCI) == 0)
     {
         warning("LOCUS NOISE mutant sum is zero. ",
                 "This is likely due to insufficient controls being run. ",
@@ -174,9 +174,9 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
 
     backgroundError <- allErrorRates %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
-        summarize(MUTATION_SUM = sum(MUTATION_SUM),
+        summarize(MUTATED_READS_PER_LOCI = sum(MUTATED_READS_PER_LOCI),
                   DP_SUM = sum(DP_SUM),
-                  BACKGROUND_AF = MUTATION_SUM / DP_SUM,
+                  BACKGROUND_AF = MUTATED_READS_PER_LOCI / DP_SUM,
                   .groups="drop")
 
     trinucleotideDepth <- allErrorRates %>%
@@ -187,7 +187,7 @@ calculateBackgroundError <- function(errorRatesList, layoutTable)
         filter(ALT != '.') %>%
         group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL, ERROR_RATE_TYPE) %>%
         inner_join(trinucleotideDepth, by = c('TRINUCLEOTIDE', 'CASE_OR_CONTROL', 'ERROR_RATE_TYPE')) %>%
-        summarize(MUTATION_SUM_TOTAL = sum(MUTATION_SUM),
+        summarize(MUTATION_SUM_TOTAL = sum(MUTATED_READS_PER_LOCI),
                   BACKGROUND_AF = MUTATION_SUM_TOTAL / TRINUCLEOTIDE_DEPTH,
                   TRINUCLEOTIDE_DEPTH = TRINUCLEOTIDE_DEPTH,
                   .groups="drop") %>%

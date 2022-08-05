@@ -116,12 +116,12 @@ createMultiallelicBlacklist <- function(mutationTable,
     mutationTable %>%
         filter(AF > 0) %>%
         group_by(UNIQUE_POS, ALT) %>%
-        summarise(MUTATION_SUM = sum(ALT_F + ALT_R), .groups = "drop") %>%
+        summarise(MUTATED_READS_PER_LOCI = sum(ALT_F + ALT_R), .groups = "drop") %>%
         group_by(UNIQUE_POS) %>%
         filter(n() > 1) %>%
         summarise(N_ALT_ALLELES = n(),
-                  MIN = min(MUTATION_SUM),
-                  MAX = max(MUTATION_SUM),
+                  MIN = min(MUTATED_READS_PER_LOCI),
+                  MAX = max(MUTATED_READS_PER_LOCI),
                   .groups = "drop") %>%
         filter(N_ALT_ALLELES >= nAltAllelesThreshold &
                MIN >= minorAltAllelesThreshold)

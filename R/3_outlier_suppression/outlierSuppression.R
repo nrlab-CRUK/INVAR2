@@ -79,7 +79,7 @@ repolish <- function(mutationsTable, outlierSuppressionThreshold, alleleFrequenc
 
     mutationsTable.forPEstimate <- mutationsTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & AF <= alleleFrequencyThreshold &
-               MUTATION_SUM <= maximumMutantReads & TUMOUR_AF > 0) %>%
+                 MUTATED_READS_PER_LOCI <= maximumMutantReads & TUMOUR_AF > 0) %>%
         mutate(BACKGROUND_AF = ifelse(BACKGROUND_AF == 0, 1 / BACKGROUND_DP, BACKGROUND_AF),
                DP = 1) %>%
         summarise(P_THRESHOLD = outlierSuppressionThreshold / n_distinct(UNIQUE_POS),
@@ -98,7 +98,7 @@ repolish <- function(mutationsTable, outlierSuppressionThreshold, alleleFrequenc
     mutationsTable.withTest <- mutationsTable %>%
         left_join(mutationsTable.forPEstimate, by = character()) %>%
         rowwise() %>%
-        mutate(BINOMIAL_PROB = binom(x = MUTATION_SUM, n = DP, p = P_ESTIMATE)) %>%
+        mutate(BINOMIAL_PROB = binom(x = MUTATED_READS_PER_LOCI, n = DP, p = P_ESTIMATE)) %>%
         ungroup() %>% # Removes the "rowwise" grouping
         mutate(OUTLIER.PASS = BINOMIAL_PROB > P_THRESHOLD) %>%
         select(-P_THRESHOLD, -BINOMIAL_PROB) # removing this: 10/05 -P_ESTIMATE

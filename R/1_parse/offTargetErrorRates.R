@@ -83,13 +83,13 @@ createLociErrorRateTable <- function(mutationTable,
         filter(SAMPLE_ID %in% layoutTable.cases$SAMPLE_ID) %>%
         mutate(HAS_SIGNAL = ifelse(ALT_F + ALT_R > 0, SAMPLE_ID, NA)) %>%
         group_by(CHROM, POS, TRINUCLEOTIDE) %>%
-        summarize(MUTATION_SUM = sum(ALT_F) + sum(ALT_R),
+        summarize(MUTATED_READS_PER_LOCI = sum(ALT_F) + sum(ALT_R),
                   DP_SUM = sum(DP),
-                  BACKGROUND_AF = MUTATION_SUM / DP_SUM,
+                  BACKGROUND_AF = MUTATED_READS_PER_LOCI / DP_SUM,
                   N_SAMPLES = n_distinct(SAMPLE_ID),
                   N_SAMPLES_WITH_SIGNAL = n_distinct(HAS_SIGNAL, na.rm = TRUE),
                   .groups = 'drop') %>%
-        select(CHROM, POS, TRINUCLEOTIDE, BACKGROUND_AF, MUTATION_SUM, DP_SUM,
+        select(CHROM, POS, TRINUCLEOTIDE, BACKGROUND_AF, MUTATED_READS_PER_LOCI, DP_SUM,
                N_SAMPLES, N_SAMPLES_WITH_SIGNAL) %>%
         mutate(LOCUS_NOISE.PASS = (N_SAMPLES_WITH_SIGNAL / N_SAMPLES) < proportionOfControls &
                                   BACKGROUND_AF < maxBackgroundMeanAF)
@@ -104,7 +104,7 @@ groupAndSummarizeForErrorRate <- function(mutationTable)
 {
     mutationTable %>%
         group_by(SAMPLE_ID, REF, ALT, TRINUCLEOTIDE) %>%
-        summarize(MUTATION_SUM = sum(ALT_F) + sum(ALT_R),
+        summarize(MUTATED_READS_PER_LOCI = sum(ALT_F) + sum(ALT_R),
                   DP_SUM = sum(DP),
                   BACKGROUND_AF = (sum(ALT_F) + sum(ALT_R)) / sum(DP),
                   .groups = 'drop')

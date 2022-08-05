@@ -57,7 +57,7 @@ calculateErrorRatesINV042 <- function(errorRatesTable, layoutTable)
   backgroundErrorTable <-
     bind_rows(cases, controls) %>%
     group_by(REF, ALT, TRINUCLEOTIDE, CASE_OR_CONTROL) %>%
-    summarise(MUTATION_SUM = sum(MUTATION_SUM),
+    summarise(MUTATED_READS_PER_LOCI = sum(MUTATED_READS_PER_LOCI),
               DP_SUM = sum(DP_SUM),
               .groups = "drop") %>%
     group_by(TRINUCLEOTIDE, CASE_OR_CONTROL) %>%
@@ -65,9 +65,9 @@ calculateErrorRatesINV042 <- function(errorRatesTable, layoutTable)
     ungroup() %>%
     filter(ALT != '.') %>%
     group_by(TRINUCLEOTIDE, CASE_OR_CONTROL, REF, ALT, DP) %>%
-    summarise(MUTATION_SUM = sum(MUTATION_SUM),
+    summarise(MUTATED_READS_PER_LOCI = sum(MUTATED_READS_PER_LOCI),
               .groups = "drop") %>%
-    mutate(BACKGROUND_AF = MUTATION_SUM / DP) %>%
+    mutate(BACKGROUND_AF = MUTATED_READS_PER_LOCI / DP) %>%
     mutate(ERROR_RATE_TYPE = 'one_strand', .after = 'CASE_OR_CONTROL') %>%
     mutate(MUTATION_CLASS = str_c(REF, ALT, sep = "/"))
   
@@ -206,7 +206,7 @@ scaleInvarScores <- function(adjustedScoresTable, minInformativeReads, maxBackgr
   
   specific.noSize <- specific %>%
     filter(!USING_SIZE) %>%
-    select(all_of(joinColumns), PATIENT, PATIENT_MUTATION_BELONGS_TO, ADJUSTED_INVAR_SCORE, DP, MUTATION_SUM, TIMEPOINT)
+    select(all_of(joinColumns), PATIENT, PATIENT_MUTATION_BELONGS_TO, ADJUSTED_INVAR_SCORE, DP, MUTATED_READS_PER_LOCI, TIMEPOINT)
   
   specific.withSize <- specific %>%
     filter(USING_SIZE) %>%
@@ -369,7 +369,7 @@ annotatePatientSpecificGLRT <- function(patientSpecificGLRT, layoutTable, patien
            LOLLIPOP = ifelse(DETECTED.WITH_SIZE & NOT_DETECTABLE_DPCR, "non_dPCR", LS_FILTER)) %>%
     mutate_at(vars(LS_FILTER, LOLLIPOP), as.factor) %>%
     left_join(patientSummaryTable, by = 'PATIENT') %>%
-    mutate(CANCER_GENOMES_FRACTION = ifelse(DETECTED.WITH_SIZE, MUTATION_SUM / MUTATIONS, 2))
+    mutate(CANCER_GENOMES_FRACTION = ifelse(DETECTED.WITH_SIZE, MUTATED_READS_PER_LOCI / MUTATIONS, 2))
   
   patientSpecificGLRT.annotated
 }
@@ -395,7 +395,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
            UNIQUE_IF_MUTANT_SPECIFIC = ifelse(MUTANT & PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
            UNIQUE_IF_MUTANT_NON_SPECIFIC = ifelse(MUTANT & !PATIENT_SPECIFIC, UNIQUE_PATIENT_POS, NA),
            # UNIQUE_IF_MUTANT_CASE_OR_CONTROL = ifelse(CASE_OR_CONTROL == 'case', !is.na(UNIQUE_IF_MUTANT_SPECIFIC), !is.na(UNIQUE_IF_MUTANT_NON_SPECIFIC)),
-           PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATION_SUM > 0,
+           PASS_ALL = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS & MUTATED_READS_PER_LOCI > 0,
            ALL_IR = LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS & OUTLIER.PASS)
   
   # Only interested in patient specific rows from INVAR scores.

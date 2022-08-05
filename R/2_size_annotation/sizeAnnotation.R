@@ -94,28 +94,28 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
     assert_that(is.na(.samplingSeed) || is.number(.samplingSeed), msg = ".samplingSeed must be a number or NA.")
 
     mpileupTotals <- fragmentSizesGroup %>%
-        summarise(MUTATION_SUM = ALT_F + ALT_R, DP = DP) %>%
+        summarise(MUTATED_READS_PER_LOCI = ALT_F + ALT_R, DP = DP) %>%
         distinct()
 
     if (nrow(mpileupTotals) == 0)
     {
         # Can happen with an empty group.
         mpileupTotals <- mpileupTotals %>%
-            add_row(MUTATION_SUM = 0, DP = 0)
+            add_row(MUTATED_READS_PER_LOCI = 0, DP = 0)
     }
 
     assert_that(nrow(mpileupTotals) == 1, msg = str_c("Have ", nrow(mpileupTotals), " rows for mpileup totals when there must be exactly 1."))
 
     positionSizes <- fragmentSizesGroup
 
-    if (summarise(positionSizes, sum(MUTANT)) > mpileupTotals$MUTATION_SUM)
+    if (summarise(positionSizes, sum(MUTANT)) > mpileupTotals$MUTATED_READS_PER_LOCI)
     {
         # discrepant mut_sum, going order the sizes by descending number of entries
         # and set unpaired mutant reads not supported by mpileup to not mutant
         positionSizes.mutant <- positionSizes %>%
             filter(MUTANT) %>%
             arrange(desc(SIZE)) %>%
-            mutate(MUTANT = row_number() <= mpileupTotals$MUTATION_SUM)
+            mutate(MUTANT = row_number() <= mpileupTotals$MUTATED_READS_PER_LOCI)
 
         # message("Too many mutant position sizes for ", uniquePos, " compared to mpileup: ",
         #         summarise(positionSizes.mutant, n()), " sizes compared to ", mpileupTotals$MUTATION_SUM)
@@ -157,7 +157,7 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
         #         " - ", nPositionSizes$N, " sizes compared to ", mpileupTotals$DP)
 
         positionSizes.wildType <- positionSizes.wildType %>%
-            slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATION_SUM, replace = tooFew)
+            slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATED_READS_PER_LOCI, replace = tooFew)
 
         positionSizes <-
             bind_rows(positionSizes.mutant, positionSizes.wildType)
@@ -184,11 +184,11 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, .samplingSeed
 
     fragmentSizesTable.summary <- fragmentSizesTable %>%
         group_by(CHROM, POS, MUTATION_CLASS) %>%
-        summarise(MUTATION_SUM.SIZE = sum(MUTANT), DP.SIZE = n(), .groups = 'drop')
+        summarise(MUTATED_READS_PER_LOCI.SIZE = sum(MUTANT), DP.SIZE = n(), .groups = 'drop')
 
     test <- mutationsTable %>%
         left_join(fragmentSizesTable.summary, by = c('CHROM', 'POS', 'MUTATION_CLASS')) %>%
-        mutate(CORRECT_DEPTH = DP == DP.SIZE & ALT_F + ALT_R == MUTATION_SUM.SIZE)
+        mutate(CORRECT_DEPTH = DP == DP.SIZE & ALT_F + ALT_R == MUTATED_READS_PER_LOCI.SIZE)
 
     correct <- test %>%
         filter(CORRECT_DEPTH)

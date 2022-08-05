@@ -258,7 +258,7 @@ summaryCohortPlot <- function(mutationsTable, study)
 
     cohortSummary <- mutationsTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS &
-               AF > 0 & AF < 0.25 & MUTATION_SUM < 10) %>%
+               AF > 0 & AF < 0.25 & MUTATED_READS_PER_LOCI < 10) %>%
         group_by(PATIENT_SPECIFIC) %>%
         summarise(PROPORTION = sum(OUTLIER.PASS) / n(),
                   TOTAL_ROWS = n(),
@@ -293,7 +293,7 @@ backgroundPolishingPlot <- function(mutationsTable, layoutTable, study, errorSup
 
     plot <- mutationsTable %>%
         filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & CONTAMINATION_RISK.PASS &
-               AF > 0 & AF < alleleFrequencyThreshold & MUTATION_SUM < maxMutantReads) %>%
+               AF > 0 & AF < alleleFrequencyThreshold & MUTATED_READS_PER_LOCI < maxMutantReads) %>%
         left_join(layoutTable, by = 'SAMPLE_ID') %>%
         mutate(COMBINED_SAMPLE_NAME = str_c(SAMPLE_NAME, " (", PATIENT_MUTATION_BELONGS_TO, ")"),
                PASS = ifelse(OUTLIER.PASS, "Yes", "No"),
