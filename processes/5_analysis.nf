@@ -18,7 +18,7 @@ process runAnalysis
     output:
         path "*.pdf", emit: "plots"
         path "${params.STUDY}_invar2_analysis.html", emit: "report"
-        path "mutations_tracking.csv", emit: "mutationsTracking"
+        path "mutation_tracking.csv", emit: "mutationsTracking"
         path "*.csv", emit: "dataFiles"
 
     shell:
