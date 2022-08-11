@@ -192,7 +192,7 @@ main <- function(scriptArgs)
   
   ## Saving some tables as part of analysis.
   
-  exportCSV(patientSummaryTable, "tumour_mutation_per_patient.csv")
+  exportCSV(patientSummaryTable, "N_lociRetainedPostFilters_perPatient.csv")
   
   exportCSV(calculateErrorRateSummary(errorRatesINV042), "error_rate_summary.csv")
   
