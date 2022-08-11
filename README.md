@@ -1,4 +1,5 @@
 # INVAR2
+#Paulius Mennea PhD student is working on this branch to enable INVAR2 on sWGS data
 
 A Nextflow based software tool to run the INVAR (Integration of VAriant Reads)
 analysis pipeline. Previously available [here.](https://bitbucket.org/nrlab/invar/wiki/Home)
