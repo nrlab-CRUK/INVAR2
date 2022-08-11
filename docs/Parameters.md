@@ -70,6 +70,7 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | MAPPING_QUALITY                | int  | 40                        | Minimum mapping quality threshold.                        |
 | BASE_QUALITY                   | int  | 20                        | Minimum base quality threshold.                           |
 | MPILEUP_MINIMUM_DEPTH          | int  | 2                         | Minimum depth to consider for mpileup. Set to 1 for sWGS samples. |
+| CHROMOSOME_ID_PREFIX           |      | "chr"                     | Chromosome naming style prefix. Typically "chr" for UCSC references or the empty string for Ensembl. |
 | SLOP_BASES                     | int  | 10                        | How many bases either side of the target base to assess for the background error rate. |
 | REMOVE_DUPLICATES              | bool | true                      | Whether to remove duplicates in pile ups.                 |
 | MAXIMUM_DEPTH                  | int  | 1500                      | Omit data points with uncharacteristically high unique depth given the input mass used. |

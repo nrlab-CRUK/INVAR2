@@ -146,7 +146,7 @@ likelihoodRatioListToTibble <- function(likelihoodRatio, mutationsTable)
 {
     p_estimate <- mutationsTable %>%
         distinct(P_ESTIMATE)
-        
+
     assert_that(nrow(p_estimate) == 1, msg = "Have more than one distinct P_ESTIMATE in mutations table.")
 
     as_tibble(likelihoodRatio) %>%
@@ -216,7 +216,7 @@ calculateLikelihoodRatioForSampleWithSize <- function(mutationsTable, sizeTable,
     {
         # If only weighting mutants, set mutations that are not mutants to a fixed
         # probability.
-      
+
       # Setting probability of seeing a read of length X to be equal across whole read length range
         fragment_length_range <- 1/((maxFragmentLength - minFragmentLength)+1)
 
@@ -316,7 +316,7 @@ emptyInvarTable <- function(allColumns)
                DP = integer(), MUTATED_READS_PER_LOCI = integer(),
                IMAF = double(), SMOOTH = double(),
                OUTLIER_SUPPRESSION = double(), MUTANT_READS_PRESENT = logical())
-     
+
     if (allColumns)
     {
         table <- table %>%
@@ -324,7 +324,7 @@ emptyInvarTable <- function(allColumns)
                        PATIENT_MUTATION_BELONGS_TO = character(),
                        .before = 1)
     }
-    
+
     table
 }
 
@@ -521,9 +521,9 @@ main <- function(scriptArgs)
                    mc.set.seed = hasRNGSeed)
 
         invarResultsTable <- bind_rows(invarResultsList)
-        
+
         # If there a no rows at all, return an empty table.
-        
+
         if (nrow(invarResultsTable) == 0)
         {
             warning("No rows in INVAR results table.")

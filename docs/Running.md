@@ -93,3 +93,59 @@ nextflow run nrlab-CRUK/INVAR2 -profile slurm -c alternate.config
 When the pipeline starts it will check your configuration to make sure all is
 well, then start processing. How long the pipeline will take depends on the
 size of server it is running on or how busy the cluster it's using is.
+
+## Changing Tasks' Resources
+
+We've tuned the memory requirements for the processes based on the
+datasets run at CRUK-CI and looking at the Nextflow execution report for
+memory use. It might be that other datasets will not run with the requirements
+given and will need changing. You have three main ways of altering the resources
+for tasks.
+
+### Project specific tweaks
+
+_This is covered in full [in the Nextflow documentation](https://www.nextflow.io/docs/latest/config.html#process-selectors)._
+
+You can add a `process` block to your project's `nextflow.config` file to
+explicitly change the memory allocated to a task or family of tasks. For example:
+
+```Groovy
+process {
+    withName: createSequenceDictionary {
+        memory '4gb'
+    }
+}
+```
+
+If you find a task that doesn't have enough memory in a particular project,
+this is the way to go.
+
+### Take a local copy for temporary use
+
+You can clone the INVAR2 GitHub repository locally on your system, make your
+changes and run from there. If you do this, the `nextflow run` command should
+be given the path to the `invar.nf` file in the local clone. For example,
+if your clone the repository into `$HOME/INVAR2`, the command becomes:
+
+```
+nextflow run $HOME/INVAR2/invar.nf
+```
+
+### Fork the repository for your own permanent changes
+
+If you would like to permanently keep the changes you make to our INVAR pipeline,
+you should fork the repository on GitHub into your personal GitHub area (or your
+organisation's). You can then clone that fork into your working area and make the
+changes you want to, pushing them back to the fork to keep them permanently and
+to share with colleagues. You would run Nextflow with the name of your fork rather
+than the master project.
+
+```
+nextflow run <mygithub>/INVAR2
+```
+
+If you have changes or fixes that would benefit the original code, by all means
+create a pull request for us to review and incorporate where appropriate.
+
+Forking and pull requests are beyond the scope of this document. Refer to the
+numerous Git guides on the web for help.

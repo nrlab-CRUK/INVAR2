@@ -10,6 +10,6 @@ then
     rm -f "!{fastaIndex}"
 fi
 
-python3 "!{params.projectHome}/python/1_parse/toRegions.py" "!{mutationFile}" 1 chr > regions.txt
+python3 "!{params.projectHome}/python/1_parse/toRegions.py" "!{mutationFile}" 1 "!{params.CHROMOSOME_ID_PREFIX}" > regions.txt
 
 samtools faidx -r regions.txt "!{fastaReference}" > "!{trinucleotideFile}"
