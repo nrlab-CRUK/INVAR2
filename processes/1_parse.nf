@@ -12,13 +12,10 @@ process createSequenceDictionary
         path sequenceDictionary, emit: "dictionary"
 
     shell:
+        javaMem = task.memory.toMega() - 128
         sequenceDictionary = "${fastaReference.baseName}.dict"
 
-        """
-        picard CreateSequenceDictionary \
-            --REFERENCE "!{fastaReference}" \
-            --OUTPUT "!{sequenceDictionary}"
-        """
+        template "1_parse/createSequenceDictionary.sh"
 }
 
 process slopPatientInfo
