@@ -2,7 +2,7 @@
 
 ## Set-up
 
-Build your mutation list file and layout file as instructed in the documentation. Save both as a .csv and transfer them to the cluster ```scp -r clust1-headnode.cri.camres.org://scratcha/nrlab/ditter01/invar_PARADIGM/ *.csv``` (change this to your directory, obviously)
+Build your mutation list file and layout file as instructed in the documentation. Save both as a .csv and transfer them to the cluster ```scp -r  *.csv clust1-headnode.cri.camres.org://scratcha/nrlab/ditter01/invar_PARADIGM/``` (change this to your directory, obviously)
 
 ## Copy nextflow.config and change paths
 
