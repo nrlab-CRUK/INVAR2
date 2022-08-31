@@ -64,7 +64,7 @@ plots$P11
 
 # Mutation Tracking
 
-The table below tracks the number of loci per input sample across the progression of the pipeline. The final four columns gives the classification of the sample as defined by the specified filter conditions. 
+The table below tracks the number of loci per input sample across the progression of the pipeline. The final four columns gives the classification of the sample as defined by the specified filter conditions. This means whether ctDNA is detected (T/F), when the fragment length (WITH_SIZE or NO_SIZE) is taken into account, and if the classification is done using only loci that pass the outlier suppression filter (OUTLIER_PASS or OUTLIER_FAIL))
 
 INITIAL_N_MUTATIONS : is the number of mutations (and number of individual loci) given per patient in the tumour mutations .csv file.
 N_INFORMATIVE_READS : Total number of reads in the sample used to make the classification (after all filtering, mutated reads and non mutated reads)
