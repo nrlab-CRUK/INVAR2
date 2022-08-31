@@ -67,6 +67,8 @@ plots$P11
 The table below tracks the number of loci per input sample across the progression of the pipeline. The final four columns gives the classification of the sample as defined by the specified filter conditions. 
 
 INITIAL_N_MUTATIONS : is the number of mutations (and number of individual loci) given per patient in the tumour mutations .csv file.
+N_INFORMATIVE_READS : Total number of reads in the sample used to make the classification (after all filtering, mutated reads and non mutated reads)
+
 N_LOCI_MUTATED_PTSPEC : number of those loci that have a mutation in the patient panel.
 N_LOCI_MUTATED_NON_PTSPEC : number of those loci that have a mutation in other patients panel (in non-patient specific loci).
 N_READS_MUTATED_PTSPEC : how many mutated reads at the patient specific loci.
@@ -80,7 +82,6 @@ N_LOCI_MUTATED_PTSPEC_AllFilt : number of loci with mutations that have passed a
 N_LOCI_MUTATED_NON_PTSPEC_AllFilt  : number of loci with mutations that have passed all filters (LOCUS_NOISE.PASS and OUTLIER_SUPRESSION), in non-patient specific loci.
 N_READS_MUTATED_PTSPEC_AllFilt : number of mutated reads in the patient sample that pass all filters. 
 N_READS_MUTATED_NON_PTSPEC_AllFilt : number of mutated reads in the non-patient specific data that pass all filters. 
-N_IR : Total number of reads in the sample after all filtering
 
 ```{r, echo = FALSE}
 if (nrow(mutationTrackingTable) > 0) {
