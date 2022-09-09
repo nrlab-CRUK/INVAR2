@@ -80,7 +80,7 @@ Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (
 | COSMIC_THRESHOLD               | int  | 0                         | Loci with &gt; N entries in COSMIC are considered as COSMIC mutations. |
 | PROPORTION_OF_CONTROLS         | num  | 0.1                       | LOCUS_NOISE.PASS filter: Blacklist loci that have signal in &gt; P of the non-patient specific samples. |
 | MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY | num | 0.01             | Filter loci with a background allele frequency in controls greater than this value. |
-| ALLELE_FREQUENCY_THRESHOLD     | num  | 0.01                      | Maximum allele frequency value for acceptable samples.    |
+| ALLELE_FREQUENCY_THRESHOLD     | num  | 0.01                      | Maximum allele frequency value for acceptable samples. This value affects the CONTAMINATION_RISK.PASS filter by preventing samples with too high AF be control samples.   |
 | MAXIMUM_MUTANT_READS           | int  | 10                        | Maximum number of reads acceptable for outlier suppression trying to detect MRD. |
 | MINIMUM_INFORMATIVE_READS      | int  | 20000                     | Minimum number of informative reads (reads that have passed all filters) per sample for it to be considered as part of the cohort. Ie a low sensitivity threshold (samples with fewer than MINIMUM_INFORMATIVE_READS after filtering will not be considered for classification).                       |
 | IS_BLOODSPOT                   | bool | false                     | Only change to true if you are running blood spot data through the pipeline. This omits outlier suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
