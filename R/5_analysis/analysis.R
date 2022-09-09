@@ -208,7 +208,8 @@ main <- function(scriptArgs)
     annotatedPatientSpecificGLRT <- annotatedPatientSpecificGLRT %>%
       mutate(UNIQUE_MOLECULES = DP / MUTATIONS,
              NG_ON_SEQ = UNIQUE_MOLECULES / 300,
-             LOW_SENSITIVITY = DP < scriptArgs$MINIMUM_INFORMATIVE_READS & !DETECTED.WITH_SIZE)
+             LOW_SENSITIVITY = DP < scriptArgs$MINIMUM_INFORMATIVE_READS & !DETECTED.WITH_SIZE)  %>%
+      rename(N_MUTATED_READS = MUTATED_READS_PER_LOCI)
     exportCSV(annotatedPatientSpecificGLRT, 'Results_summary.csv')
   }
 
