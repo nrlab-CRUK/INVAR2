@@ -53,10 +53,7 @@ parseOptions <- function()
                     dest="ITERATIONS", help="Number of sub-sampled iterations when running non-ptspec data.",
                     default=10),
         make_option(c("--only-weigh-mutants"), action="store_true", default=FALSE,
-                    dest="ONLY_WEIGH_MUTANTS", help="Only weigh ctDNA signal based on mutant fragments."),
-        make_option(c("--sampling-seed"), type="integer", metavar="number",
-                    dest="SAMPLING_SEED", help="The seed for random sampling. Only use in testing.",
-                    default=NA))
+                    dest="ONLY_WEIGH_MUTANTS", help="Only weigh ctDNA signal based on mutant fragments."))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -262,17 +259,11 @@ calculateLikelihoodRatioForSampleWithoutSize <- function(mutationsTable, sizeTab
 
 singleIteration <- function(iteration, mutationsTable, sizeTable,
                             minFragmentLength, maxFragmentLength,
-                            smooth, onlyWeighMutants,
-                            .samplingSeed = NA)
+                            smooth, onlyWeighMutants)
 {
     sampled <- mutationsTable
     if (iteration > 1)
     {
-        if (!is.na(.samplingSeed))
-        {
-            set.seed(.samplingSeed)
-        }
-
         sampled <- mutationsTable %>%
             slice_sample(n = nrow(mutationsTable), replace = TRUE)
     }
@@ -415,7 +406,6 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
                  maxFragmentLength = scriptArgs$MAXIMUM_FRAGMENT_LENGTH,
                  smooth = scriptArgs$SMOOTHING,
                  onlyWeighMutants = scriptArgs$ONLY_WEIGH_MUTANTS,
-                 .samplingSeed = scriptArgs$SAMPLING_SEED,
                  mc.cores = scriptArgs$THREADS, mc.set.seed = mc.set.seed)
 
     mutationsTableSummary <- mutationsTable %>%
@@ -440,14 +430,6 @@ doMain <- function(criteria, scriptArgs, mutationsTable, sizeTable, mc.set.seed 
 
 main <- function(scriptArgs)
 {
-    hasRNGSeed <- is.na(scriptArgs$SAMPLING_SEED)
-    if (hasRNGSeed)
-    {
-        # See the help for mcparallel
-        RNGkind("L'Ecuyer-CMRG")
-        mc.reset.stream()
-    }
-
     assert_that(file.exists(scriptArgs$MUTATIONS_TABLE_FILE),
                 msg = str_c(scriptArgs$MUTATIONS_TABLE_FILE, " does not exist."))
 
@@ -517,8 +499,7 @@ main <- function(scriptArgs)
         # Loop over list of files and allFilterCombinationList options
         invarResultsList <-
             lapply(allFilterCombinationList, doMain,
-                   scriptArgs, mutationsTable, sizeTable,
-                   mc.set.seed = hasRNGSeed)
+                   scriptArgs, mutationsTable, sizeTable)
 
         invarResultsTable <- bind_rows(invarResultsList)
 

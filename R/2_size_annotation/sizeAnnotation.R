@@ -31,10 +31,7 @@ parseOptions <- function()
                     default=0.05),
         make_option(c("--threads"), type="integer", metavar="integer",
                     dest="THREADS", help="The number of cores to use to process the input files.",
-                    default=1L),
-        make_option(c("--sampling-seed"), type="integer", metavar="number",
-                    dest="SAMPLING_SEED", help="The seed for random sampling. Only use in testing.",
-                    default=NA))
+                    default=1L))
 
     opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
         parse_args(positional_arguments = TRUE)
@@ -79,7 +76,9 @@ convertComplementaryMutations <- function(fragmentSizesTable)
     }
 
     fragmentSizesTable %>%
-        mutate(MUTATION_CLASS = ifelse(complementary(REF), complement(MUTATION_CLASS), MUTATION_CLASS))
+        rowwise() %>%
+        mutate(MUTATION_CLASS = ifelse(complementary(REF), complement(MUTATION_CLASS), MUTATION_CLASS)) %>%
+        ungroup()
 }
 
 ##
@@ -89,10 +88,8 @@ convertComplementaryMutations <- function(fragmentSizesTable)
 # Correct the number of fragment sizes to match the number given
 # by mpileup.
 #
-downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = NA)
+downsampleFragments <- function(fragmentSizesGroup, uniquePos)
 {
-    assert_that(is.na(.samplingSeed) || is.number(.samplingSeed), msg = ".samplingSeed must be a number or NA.")
-
     mpileupTotals <- fragmentSizesGroup %>%
         summarise(MUTATED_READS_PER_LOCI = ALT_F + ALT_R, DP = DP) %>%
         distinct()
@@ -135,13 +132,6 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
         positionSizes.mutant <- positionSizes %>% filter(MUTANT)
         positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
 
-        # For exactly reproducible sampling in testing.
-
-        if (!is.na(.samplingSeed))
-        {
-            set.seed(.samplingSeed)
-        }
-
         # When there are more positions from the python size data than mpileup data
         # we need to downsample wildtypes from the mpileup data (i.e. give fewer rows).
 
@@ -166,10 +156,8 @@ downsampleFragments <- function(fragmentSizesGroup, uniquePos, .samplingSeed = N
     positionSizes
 }
 
-equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, .samplingSeed = NA)
+equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
 {
-    assert_that(is.na(.samplingSeed) || is.number(.samplingSeed), msg = ".samplingSeed must be a number or NA.")
-
     # Fix DP count.
 
     mutationsTable <- mutationsTable %>%
@@ -215,7 +203,7 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, .samplingSeed
     fragmentSizesTable.discrepant.nonzero.fixed <- fragmentSizesTable %>%
         inner_join(select(discrepantDP.nonzero, UNIQUE_POS, ALT_F, ALT_R, DP), by = "UNIQUE_POS") %>%
         group_by(UNIQUE_POS) %>%
-        group_modify(downsampleFragments, .samplingSeed) %>%
+        group_modify(downsampleFragments) %>%
         ungroup() %>%
         select(-ALT_F, -ALT_R, -DP)
 
@@ -295,8 +283,7 @@ main <- function(scriptArgs)
                UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
 
     mutationsTable.withSizes <-
-        equaliseSizeCounts(mutationsTable, fragmentSizesTable,
-                           .samplingSeed = scriptArgs$SAMPLING_SEED)
+        equaliseSizeCounts(mutationsTable, fragmentSizesTable)
 
     fileInfoList <-
         mclapply(unique(mutationsTable.withSizes$PATIENT_MUTATION_BELONGS_TO), saveForPatient,
