@@ -5,13 +5,13 @@ its analysis. The outputs can be used for further analysis.
 
 ## Results Files
 
-The results of the pipeline are written to a "`results`" directory (by default,
+The raw output results of the pipeline are written to a "`results`" directory (by default,
 can be changed). These are all R _RDS_ files that can be loaded back into R for
 further work or conversion to other tabular formats.
 
 The directory will contain these files.
 
-1. `mutation_table.rds` - The on target mutations, annotated with flags indicating
+1. `mutation_table.rds` - The on target reads that overlap the genomic regions defined in the input mutation list csv, annotated with flags indicating
 all filter tests including the INVAR filter or not (the `OUTLIER.PASS` column).
 No rows are filtered out from this table after selecting on target mutations: all
 subsequent operations keep all rows, adding columns to increase the information.
@@ -26,7 +26,5 @@ rates for off target mutations excluding those flagged with COSMIC.
 
 ## Plots and Analysis
 
-The pipeline will write the analysis results into an "`analysis`" directory (by
-default). This will contains an HTML report, `<STUDY>_invar2_analysis.html`,
-and numerous plots in PDF format. It will also contain some summary CSV files from
-its own processing.
+The pipeline produces a series of plots and csv files written to the "`analysis`" directory (by
+default). This contains an HTML report, `<STUDY>_invar2_analysis.html`, that explains the results and plots. A CSV file tracking the number of mutations per sample across the pipline is included in "`mutations_tracking.csv`", and a results summary is presented in tabular form in "`Results_summary.csv`".
