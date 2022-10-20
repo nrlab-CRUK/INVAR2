@@ -81,140 +81,128 @@ convertComplementaryMutations <- function(fragmentSizesTable)
         ungroup()
 }
 
-##
-# From TAPAS_functions.R
+# Resample from a tibble to the given number of rows.
+# n == 0 gives an empty table.
+# n > rows in 'theTibble' is upsampling: sample with replacement to give more rows.
+# n < rows in 'theTibble' is downsampling: sample without replacement to give fewer rows.
+# n > 0 when 'theTibble' is empty throws an error.
 #
+resample <- function(theTibble, n)
+{
+    assert_that(is.number(n), msg = "n must be a number")
+    assert_that(n >= 0, msg = "n must be >= 0")
+
+    tn <- nrow(theTibble)
+
+    sampled <- theTibble
+
+    if (n != tn)
+    {
+        assert_that(tn > 0, msg = str_c("Requested ", n, " rows from a tibble with no rows."))
+
+        if (n == 0)
+        {
+            # A way to filter down to an empty tibble keeping the columns.
+            sampled <- theTibble %>%
+                filter(FALSE)
+        }
+        else
+        {
+            # Replace if we want more rows than we have to rows to sample from.
+            sampled <- theTibble %>%
+                slice_sample(n = n, replace = n > tn)
+        }
+    }
+
+    sn = nrow(sampled)
+
+    assert_that(sn == n,
+                msg = str_c("Have wrong number of rows after sampling: ", sn, " when we wanted ", n))
+
+    sampled
+}
 
 # Correct the number of fragment sizes to match the number given
 # by mpileup.
 #
-downsampleFragments <- function(fragmentSizesGroup, uniquePos)
+sampleFragments <- function(pysamFragments, grouping, mutationsTableDepths)
 {
-    mpileupTotals <- fragmentSizesGroup %>%
-        summarise(MUTATED_READS_PER_LOCI = ALT_F + ALT_R, DP = DP) %>%
-        distinct()
+    uniquePos <- grouping$UNIQUE_POS
+    mutant <- grouping$MUTANT
+    type <- ifelse(mutant, "mutants", "wild types")
 
-    if (nrow(mpileupTotals) == 0)
+    mpileup <- mutationsTableDepths %>%
+        filter(UNIQUE_POS == uniquePos) %>%
+        select(all_of(ifelse(mutant, "MUTANT_DEPTH", "WILDTYPE_DEPTH"))) %>%
+        rename(DEPTH = 1)
+
+    assert_that(nrow(mpileup) == 1,
+                msg = str_c("Expect exactly one row of mpileup depths per unique position: ", uniquePos, ' ', type))
+
+    nfrags <- nrow(pysamFragments)
+
+    if (mpileup$DEPTH > 0 && nfrags == 0)
     {
-        # Can happen with an empty group.
-        mpileupTotals <- mpileupTotals %>%
-            add_row(MUTATED_READS_PER_LOCI = 0, DP = 0)
+        stop("Have ", mpileup$DEPTH, " ", type, " from mpileup at ", uniquePos,
+             " but have zero rows from pysam.")
+    }
+    if (mpileup$DEPTH < nfrags)
+    {
+        message("Have ", mpileup$DEPTH, " ", type, " from mpileup at ", uniquePos,
+                " but have ", nfrags, " rows from pysam.")
     }
 
-    assert_that(nrow(mpileupTotals) == 1, msg = str_c("Have ", nrow(mpileupTotals), " rows for mpileup totals when there must be exactly 1."))
+    pysamFragments.sampled <- pysamFragments %>%
+        resample(mpileup$DEPTH)
 
-    positionSizes <- fragmentSizesGroup
+    nsampled = nrow(pysamFragments.sampled)
 
-    if (summarise(positionSizes, sum(MUTANT)) > mpileupTotals$MUTATED_READS_PER_LOCI)
-    {
-        # discrepant mut_sum, going order the sizes by descending number of entries
-        # and set unpaired mutant reads not supported by mpileup to not mutant
-        positionSizes.mutant <- positionSizes %>%
-            filter(MUTANT) %>%
-            arrange(desc(SIZE)) %>%
-            mutate(MUTANT = row_number() <= mpileupTotals$MUTATED_READS_PER_LOCI)
+    assert_that(nsampled == mpileup$DEPTH,
+                msg = str_c("After sampling we don't have the correct number of samples. Expect ",
+                            mpileup$DEPTH, " have ", nsampled))
 
-        # message("Too many mutant position sizes for ", uniquePos, " compared to mpileup: ",
-        #         summarise(positionSizes.mutant, n()), " sizes compared to ", mpileupTotals$MUTATION_SUM)
-        # message(uniquePos, " set bottom ", summarise(positionSizes.mutant, sum(!MUTANT)), " sizes to be wild type.")
-
-        positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
-
-        positionSizes <-
-            bind_rows(positionSizes.mutant, positionSizes.wildType)
-    }
-
-    nPositionSizes = summarise(positionSizes, N = n())
-
-    # in some cases, the number of reads from the size CSV differs from the number of mpileup reads
-    if (nPositionSizes$N != mpileupTotals$DP)
-    {
-        positionSizes.mutant <- positionSizes %>% filter(MUTANT)
-        positionSizes.wildType <- positionSizes %>% filter(!MUTANT)
-
-        # When there are more positions from the python size data than mpileup data
-        # we need to downsample wildtypes from the mpileup data (i.e. give fewer rows).
-
-        # When there are fewer positions from the python size data than mpileup data
-        # we need to sample with some duplication (replace) to get the number up.
-        # Or, in original words, will resample (with replacement) aka stretch mpileup data
-        # for wt data (inconsequential as wt reads are not used later in pipeline)
-
-        tooFew = nPositionSizes$N < mpileupTotals$DP
-
-        # message("Too ", ifelse(tooFew, 'few', 'many'),
-        #         " position sizes compared to mpileup depth for ", uniquePos,
-        #         " - ", nPositionSizes$N, " sizes compared to ", mpileupTotals$DP)
-
-        positionSizes.wildType <- positionSizes.wildType %>%
-            slice_sample(n = mpileupTotals$DP - mpileupTotals$MUTATED_READS_PER_LOCI, replace = tooFew)
-
-        positionSizes <-
-            bind_rows(positionSizes.mutant, positionSizes.wildType)
-    }
-
-    positionSizes
+    pysamFragments.sampled
 }
 
+# Create a new mutations table that is much bigger where there is a read
+# for each matching set of fragments from pysam pileup. There will be quite
+# a bit of duplication in the table but each row will have its own MUTANT
+# and SIZE value.
+#
 equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
 {
-    # Fix DP count.
+    # Fix depth.
 
     mutationsTable <- mutationsTable %>%
         mutate(DP = ALT_F + ALT_R + REF_F + REF_R)
 
-    # reduce 12 mutation classes to 6
+    # Summarise with mutant and wild type expected depths
+
+    mutationsTableDepths <- mutationsTable %>%
+        mutate(MUTANT_DEPTH = ALT_F + ALT_R,
+               WILDTYPE_DEPTH = DP - MUTANT_DEPTH) %>%
+        select(UNIQUE_POS, MUTANT_DEPTH, WILDTYPE_DEPTH)
+
+    # Filter for fragments that are in the mutations table only.
 
     fragmentSizesTable <- fragmentSizesTable %>%
-        convertComplementaryMutations()
+        filter(UNIQUE_POS %in% mutationsTableDepths$UNIQUE_POS)
 
-    # summarise the number of mutations and all fragments (DP) at a position.
+    # Sample the number of fragments to be the same as the mpileup depth
+    # for each position and mutant status.
 
-    fragmentSizesTable.summary <- fragmentSizesTable %>%
-        group_by(CHROM, POS, MUTATION_CLASS) %>%
-        summarise(MUTATED_READS_PER_LOCI.SIZE = sum(MUTANT), DP.SIZE = n(), .groups = 'drop')
-
-    test <- mutationsTable %>%
-        left_join(fragmentSizesTable.summary, by = c('CHROM', 'POS', 'MUTATION_CLASS')) %>%
-        mutate(CORRECT_DEPTH = DP == DP.SIZE & ALT_F + ALT_R == MUTATED_READS_PER_LOCI.SIZE)
-
-    correct <- test %>%
-        filter(CORRECT_DEPTH)
-
-    ## correct the raw size df - only AF == 0
-    discrepantDP.zero <- test %>%
-        filter(!CORRECT_DEPTH & AF == 0)
-
-    # Take the DP top sizes at each locus where AF == 0
-    # Also mark all of these positions as not being mutants.
-    # This is because the mutant reads identified from size info are not subject to BQ and MQ filters
-    fragmentSizesTable.discrepant.zero.fixed <- fragmentSizesTable %>%
-        inner_join(select(discrepantDP.zero, UNIQUE_POS, DP), by = "UNIQUE_POS") %>%
-        group_by(UNIQUE_POS) %>%
-        filter(row_number() <= DP) %>%
+    fragmentSizesTable.sampled <- fragmentSizesTable %>%
+        group_by(UNIQUE_POS, MUTANT) %>%
+        group_modify(sampleFragments, mutationsTableDepths) %>%
         ungroup() %>%
-        select(-DP) %>%
-        mutate(MUTANT = FALSE)
+        select(UNIQUE_POS, SIZE, MUTANT)
 
-    ## correct loci with AF > 0
-    discrepantDP.nonzero <- test %>%
-        filter(!CORRECT_DEPTH & AF > 0)
-
-    fragmentSizesTable.discrepant.nonzero.fixed <- fragmentSizesTable %>%
-        inner_join(select(discrepantDP.nonzero, UNIQUE_POS, ALT_F, ALT_R, DP), by = "UNIQUE_POS") %>%
-        group_by(UNIQUE_POS) %>%
-        group_modify(downsampleFragments) %>%
-        ungroup() %>%
-        select(-ALT_F, -ALT_R, -DP)
-
-    fragmentSizesTable.fixed <- fragmentSizesTable %>%
-        filter(UNIQUE_POS %in% correct$UNIQUE_POS) %>%
-        bind_rows(fragmentSizesTable.discrepant.zero.fixed) %>%
-        bind_rows(fragmentSizesTable.discrepant.nonzero.fixed) %>%
-        select(UNIQUE_POS, MUTATION_CLASS, SIZE, MUTANT)
+    # Join with the mutations table to give a table with many more rows
+    # (multiply the reads) but each reads will have the SIZE number
+    # and MUTANT flag.
 
     mutationsWithSize <- mutationsTable %>%
-        inner_join(fragmentSizesTable.fixed, by = c('UNIQUE_POS', 'MUTATION_CLASS'))
+        inner_join(fragmentSizesTable.sampled, by = c('UNIQUE_POS'))
 
     mutationsWithSize
 }
@@ -255,29 +243,14 @@ main <- function(scriptArgs)
         filter(SAMPLE_ID == scriptArgs$SAMPLE_ID) %>%
         addMutationTableDerivedColumns()
 
-    # Expect the combination of pool, barcode and patient mutation belongs to to be
-    # unique in this file. If there are no mutations at all, that is ok.
-
-    mutationsFileCheck <- mutationsTable %>%
-        distinct(SAMPLE_ID) %>%
-        mutate(MATCHING = SAMPLE_ID == scriptArgs$SAMPLE_ID)
-
-    if (nrow(mutationsFileCheck) == 0)
+    if (nrow(mutationsTable) == 0)
     {
-        warning("There are no rows in ", basename(scriptArgs$MUTATIONS_TABLE_FILE))
-    }
-    else
-    {
-        assert_that(nrow(mutationsFileCheck) == 1,
-                    msg = str_c("Do not have a single sample id in ", scriptArgs$MUTATIONS_TABLE_FILE))
-
-        assert_that(all(mutationsFileCheck$MATCHING),
-                    msg = str_c("Mutations in", scriptArgs$MUTATIONS_TABLE_FILE, "do not belong to ",
-                                scriptArgs$SAMPLE_ID, sep = " "))
+        warning("There are no rows for sample ", scriptArgs$SAMPLE_ID, " in ",
+                basename(scriptArgs$MUTATIONS_TABLE_FILE))
     }
 
     fragmentSizesTable <-
-        read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci') %>%
+        read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci', progress = FALSE) %>%
         mutate(MUTANT = ALT == SNV_BASE,
                MUTATION_CLASS = str_c(REF, ALT, sep = '/'),
                UNIQUE_POS = str_c(CHROM, POS, sep = ':'))

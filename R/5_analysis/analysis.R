@@ -191,9 +191,9 @@ main <- function(scriptArgs)
     mutationTracking(mutationsTable, layoutTable, tumourMutationsTable, invarScoresTable, scriptArgs$SCORE_SPECIFICITY)
 
   ## Saving some tables as part of analysis.
-  
+
   exportCSV(patientSummaryTable, "N_lociRetainedPostFilters_perPatient.csv")
-  
+
   exportCSV(calculateErrorRateSummary(errorRatesINV042), "error_rate_summary.csv")
 
   if (!is.null(ifPatientData))

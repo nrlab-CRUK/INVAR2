@@ -14,8 +14,10 @@ then
 fi
 
 python3 "!{params.projectHome}/python/2_size_annotation/getFragmentSize.py" \
+        --min-length=!{params.MINIMUM_FRAGMENT_LENGTH} \
+        --max-length=!{params.MAXIMUM_FRAGMENT_LENGTH} \
+        --min-mapping-quality=!{params.MAPPING_QUALITY} \
+        --min-base-quality=!{params.BASE_QUALITY} \
         "!{bamFile}" \
         "!{snvList}" \
-        "!{insertsFile}" \
-        "!{params.MINIMUM_FRAGMENT_LENGTH}" \
-        "!{params.MAXIMUM_FRAGMENT_LENGTH}"
+        "!{insertsFile}"

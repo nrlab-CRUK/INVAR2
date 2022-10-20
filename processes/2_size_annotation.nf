@@ -56,6 +56,8 @@ process getFragmentSize
 
     tag "${sampleId}"
 
+    publishDir "${launchDir}/inserts"
+
     input:
         tuple val(sampleId), path(bamFile), path(bamIndex)
         each path(snvList)

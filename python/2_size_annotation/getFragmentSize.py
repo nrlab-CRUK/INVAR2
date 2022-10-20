@@ -6,8 +6,8 @@ import os
 import sys
 
 def processPileUps(samfile, output_file, chrom, pos, ref, alt, args):
-    for pileup in samfile.pileup(chrom, pos-1, pos, max_depth=args.max_depth, stepper="nofilter"):
-        if pileup.reference_pos == pos-1: # filter for position of interest
+    for pileup in samfile.pileup(chrom, pos - 1, pos, max_depth=args.max_depth, stepper="nofilter"):
+        if pileup.reference_pos == pos - 1: # filter for position of interest
 
             if False:
                 print("Processing {} reads covering SNV {}:{}:{}:{} in {}".format(
@@ -18,7 +18,9 @@ def processPileUps(samfile, output_file, chrom, pos, ref, alt, args):
                     SNV_base = read.alignment.query_sequence[read.query_position]
                     size = abs(read.alignment.template_length)
 
-                    if (size>=args.minLength) & (size<=args.maxLength):
+                    if size >= args.minLength and size <= args.maxLength and \
+                            read.alignment.mapping_quality >= args.minMQ and \
+                            min(read.alignment.query_alignment_qualities) >= args.minBQ:
                         output_file.write("{}\t{:d}\t{}\t{}\t{}\t{:d}\n".format(chrom, pos, ref, alt, SNV_base, size))
 
 
@@ -33,13 +35,21 @@ parser.add_argument("SNV_list", help="List of SNV positions (.txt), reference an
 
 parser.add_argument("output", help="Name of your output file")
 
-parser.add_argument("minLength", type=int, help="Minimum length of fragment to be considered")
+parser.add_argument("--min-length", dest="minLength", type=int, required=True,
+                    help="Minimum length of fragment to be considered")
 
-parser.add_argument("maxLength", type=int, help="Maximum length of fragment to be considered")
+parser.add_argument("--max-length", dest="maxLength", type=int, required=True,
+                    help="Maximum length of fragment to be considered")
 
 # optional variables
 parser.add_argument("--max-depth", dest="max_depth", type=int, default=1000000,
                     help="Maximum number of reads to process at the specified SNV position")
+
+parser.add_argument("--min-mapping-quality", dest="minMQ", type=int, default=0,
+                    help="Minimum mapping quality in reads")
+
+parser.add_argument("--min-base-quality", dest="minBQ", type=int, default=0,
+                    help="Minimum base Quality in reads")
 
 args = parser.parse_args()
 
