@@ -125,8 +125,14 @@ resample <- function(theTibble, n)
 # Correct the number of fragment sizes to match the number given
 # by mpileup.
 #
-sampleFragments <- function(pysamFragments, grouping, mutationsTableDepths)
+sampleFragments <- function(pysamFragments, mutationsTableDepths)
 {
+    grouping <- pysamFragments %>%
+        distinct(UNIQUE_POS, MUTANT)
+
+    assert_that(nrow(grouping) == 1,
+                msg = "Expect each pysamFragment group to be grouped by UNIQUE_POS and MUTANT")
+
     uniquePos <- grouping$UNIQUE_POS
     mutant <- grouping$MUTANT
     type <- ifelse(mutant, "mutants", "wild types")
@@ -169,7 +175,7 @@ sampleFragments <- function(pysamFragments, grouping, mutationsTableDepths)
 # a bit of duplication in the table but each row will have its own MUTANT
 # and SIZE value.
 #
-equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
+equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable, threads = 1L)
 {
     # Fix depth.
 
@@ -193,8 +199,9 @@ equaliseSizeCounts <- function(mutationsTable, fragmentSizesTable)
 
     fragmentSizesTable.sampled <- fragmentSizesTable %>%
         group_by(UNIQUE_POS, MUTANT) %>%
-        group_modify(sampleFragments, mutationsTableDepths) %>%
-        ungroup() %>%
+        group_split(.keep = TRUE) %>%
+        mclapply(sampleFragments, mutationsTableDepths, mc.cores = threads) %>%
+        bind_rows() %>%
         select(UNIQUE_POS, SIZE, MUTANT)
 
     # Join with the mutations table to give a table with many more rows
@@ -256,7 +263,7 @@ main <- function(scriptArgs)
                UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
 
     mutationsTable.withSizes <-
-        equaliseSizeCounts(mutationsTable, fragmentSizesTable)
+        equaliseSizeCounts(mutationsTable, fragmentSizesTable, threads = scriptArgs$THREADS)
 
     fileInfoList <-
         mclapply(unique(mutationsTable.withSizes$PATIENT_MUTATION_BELONGS_TO), saveForPatient,

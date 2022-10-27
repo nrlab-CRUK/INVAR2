@@ -86,7 +86,7 @@ exportTSV <- function(t, file)
     t %>%
         mutate_if(is.logical, toChar) %>%
         mutate_if(is.double, signif, digits = 6) %>%
-        write_tsv(file)
+        write_tsv(file, progress = FALSE)
 
     t
 }
@@ -102,7 +102,7 @@ exportCSV <- function(t, file)
     t %>%
         mutate_if(is.logical, toChar) %>%
         mutate_if(is.double, signif, digits = 6) %>%
-        write_csv(file)
+        write_csv(file, progress = FALSE)
 
     t
 }
