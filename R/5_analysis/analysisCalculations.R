@@ -410,7 +410,8 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
 
   mutationTracking <- mutationsTable %>%
     group_by(SAMPLE_ID, PATIENT, CASE_OR_CONTROL) %>%
-    summarise(N_LOCI_MUTATED_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
+    summarise(RAW_N_READS = n(),
+              N_LOCI_MUTATED_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
               #
               N_READS_MUTATED_PTSPEC = sum(ALT_F[MUTANT & PATIENT_SPECIFIC] + ALT_R[MUTANT & PATIENT_SPECIFIC]), # Note this is number of reads NOT fragments (N_FRAGMENTS = 0.5 * N_READS)
@@ -441,13 +442,13 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
                 names_glue = "DETECTED.{USING_SIZE}.OUTLIER_{OUTLIER.PASS}",
                 values_from = DETECTION) %>%
     select(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL,
-           INITIAL_N_MUTATIONS, N_INFORMATIVE_READS,
+           INITIAL_N_MUTATIONS, RAW_N_READS, N_INFORMATIVE_READS,
            N_LOCI_MUTATED_PTSPEC, N_LOCI_MUTATED_NON_PTSPEC,
            N_LOCI_MUTATED_PTSPEC_LNP, N_LOCI_MUTATED_NON_PTSPEC_LNP,
            N_LOCI_MUTATED_PTSPEC_ALL_FILTERS, N_LOCI_MUTATED_NON_PTSPEC_ALL_FILTERS,
            N_READS_MUTATED_PTSPEC, N_READS_MUTATED_NON_PTSPEC,
            N_READS_MUTATED_PTSPEC_LNP, N_READS_MUTATED_NON_PTSPEC_LNP,
-           N_READS_MUTATED_PTSPEC_ALL_FILTERS, N_READS_MUTATED_NON_PTSPEC_ALL_FILTERS,
+           N_READS_MUTATED_PTSPEC_ALL_FILTERS, N_READS_MUTATED_NON_PTSPEC_ALL_FILTERS, IMAF,
            any_of(c('DETECTED.WITH_SIZE.OUTLIER_PASS', 'DETECTED.NO_SIZE.OUTLIER_PASS',
                     'DETECTED.WITH_SIZE.OUTLIER_FAIL', 'DETECTED.NO_SIZE.OUTLIER_FAIL'))) %>%
     arrange(SAMPLE_ID, PATIENT, TIMEPOINT, CASE_OR_CONTROL)
