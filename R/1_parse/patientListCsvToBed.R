@@ -15,6 +15,7 @@ csvFile <- args[1]
 bedFile <- args[2]
 
 loadTumourMutationsTable(csvFile) %>%
-select(CHROM, POS, REF, ALT) %>%
-mutate(START = POS - 1, .before = POS) %>%
-write_tsv(file = bedFile, col_names = FALSE)
+    select(CHROM, POS, REF, ALT) %>%
+    filter(across(everything(), ~ !is.na(.))) %>%
+    mutate(START = POS - 1, .before = POS) %>%
+    write_tsv(file = bedFile, col_names = FALSE)
