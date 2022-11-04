@@ -1,4 +1,9 @@
+@Grab('commons-io:commons-io:2.11.0')
 @Grab('com.xlson.groovycsv:groovycsv:1.3')
+
+import org.apache.commons.io.ByteOrderMark
+import org.apache.commons.io.input.BOMInputStream
+import com.xlson.groovycsv.CsvParser
 
 /**
  * Validation pipeline configuration.
@@ -486,6 +491,13 @@ def validateParameters(params)
 
 def validateReferenceFiles(params)
 {
+    def allByteOrderMarks = [
+            ByteOrderMark.UTF_8, ByteOrderMark.UTF_16BE, ByteOrderMark.UTF_16LE,
+            ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE
+        ] as ByteOrderMark[]
+
+    def defaultCharset = 'UTF-8'
+
     def errors = false
     def layoutFile = file(params.LAYOUT_TABLE)
     def tumourMutationsFile = file(params.TUMOUR_MUTATIONS_CSV)
@@ -498,13 +510,24 @@ def validateReferenceFiles(params)
 
     def requiredColumns = [ 'STUDY', 'SAMPLE_ID', 'BAM_FILE', 'CASE_OR_CONTROL', 'PATIENT',
                             'INPUT_INTO_LIBRARY_NG', 'SAMPLE_NAME', 'SAMPLE_TYPE', 'TIMEPOINT' ]
+
     def activeMarkers = [ '', 'yes', 'y', 'true', 't' ]
 
-    layoutFile.withReader
+    layoutFile.withInputStream
     {
-        reader ->
+        baseStream ->
 
-        def layoutContent = com.xlson.groovycsv.CsvParser.parseCsv(reader)
+        def charset = defaultCharset
+
+        def bomStream = new BOMInputStream(baseStream, false, allByteOrderMarks)
+
+        if (bomStream.hasBOM())
+        {
+            charset = bomStream.getBOMCharsetName()
+            log.warn "The layout file ${layoutFile.name} starts with an Excel byte order mark (${charset})."
+        }
+
+        def layoutContent = CsvParser.parseCsv(new InputStreamReader(bomStream, charset))
         def lineNumber = 1
         def uniqueSampleIds = new HashSet()
         def uniqueBamFiles = new HashSet()
@@ -620,15 +643,26 @@ def validateReferenceFiles(params)
     /*
      * Check the tumour mutations file.
      * We don't check the rows of this file, just that the required columns are present.
+     * Note that the file might have Excel byte order marks.
      */
 
     requiredColumns = [ 'CHROM', 'POS', 'REF', 'ALT', 'TUMOUR_AF', 'PATIENT' ]
 
-    tumourMutationsFile.withReader
+    tumourMutationsFile.withInputStream
     {
-        reader ->
+        baseStream ->
 
-        def tmIterator = com.xlson.groovycsv.CsvParser.parseCsv(reader)
+        def charset = defaultCharset
+
+        def bomStream = new BOMInputStream(baseStream, false, allByteOrderMarks)
+
+        if (bomStream.hasBOM())
+        {
+            charset = bomStream.getBOMCharsetName()
+            log.warn "The tumour mutations file ${tumourMutationsFile.name} starts with an Excel byte order mark (${charset})."
+        }
+
+        def tmIterator = CsvParser.parseCsv(new InputStreamReader(bomStream, charset))
 
         if (tmIterator.hasNext())
         {
