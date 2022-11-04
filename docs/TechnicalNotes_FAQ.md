@@ -8,7 +8,7 @@ A stream-of-though document to store Frequently Asked Questions and important te
 
 Make sure you export your mutation list to "Comma-seperated Values (.csv)" NOT "CSV UTF-8 format"
 
-## Do you have a recommended 1000 Genome SNP file?
+### Do you have a recommended 1000 Genome SNP file?
 We have used the 1000genomes/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz file. Some users have experienced issues with templates/1_parse/tabix.sh (error message: Failed to read BGZF block data at offset) switching to the recommended file has sorted it. 
 
 
