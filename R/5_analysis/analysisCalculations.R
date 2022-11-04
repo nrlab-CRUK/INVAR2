@@ -410,7 +410,7 @@ mutationTracking <- function(mutationsTable, layoutTable, tumourMutationsTable, 
 
   mutationTracking <- mutationsTable %>%
     group_by(SAMPLE_ID, PATIENT, CASE_OR_CONTROL) %>%
-    summarise(RAW_N_READS = n(),
+    summarise(RAW_N_READS = sum(REF_F + REF_R + ALT_F + ALT_R),
               N_LOCI_MUTATED_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_SPECIFIC, na.rm = TRUE),
               N_LOCI_MUTATED_NON_PTSPEC = n_distinct(UNIQUE_IF_MUTANT_NON_SPECIFIC, na.rm = TRUE),
               #
