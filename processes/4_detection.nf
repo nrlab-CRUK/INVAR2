@@ -41,7 +41,7 @@ process generalisedLikelihoodRatioTest
 process combineGeneralisedLikelihoodRatioTestResults
 {
     memory '256m'
-    time   '5m'
+    time   '20m'
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true
 
