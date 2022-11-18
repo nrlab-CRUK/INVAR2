@@ -668,3 +668,34 @@ IMAFvsDetectedByStage <- function(ifPatientData)
 
     plot
 }
+
+plot_tumourAF_KDE_perPatient <- function(mutationsTable, study){
+  plot <- mutationsTable %>%
+    filter(ON_TARGET, COSMIC==FALSE, SNP==FALSE, PATIENT==PATIENT_MUTATION_BELONGS_TO, BOTH_STRANDS.PASS) %>%
+    ggplot(aes(TUMOUR_AF, colour = PATIENT)) +
+    geom_density()+
+    ylim(0,40) +
+    theme_classic() +
+    labs(x = "Tumour AF",
+         y = "Frequency",
+         title = str_c("Tumour AF for different patients in ", study, " cohort")) +
+    theme(axis.text.x=element_blank())
+  
+  plot
+  
+}
+
+plot_patientAF_KDE <- function(mutationsTable, study){
+  plot <- mutationsTable %>%
+    filter(ON_TARGET, COSMIC==FALSE, SNP==FALSE, PATIENT==PATIENT_MUTATION_BELONGS_TO, BOTH_STRANDS.PASS,MUTANT) %>%
+    ggplot(aes(AF, colour = PATIENT)) +
+    geom_density()+
+    ylim(0,40) +
+    theme_classic() +
+    labs(x = "Patient loci AF",
+         y = "Frequency",
+         title = str_c("Loci AF for different patients in ", study, " cohort")) +
+    theme(axis.text.x=element_blank())
+  
+  plot
+}

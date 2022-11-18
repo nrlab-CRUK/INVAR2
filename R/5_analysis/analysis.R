@@ -325,6 +325,12 @@ main <- function(scriptArgs)
     plots$P17 <- dpcrComparisionPlot(annotatedPatientSpecificGLRT, study = scriptArgs$STUDY)
   }
 
+# QC plot TUMOUR AF per Patient
+  plots$P22 <- plot_tumourAF_KDE_perPatient(mutationsTable, study = scriptArgs$STUDY)
+  
+# QC plot Patient AF
+  plots$P23 <- plot_patientAF_KDE(mutationsTable, study = scriptArgs$STUDY)
+  
 
   ## Save the plots as individual files.
 
@@ -501,6 +507,18 @@ main <- function(scriptArgs)
                      width = 8, height = 5)
   }
 
+# QC plot Tumour AF per Patient
+  plots$P22 <-
+    savePlotSafely(plot = plots$P13a,
+                   filename = "p21_tumourAF_perPatient.pdf",
+                   width = 4, height = 3)
+
+# QC plot Patient AF
+  plots$P23 <-
+    savePlotSafely(plot = plots$P13a,
+                   filename = "p22_patientAF.pdf",
+                   width = 4, height = 3)
+  
 
   ## Render the INVAR analysis report.
 
