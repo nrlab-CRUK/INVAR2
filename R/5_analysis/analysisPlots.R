@@ -670,11 +670,15 @@ IMAFvsDetectedByStage <- function(ifPatientData)
 }
 
 plot_tumourAF_KDE_perPatient <- function(mutationsTable, study){
+  
+  # Getting y-axis limit
+  nPatients <- length(unique(filter(mutationsTable, ON_TARGET, COSMIC==FALSE, SNP==FALSE, PATIENT==PATIENT_MUTATION_BELONGS_TO, BOTH_STRANDS.PASS, CASE_OR_CONTROL=="case")))
+  
   plot <- mutationsTable %>%
     filter(ON_TARGET, COSMIC==FALSE, SNP==FALSE, PATIENT==PATIENT_MUTATION_BELONGS_TO, BOTH_STRANDS.PASS) %>%
     ggplot(aes(TUMOUR_AF, colour = PATIENT)) +
     geom_density()+
-    ylim(0,40) +
+    ylim(0,nPatients) +
     theme_classic() +
     labs(x = "Tumour AF",
          y = "Frequency",
@@ -686,11 +690,15 @@ plot_tumourAF_KDE_perPatient <- function(mutationsTable, study){
 }
 
 plot_patientAF_KDE <- function(mutationsTable, study){
+  
+  # Getting y-axis limit
+  nPatients <- length(unique(filter(mutationsTable, ON_TARGET, COSMIC==FALSE, SNP==FALSE, PATIENT==PATIENT_MUTATION_BELONGS_TO, BOTH_STRANDS.PASS, CASE_OR_CONTROL=="case")))
+  
   plot <- mutationsTable %>%
     filter(ON_TARGET, COSMIC==FALSE, SNP==FALSE, PATIENT==PATIENT_MUTATION_BELONGS_TO, BOTH_STRANDS.PASS,MUTANT) %>%
     ggplot(aes(AF, colour = PATIENT)) +
     geom_density()+
-    ylim(0,40) +
+    ylim(0,nPatients) +
     theme_classic() +
     labs(x = "Patient loci AF",
          y = "Frequency",
