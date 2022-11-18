@@ -509,13 +509,13 @@ main <- function(scriptArgs)
 
 # QC plot Tumour AF per Patient
   plots$P22 <-
-    savePlotSafely(plot = plots$P13a,
+    savePlotSafely(plot = plots$P22,
                    filename = "p21_tumourAF_perPatient.pdf",
                    width = 4, height = 3)
 
 # QC plot Patient AF
   plots$P23 <-
-    savePlotSafely(plot = plots$P13a,
+    savePlotSafely(plot = plots$P23,
                    filename = "p22_patientAF.pdf",
                    width = 4, height = 3)
   
