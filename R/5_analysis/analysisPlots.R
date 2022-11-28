@@ -515,6 +515,62 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, w
     plot
 }
 
+ROCPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize,
+                                                scoreSpecificity, minInformativeReads, maxBackgroundAlleleFreq)
+{
+  assert_that(is.logical(withSizes), msg = "withSizes must be a logical")
+  assert_that(is.numeric(familySize), msg = "familySize must be a number")
+  assert_that(is.numeric(scoreSpecificity), msg = "scoreSpecificity must be a number")
+  assert_that(is.numeric(minInformativeReads), msg = "minInformativeReads must be a number")
+  assert_that(is.numeric(maxBackgroundAlleleFreq), msg = "maxBackgroundAlleleFreq must be a number")
+  
+  minPatientDP <- min(filter(adjustedScoresTable, PATIENT_SPECIFIC)$DP)
+
+  adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable, scoreSpecificity) %>%
+    filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS,
+           DP >= minPatientDP,
+           IMAF <= maxBackgroundAlleleFreq, # This should already be enacted, adding as a precaution
+           USING_SIZE == withSizes)
+    
+  
+  if (any(adjustedScoresTable$CASE_OR_CONTROL != "case"))
+  {
+    # Data has healthy controls. Continue with analysis.
+    
+    healthyControlResultsList <- adjustedScoresTable %>%
+      filter(PATIENT_SPECIFIC | CASE_OR_CONTROL != "case") %>%
+      mutate(CASE_OR_CONTROL = 'case')
+    
+    plot <- adjustedScoresTable %>%
+      ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE)) +
+      geom_roc(data = healthyControlResultsList,
+               labels = FALSE, pointsize = 0.1, color = "red") + # to get rid of numbers on the ROC curve
+      geom_roc(labels = FALSE, pointsize = 0.1) + # to get rid of numbers on the ROC curve
+      theme_classic() +
+      labs(title = str_c(study, ", fam_", familySize),
+           x = "False positive fraction",
+           y = "True positive fraction",
+           subtitle = str_c("Specificity patients = ", patientControlSpecificity, "%\nSpecificity healthy = ", healthyControlSpecificity, "%"))
+  }
+  else
+  {
+    # This data does not have healthy controls, will compute the ROC curve from case data only
+    
+    plot <- adjustedScoresTable %>%
+      ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE)) +
+      geom_roc(labels = FALSE, pointsize = 0.1) + # to get rid of numbers on the ROC curve
+      theme_classic() +
+      labs(title = str_c(study, ", fam_", familySize),
+           x = "False positive fraction",
+           y = "True positive fraction",
+           subtitle = str_c("Specificity patients = ", patientControlSpecificity, "%"))
+    
+  }
+  
+  plot
+}
+
+
 depthToIMAFPlot <- function(ifPatientData)
 {
     assert_that(!is.null(ifPatientData), msg = "ifPatientData is null")

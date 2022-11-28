@@ -283,6 +283,14 @@ main <- function(scriptArgs)
 
   # Receiver Operating Characteristic Plots
 
+  plots$P13 <- ROCPlot(invarScoresTable, layoutTable,
+                       withSizes = TRUE,
+                       study = scriptArgs$STUDY,
+                       familySize = scriptArgs$FAMILY_SIZE,
+                       scoreSpecificity = scriptArgs$SCORE_SPECIFICITY,
+                       minInformativeReads = scriptArgs$MINIMUM_INFORMATIVE_READS,
+                       maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
+  
   plots$P13a <- receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
                                                     withSizes = TRUE,
                                                     study = scriptArgs$STUDY,
@@ -298,6 +306,7 @@ main <- function(scriptArgs)
                                                     scoreSpecificity = scriptArgs$SCORE_SPECIFICITY,
                                                     minInformativeReads = scriptArgs$MINIMUM_INFORMATIVE_READS,
                                                     maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
+  
 
   # IR (depth) to IMAF plot
 
@@ -441,6 +450,11 @@ main <- function(scriptArgs)
 
   # Receiver Operating Characteristic Plots
 
+  plots$P13 <-
+    savePlotSafely(plot = plots$P13,
+                   filename = "p13_ ROCPlot.pdf",
+                   width = 4, height = 3)
+  
   plots$P13a <-
     savePlotSafely(plot = plots$P13a,
                    filename = "p13a_receiver_operating_characteristic.pdf",
