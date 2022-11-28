@@ -452,7 +452,7 @@ main <- function(scriptArgs)
 
   plots$P13 <-
     savePlotSafely(plot = plots$P13,
-                   filename = "p13_ ROCPlot.pdf",
+                   filename = "p13_ROCPlot.pdf",
                    width = 4, height = 3)
   
   plots$P13a <-
