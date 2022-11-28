@@ -550,8 +550,7 @@ ROCPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize,
       theme_classic() +
       labs(title = str_c(study, ", fam_", familySize),
            x = "False positive fraction",
-           y = "True positive fraction",
-           subtitle = str_c("Specificity patients = ", patientControlSpecificity, "%\nSpecificity healthy = ", healthyControlSpecificity, "%"))
+           y = "True positive fraction")
   }
   else
   {
@@ -563,8 +562,7 @@ ROCPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize,
       theme_classic() +
       labs(title = str_c(study, ", fam_", familySize),
            x = "False positive fraction",
-           y = "True positive fraction",
-           subtitle = str_c("Specificity patients = ", patientControlSpecificity, "%"))
+           y = "True positive fraction")
     
   }
   
