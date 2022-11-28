@@ -526,12 +526,13 @@ ROCPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize,
   
   adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable, scoreSpecificity) %>%
     filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS,
-           DP >= min(filter(adjustedScoresTable, PATIENT_SPECIFIC)$DP),
            IMAF <= maxBackgroundAlleleFreq, # This should already be enacted, adding as a precaution
            USING_SIZE == withSizes)
     
   minPatientDP <- min(filter(adjustedScoresTable, PATIENT_SPECIFIC)$DP)
-
+  
+  adjustedScoresTable <- adjustedScoresTable %>%
+    filter(DP>= minPatientDP)
   
   if (any(adjustedScoresTable$CASE_OR_CONTROL != "case"))
   {
