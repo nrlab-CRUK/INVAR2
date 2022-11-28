@@ -469,12 +469,12 @@ receiverOperatingCharacteristicPlot <- function(invarScoresTable, layoutTable, w
     patientControlSpecificity <- patientControlCutOffInfo$QUANTILE_SPECIFICITY
     patientControlCutOff <- patientControlCutOffInfo$INVAR_SCORE_THRESHOLD
 
-    if (any(adjustedScoresTable$CASE_OR_CONTROL == "control_negative"))
+    if (any(adjustedScoresTable$CASE_OR_CONTROL != "case"))
     {
         # Data has healthy controls. Continue with analysis.
 
         healthyControlResultsList <- adjustedScoresTable %>%
-            filter(PATIENT_SPECIFIC | CASE_OR_CONTROL == "control_negative") %>%
+            filter(PATIENT_SPECIFIC | CASE_OR_CONTROL != "case") %>%
             mutate(CASE_OR_CONTROL = 'case') %>%
             scaleInvarScores(minInformativeReads, maxBackgroundAlleleFreq)
 
