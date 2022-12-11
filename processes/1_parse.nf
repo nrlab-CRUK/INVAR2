@@ -43,7 +43,8 @@ process mpileup
     tag "${sampleId}"
 
     cpus { Math.min(params.MAX_CORES, 2) }
-    time "60m"
+    memory '20g'
+    
 
     input:
         each path(sloppedBedFile)
