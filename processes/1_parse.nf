@@ -43,7 +43,7 @@ process mpileup
     tag "${sampleId}"
 
     cpus { Math.min(params.MAX_CORES, 2) }
-    memory '20g'
+    time "120m"
     
 
     input:
