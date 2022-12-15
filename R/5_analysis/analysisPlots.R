@@ -525,14 +525,19 @@ ROCPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize,
   assert_that(is.numeric(maxBackgroundAlleleFreq), msg = "maxBackgroundAlleleFreq must be a number")
   
   adjustedScoresTable <- adjustInvarScores(invarScoresTable, layoutTable, scoreSpecificity) %>%
-    filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS,
-           IMAF <= maxBackgroundAlleleFreq, # This should already be enacted, adding as a precaution
-           USING_SIZE == withSizes)
-    
+    filter(LOCUS_NOISE.PASS & BOTH_STRANDS.PASS & OUTLIER.PASS) 
+  
+  # Fix that healthy controls must have at least the depth of minimum patient sample
   minPatientDP <- min(filter(adjustedScoresTable, PATIENT_SPECIFIC)$DP)
   
-  adjustedScoresTable <- adjustedScoresTable %>%
-    filter(DP>= minPatientDP)
+  adjustedScoresTable <- adjustedScoresTable %>% 
+    filter(IMAF <= maxBackgroundAlleleFreq, # This should already be enacted, adding as a precaution
+           USING_SIZE == withSizes,
+           DP>= minPatientDP)
+  
+  # Data has healthy controls. Continue with analysis.
+  patientControlResultsList <- adjustedScoresTable %>%
+    filter(PATIENT_SPECIFIC | CASE_OR_CONTROL == "case")
   
   if (any(adjustedScoresTable$CASE_OR_CONTROL != "case"))
   {
@@ -542,7 +547,7 @@ ROCPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize,
       filter(PATIENT_SPECIFIC | CASE_OR_CONTROL != "case") %>%
       mutate(CASE_OR_CONTROL = 'case')
     
-    plot <- adjustedScoresTable %>%
+    plot <-patientControlResultsList %>%
       ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE)) +
       geom_roc(data = healthyControlResultsList,
                labels = FALSE, pointsize = 0.1, color = "red") + # to get rid of numbers on the ROC curve
@@ -556,7 +561,7 @@ ROCPlot <- function(invarScoresTable, layoutTable, withSizes, study, familySize,
   {
     # This data does not have healthy controls, will compute the ROC curve from case data only
     
-    plot <- adjustedScoresTable %>%
+    plot <- patientControlResultsList %>%
       ggplot(aes(d = PATIENT_SPECIFIC, m = ADJUSTED_INVAR_SCORE)) +
       geom_roc(labels = FALSE, pointsize = 0.1) + # to get rid of numbers on the ROC curve
       theme_classic() +

@@ -186,7 +186,7 @@ scaleInvarScores <- function(adjustedScoresTable, minInformativeReads, maxBackgr
     filter(!PATIENT_SPECIFIC & CASE_OR_CONTROL == 'case' &
              !SAMPLE_ID %in% contaminationRiskSamples$SAMPLE_ID)
 
-  joinColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO')
+  joinColumns <- c('SAMPLE_ID', 'PATIENT', 'PATIENT_MUTATION_BELONGS_TO', 'ITERATION')
   joinSuffix <- c('.NO_SIZE', '.WITH_SIZE')
 
   nonSpecific.noSize <- nonSpecific %>%
