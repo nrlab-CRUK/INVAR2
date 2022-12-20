@@ -43,7 +43,7 @@ process mpileup
     tag "${sampleId}"
 
     cpus { Math.min(params.MAX_CORES, 2) }
-    time "180m"
+    time "12h"
     
 
     input:
@@ -69,7 +69,7 @@ process biallelic
     tag "${sampleId}"
 
     memory '512m'
-    time   '10m'
+    time   '30m'
 
     input:
         tuple val(sampleId), path(vcfFile)
@@ -223,7 +223,7 @@ process offTargetErrorRates
 
 process createOnTargetMutationsTable
 {
-    memory '4g'
+    memory '8g'
 
     input:
         path mutationsFile
@@ -247,7 +247,7 @@ process createOnTargetMutationsTable
 
 process onTargetErrorRatesAndFilter
 {
-    memory '2g'
+    memory '8g'
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: "locus_error_rates*"
 
