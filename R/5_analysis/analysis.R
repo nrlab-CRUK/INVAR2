@@ -77,7 +77,10 @@ parseOptions <- function()
                 default=20000L),
     make_option(c("--score-specificity"), type="double", metavar="number",
                 dest="SCORE_SPECIFICITY", help="Score specificity for ROC plot.",
-                default=0.95))
+                default=0.95),
+    make_option(c("--LNP_threshold"), type="double", metavar="number",
+                dest="LNP_THRESHOLD", help="Locus Noise pass filter threshold.",
+                default=0.3))
 
   opts <- OptionParser(option_list=options_list, usage="%prog [options]") %>%
     parse_args(positional_arguments = TRUE)
@@ -340,6 +343,9 @@ main <- function(scriptArgs)
 # QC plot Patient AF
   plots$P23 <- plot_patientAF_KDE(mutationsTable, study = scriptArgs$STUDY)
   
+  # Plot Locus noise pass filter effect histogram
+  plots$P24 <- LNP_HIST(mutationsTable, study = scriptArgs$LNP_THRESHOLD)
+  
 
   ## Save the plots as individual files.
 
@@ -533,7 +539,11 @@ main <- function(scriptArgs)
                    filename = "p22_patientAF.pdf",
                    width = 4, height = 3)
   
-
+  plots$P24 <-
+    savePlotSafely(plot = plots$P24,
+                   filename = "p24_locus_noise_pass_histogram.pdf",
+                   width = 11, height = 7)
+  
   ## Render the INVAR analysis report.
 
   dir.create(str_c(getwd(), '/knitting'), showWarnings = FALSE)

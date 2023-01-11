@@ -767,3 +767,30 @@ plot_patientAF_KDE <- function(mutationsTable, study){
   
   plot
 }
+
+LNP_HIST <- function(mutationsTable, LNP_THRESHOLD){
+  mutReads <- mutTab %>%
+    filter((ALT_F+ALT_R)!=0) %>%
+    mutate(UNIQ_POS = paste0(CHROM,":", POS))
+  
+  n_mutReads <- dim(mutReads)[1]
+  
+  # Want to annotate histogram with the quanityt of mutant reads if you select that LNP filter
+  plot <- mutReads %>%
+    count(UNIQ_POS, sort=TRUE) %>%
+    rename(FREQ_OF_MUT = n) %>%
+    count(FREQ_OF_MUT) %>%
+    mutate(PROP_MUT_LOCI = FREQ_OF_MUT*n*100/n_mutReads,
+           CUM_PROP_MUT_LOCI = cumsum(PROP_MUT_LOCI), 
+           LNP = ifelse(FREQ_OF_MUT< LNP_THRESHOLD*max(FREQ_OF_MUT), TRUE, FALSE)) %>%
+    ggplot(aes(x = FREQ_OF_MUT, y = n, fill=LNP)) +
+      geom_col(alpha=0.8) +
+      geom_text(aes(y=round(n[2], digits = 0), label = paste0(round(CUM_PROP_MUT_LOCI, digits=1), "%"), angle=90), vjust = 0.5) +
+      theme_classic() +
+      labs(x = "Number of samples with commonly mutated Loci",
+         y = "Frequency",
+         title = "Frequency of loci mutated in multiple samples", 
+         subtitle = "Bar annotations represent the cummulative quantity of mutated reads \nretained for a LNP threshold above given proportion of loci")
+  
+  plot
+}
