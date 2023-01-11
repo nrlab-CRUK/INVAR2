@@ -44,6 +44,7 @@ process runAnalysis
             --max-mutant-reads=!{params.MAXIMUM_MUTANT_READS} \
             --min-informative-reads=!{params.MINIMUM_INFORMATIVE_READS} \
             --score-specificity=!{params.SCORE_SPECIFICITY}
+            --LNP_threshold=!{params.PROPORTION_OF_CONTROLS}
         """
 }
 
