@@ -9,7 +9,7 @@ process generalisedLikelihoodRatioTest
     tag "${sampleId} ${patientMutationBelongsTo}"
 
     memory '60g'
-    time   '60m'
+    time   '6h'
     cpus   { Math.min(params.MAX_CORES, 10) }
 
     input:
@@ -42,7 +42,7 @@ process generalisedLikelihoodRatioTest
 process combineGeneralisedLikelihoodRatioTestResults
 {
     memory '256m'
-    time   '5m'
+    time   '60m'
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true
 

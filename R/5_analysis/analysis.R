@@ -344,7 +344,7 @@ main <- function(scriptArgs)
   plots$P23 <- plot_patientAF_KDE(mutationsTable, study = scriptArgs$STUDY)
   
   # Plot Locus noise pass filter effect histogram
-  plots$P24 <- LNP_HIST(mutationsTable, study = scriptArgs$LNP_THRESHOLD)
+  plots$P24 <- LNP_HIST(mutationsTable, LNP_THRESHOLD = scriptArgs$LNP_THRESHOLD)
   
 
   ## Save the plots as individual files.
