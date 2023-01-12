@@ -769,7 +769,7 @@ plot_patientAF_KDE <- function(mutationsTable, study){
 }
 
 LNP_HIST <- function(mutationsTable, LNP_THRESHOLD){
-  mutReads <- mutTab %>%
+  mutReads <- mutationsTable %>%
     filter((ALT_F+ALT_R)!=0) %>%
     mutate(UNIQ_POS = paste0(CHROM,":", POS))
   
