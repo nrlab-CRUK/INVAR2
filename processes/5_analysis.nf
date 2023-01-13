@@ -43,7 +43,7 @@ process runAnalysis
             --allele-frequency-threshold=!{params.ALLELE_FREQUENCY_THRESHOLD} \
             --max-mutant-reads=!{params.MAXIMUM_MUTANT_READS} \
             --min-informative-reads=!{params.MINIMUM_INFORMATIVE_READS} \
-            --score-specificity=!{params.SCORE_SPECIFICITY}
+            --score-specificity=!{params.SCORE_SPECIFICITY} \
             --LNP_threshold=!{params.PROPORTION_OF_CONTROLS}
         """
 }
