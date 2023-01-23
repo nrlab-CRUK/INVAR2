@@ -790,7 +790,7 @@ LNP_HIST <- function(mutationsTable, LNP_THRESHOLD){
       labs(x = "Number of samples with commonly mutated Loci",
          y = "Frequency",
          title = "Frequency of loci mutated in multiple samples", 
-         subtitle = "Bar annotations represent the cummulative quantity of mutated reads \nretained for a LNP threshold above given proportion of loci")
+         subtitle = "Bar annotations represent the cummulative proportion of input mutated reads that are retained \nat said LOCUS_NOISE.PASS percentage")
   
   plot
 }
