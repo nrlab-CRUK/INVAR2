@@ -496,8 +496,6 @@ def validateReferenceFiles(params)
             ByteOrderMark.UTF_32BE, ByteOrderMark.UTF_32LE
         ] as ByteOrderMark[]
 
-    def defaultCharset = 'UTF-8'
-
     def errors = false
     def layoutFile = file(params.LAYOUT_TABLE)
     def tumourMutationsFile = file(params.TUMOUR_MUTATIONS_CSV)
@@ -517,7 +515,7 @@ def validateReferenceFiles(params)
     {
         baseStream ->
 
-        def charset = defaultCharset
+        def charset = params.LAYOUT_TABLE_ENCODING
 
         def bomStream = new BOMInputStream(baseStream, false, allByteOrderMarks)
 
@@ -652,7 +650,7 @@ def validateReferenceFiles(params)
     {
         baseStream ->
 
-        def charset = defaultCharset
+        def charset = params.TUMOUR_MUTATIONS_CSV_ENCODING
 
         def bomStream = new BOMInputStream(baseStream, false, allByteOrderMarks)
 

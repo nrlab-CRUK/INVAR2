@@ -46,7 +46,7 @@ workflow
     layoutChannel = channel.fromPath(params.LAYOUT_TABLE, checkIfExists: true)
 
     bamChannel = layoutChannel
-        .splitCsv(header: true, by: 1, strip: true, quote: '"')
+        .splitCsv(header: true, by: 1, strip: true, quote: '"', charset = params.LAYOUT_TABLE_ENCODING)
         .filter {
             row ->
             row.STUDY == params.STUDY &&
