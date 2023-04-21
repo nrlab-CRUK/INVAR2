@@ -10,6 +10,10 @@ Get a copy of the nextflow.config file that defines all your variables and file 
 
 Change the paths to where you have stored your bam files (Note they MUST be on scratcha/scratchb for the compute nodes to see them), as well as any other constants or flags you wish to use. (See [Parameters](docs/Parameters.md) for all the details.)
 
+## Software dependencies
+Make sure you have nextflow and java installed on your path:
+```spack load /3tj4uay``` and ```spack load openjdk@17```
+
 ## Run it :)
 
 In your directory with all the files, run ```nextflow run nrlab-CRUK/INVAR2 -profile slurm```
