@@ -169,7 +169,7 @@ process annotateMutation
 
 process createMutationsTable
 {
-    memory '20g'
+    memory '40g'
     cpus   { Math.min(params.MAX_CORES, mutationsFiles.size()) }
 
     input:
