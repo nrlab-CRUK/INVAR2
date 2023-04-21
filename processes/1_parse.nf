@@ -196,7 +196,7 @@ process createMutationsTable
 
 process offTargetErrorRates
 {
-    memory '32g'
+    memory '64g'
     cpus   { Math.min(params.MAX_CORES, 2) }
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: "error_rates.*.rds"
