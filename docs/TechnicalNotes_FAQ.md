@@ -11,6 +11,8 @@ Make sure you export your mutation list to "Comma-seperated Values (.csv)" NOT "
 ### Do you have a recommended 1000 Genome SNP file?
 We have used the 1000genomes/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5b.20130502.sites.vcf.gz file. Some users have experienced issues with templates/1_parse/tabix.sh (error message: Failed to read BGZF block data at offset) switching to the recommended file has sorted it. 
 
+### in sizeAnnotations.R, error with mclapply(), Arugment 4 must have names
+You have a loci that has been called as a tumour mutation in two or more samples (so a duplicate line in the tumour mutations list csv) which leads to having two lines in the mpileup, and crashes sizeAnnotation when comparing pysam and mpileup results. To resolve: remove the duplicated loci in your tumour mutations file. 
 
 ## Technical FAQ's
 
