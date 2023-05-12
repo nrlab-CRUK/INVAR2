@@ -78,6 +78,7 @@ mutation, `REF` the reference allele, `ALT` the alternate allele, `TUMOUR_AF` th
 tumour allele frequency [a decimal], `PATIENT` the patient identifier. `PATIENT` is
 cross linked to the `PATIENT` column in the layout file.
 
+Note: please ensure each loci is called only once per patient! (ie no duplicates in the list) else this would cause issues in teh sizeAnnotation.R step.
 
 ## Creating a Project Directory
 
