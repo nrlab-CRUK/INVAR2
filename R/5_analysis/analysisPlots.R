@@ -599,7 +599,7 @@ depthToIMAFPlot <- function(ifPatientData)
             geom_vline(xintercept = 1e6, linetype = "dotted") +
             geom_point(aes(colour = DETECTED_LABEL)) +
             geom_line(data = senseLine, aes(x = DP, y = IMAF), linetype = "longdash") +
-            scale_x_log10(limits = c(5e3, 5e6)) +
+            #scale_x_log10(limits = c(5e3, 5e6)) +
             scale_y_log10(breaks = c(1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1),
                           labels = c("ND", "1e-6", "1e-5", "1e-4", "1e-3", "1e-2", "1e-1")) +
             theme_classic() +
