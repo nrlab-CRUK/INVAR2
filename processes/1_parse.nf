@@ -3,7 +3,6 @@ include { makeSafeForFileName } from '../functions/naming'
 process createSequenceDictionary
 {
     time '1h'
-    memory '128m'
 
     input:
         path fastaReference
