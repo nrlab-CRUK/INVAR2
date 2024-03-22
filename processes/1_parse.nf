@@ -14,6 +14,11 @@ process createSequenceDictionary
     shell:
         javaMem = task.memory.toMega() - 128
         sequenceDictionary = "${fastaReference.baseName}.dict"
+        
+        if (javaMem < 64)
+        {
+            throw new Exception("Too little memory given to createSequenceDictionary. With a JVM overhead, it can't realistically run in less than 192MB.")
+        }
 
         template "1_parse/createSequenceDictionary.sh"
 }
