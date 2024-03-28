@@ -4,7 +4,7 @@ process markOutliers
 {
     tag "${sampleId} ${patientMutationBelongsTo}"
 
-    memory '6g'
+    memory '18g'
 
     input:
         tuple val(sampleId), val(patientMutationBelongsTo), path(mutationsFile)
@@ -29,7 +29,7 @@ process markOutliers
 
 process sizeCharacterisation
 {
-    memory '10g'
+    memory '20g'
     cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, osMutationsFiles.size()) }
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: 'size_characterisation.rds'
@@ -51,7 +51,7 @@ process sizeCharacterisation
 
 process annotateMutationsWithOutlierSuppression
 {
-    memory '8g'
+    memory '16g'
     cpus   { Math.min(Math.ceil(params.MAX_CORES / 2.0) as int, osMutationsFiles.size()) }
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true
