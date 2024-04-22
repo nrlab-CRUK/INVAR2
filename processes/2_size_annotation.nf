@@ -75,7 +75,7 @@ process annotateMutationsWithFragmentSize
     tag "${sampleId}"
 
     memory '256g'
-    cpus   { Math.min(params.MAX_CORES, 4) }
+    cpus   { Math.min(params.MAX_CORES, 8) }
 
     input:
         tuple val(sampleId), path(fragmentSizesFile)
