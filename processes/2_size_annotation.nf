@@ -74,7 +74,7 @@ process annotateMutationsWithFragmentSize
 {
     tag "${sampleId}"
 
-    memory '512g'
+    memory '256g'
     cpus   { Math.min(params.MAX_CORES, 4) }
 
     input:
