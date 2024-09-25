@@ -9,6 +9,7 @@
 #===================================================================================
 
 suppressPackageStartupMessages(require(assertthat))
+suppressPackageStartupMessages(require(stringr))
 
 ## Calculates the score statistic. M, R, AF, e are vector of length n (the number of sites).
 # M = mut_sum, R = DP (reads), AF = tumour_AF, e = background_AF
@@ -171,6 +172,8 @@ estimate_real_length_probability <- function(fragment_length, counts, bw_adjust 
         # Need to guard against too few points.
         if (length(counts) > 1)
         {
+            assert_that(sum(counts) > 0, msg = str_c("Sum of ", length(counts), " counts is zero. Cannot create weights."))
+
             # Weights take into account the TOTAL number of reads of all sizes
             weights <- counts / sum(counts)
 
