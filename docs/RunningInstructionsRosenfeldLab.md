@@ -1,5 +1,9 @@
 # Running instructions for members of the Rosenfeld lab, CRUK CI
 
+## Install
+
+nextflow pull nrlab-CRUK/INVAR2
+
 ## Set-up
 
 Build your mutation list file and layout file as instructed in the documentation. Save both as a .csv and transfer them to the cluster ```scp -r  *.csv clust1-headnode.cri.camres.org://scratcha/nrlab/ditter01/invar_PARADIGM/``` (change this to your directory, obviously)
@@ -20,6 +24,21 @@ In your directory with all the files, run ```nextflow run nrlab-CRUK/INVAR2 -pro
 
 If any of your input .csv files are incorrectly filled in then red warnings will pop up and the process will stop. Else a list of processes will appear and will update as the code progresses. For a sample size of 36 patients, it takes approximately 60mins to run.
 
+For example, if you run on scratcha or scratchb, use this `run.sh` template to submit jobs.
+#!/bin/bash
+#SBATCH --job-name=job_name
+#SBATCH --output=job_%j.log
+#SBATCH --time=100:00:00
+#SBATCH --mem=10G
 
+# java -version
+spack load openjdk@17
+# run INVAR2
+nextflow run nrlab-CRUK/INVAR2 \
+    -config nextflow.config \
+    -profile slurm \
+    -with-report INVAR_report_s.html \
+    -with-timeline INVAR_time_s.html \
+    -resume
 
 
