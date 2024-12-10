@@ -86,7 +86,7 @@ Some parameters are dependent on the sequencing depth (DP) of your plasma bam fi
 | MAXIMUM_MUTANT_READS           | int  | 10                        | Maximum number of mutant reads of a locus to be considered for detection. Recommand to set to 1*DP. |
 | MINIMUM_INFORMATIVE_READS      | int  | 20000                     | Minimum number of informative reads (reads that have passed all filters) for each sample to be considered as part of the cohort. Ie a low sensitivity threshold (samples with fewer than MINIMUM_INFORMATIVE_READS after filtering) will not be considered for classification. Recommand to set to 100*DP.                      |
 | IS_BLOODSPOT                   | bool | false                     | Only change to true if you are running blood spot data through the pipeline. This omits outlier suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
-| OUTLIER_SUPPRESSION_THRESHOLD  | num  | 0.05                      | Outlier suppression threshold. Related to                  |
+| OUTLIER_SUPPRESSION_THRESHOLD  | num  | 0.05                      | Outlier suppression threshold. Related to specificity rate.       |
 | MINIMUM_FRAGMENT_LENGTH        | int  | 60                        | Minimum fragment length.                                  |
 | MAXIMUM_FRAGMENT_LENGTH        | int  | 300                       | Maximum fragment length.                                  |
 | SMOOTHING                      | num  | 0.25                      | Smoothing function for size profile (width of smoothing). |
