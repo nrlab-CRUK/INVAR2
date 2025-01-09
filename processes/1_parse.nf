@@ -27,7 +27,7 @@ process slopPatientInfo
 {
     executor 'local'
     memory '128m'
-    time '5m'
+    time '30m'
 
     input:
         path csvFile
@@ -46,9 +46,9 @@ process slopPatientInfo
 process mpileup
 {
     tag "${sampleId}"
-
+    memory '40g'
     cpus { Math.min(params.MAX_CORES, 2) }
-    time "12h"
+    time "24h"
     
 
     input:
@@ -73,8 +73,8 @@ process biallelic
 {
     tag "${sampleId}"
 
-    memory '512m'
-    time   '30m'
+    memory '1g'
+    time   '5h'
 
     input:
         tuple val(sampleId), path(vcfFile)
@@ -174,7 +174,8 @@ process annotateMutation
 
 process createMutationsTable
 {
-    memory '64g'
+    memory '100g'
+    time   '10h'
     cpus   { Math.min(params.MAX_CORES, mutationsFiles.size()) }
 
     input:
@@ -201,7 +202,8 @@ process createMutationsTable
 
 process offTargetErrorRates
 {
-    memory '256g'
+    memory '300g'
+    time   '24h'
     cpus   { Math.min(params.MAX_CORES, 2) }
 
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: "error_rates.*.rds"
@@ -229,7 +231,7 @@ process offTargetErrorRates
 process createOnTargetMutationsTable
 {
     memory '64g'
-
+    time   '24h'
     input:
         path mutationsFile
         path tumourMutationsFile
@@ -253,7 +255,7 @@ process createOnTargetMutationsTable
 process onTargetErrorRatesAndFilter
 {
     memory '32g'
-
+    time   '2h'
     publishDir params.RESULTS_DIR, mode: 'link', overwrite: true, pattern: "locus_error_rates*"
 
     input:
