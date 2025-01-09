@@ -52,8 +52,8 @@ process createSNVList
 
 process getFragmentSize
 {
-    time '24h'
-    memory '30g'
+    time '40h'
+    memory '100g'
 
     tag "${sampleId}"
 
@@ -75,8 +75,8 @@ process annotateMutationsWithFragmentSize
     tag "${sampleId}"
 
     memory '320g'
-    cpus   { Math.min(params.MAX_CORES, 8) }
-
+    cpus   { Math.min(params.MAX_CORES, 16) }
+    time '25h'
     input:
         tuple val(sampleId), path(fragmentSizesFile)
         each path(mutationsFile)
