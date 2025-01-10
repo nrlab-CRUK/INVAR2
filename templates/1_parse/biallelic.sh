@@ -22,4 +22,4 @@ Rscript --vanilla "!{params.projectHome}/R/1_parse/formatAndAnnotateMutations.R"
 
 ## Clean up
 
-rm -f split1.vcf split2.tsv
+## rm -f split1.vcf split2.tsv
