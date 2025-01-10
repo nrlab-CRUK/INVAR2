@@ -15,4 +15,4 @@ cut --output-delimiter ':' --fields '1,3,4,5' mutationlist.bed \
 
 # Clean up
 
-rm -f mutationlist.bed
+##rm -f mutationlist.bed
