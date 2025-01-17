@@ -254,22 +254,25 @@ main <- function(scriptArgs)
     {
         warning("There are no rows for sample ", scriptArgs$SAMPLE_ID, " in ",
                 basename(scriptArgs$MUTATIONS_TABLE_FILE))
+        fileInfoList <- list()
     }
+    else
+    {
+        fragmentSizesTable <-
+            read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci', progress = FALSE) %>%
+            mutate(MUTANT = ALT == SNV_BASE,
+                   MUTATION_CLASS = str_c(REF, ALT, sep = '/'),
+                   UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
 
-    fragmentSizesTable <-
-        read_tsv(scriptArgs$FRAGMENT_SIZES_FILE, col_types = 'ciccci', progress = FALSE) %>%
-        mutate(MUTANT = ALT == SNV_BASE,
-               MUTATION_CLASS = str_c(REF, ALT, sep = '/'),
-               UNIQUE_POS = str_c(CHROM, POS, sep = ':'))
+        mutationsTable.withSizes <-
+            equaliseSizeCounts(mutationsTable, fragmentSizesTable, threads = scriptArgs$THREADS)
 
-    mutationsTable.withSizes <-
-        equaliseSizeCounts(mutationsTable, fragmentSizesTable, threads = scriptArgs$THREADS)
-
-    fileInfoList <-
-        mclapply(unique(mutationsTable.withSizes$PATIENT_MUTATION_BELONGS_TO), saveForPatient,
-                 mutationsTable.withSizes,
-                 sampleId = scriptArgs$SAMPLE_ID,
-                 mc.cores = scriptArgs$THREADS)
+        fileInfoList <-
+            mclapply(unique(mutationsTable.withSizes$PATIENT_MUTATION_BELONGS_TO), saveForPatient,
+                     mutationsTable.withSizes,
+                     sampleId = scriptArgs$SAMPLE_ID,
+                     mc.cores = scriptArgs$THREADS)
+    }
 
     fileInfoTable <- bind_rows(fileInfoList)
 
