@@ -20,9 +20,9 @@ def processPileUps(samfile, output_file, chrom, pos, ref, alt, args):
 
                     if size >= args.minLength and size <= args.maxLength and \
                             read.alignment.mapping_quality >= args.minMQ and \
-                            read.alignment.query_alignment_qualities[read.query_position] >= args.minBQ:
-                        output_file.write("{}\t{:d}\t{}\t{}\t{}\t{:d}\n".format(chrom, pos, ref, alt, SNV_base, size))
-
+                            read.query_position < len(read.alignment.query_alignment_qualities):
+                        if read.alignment.query_alignment_qualities[read.query_position] >= args.minBQ:
+                            output_file.write("{}\t{:d}\t{}\t{}\t{}\t{:d}\n".format(chrom, pos, ref, alt, SNV_base, size))
 
 # required variables
 parser = argparse.ArgumentParser()
