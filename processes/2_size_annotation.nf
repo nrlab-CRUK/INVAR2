@@ -1,4 +1,4 @@
-@Grab('com.xlson.groovycsv:groovycsv:1.3')
+include { makeSafeForFileName } from '../functions/naming'
 
 /**
  * Helper function for turning the output from annotateMutationsWithFragmentSize
@@ -28,8 +28,6 @@ def combineIndexFileWithMutationsFiles(indexFile, mutationsFiles)
     }
     return tuples
 }
-
-include { makeSafeForFileName } from '../functions/naming'
 
 
 process createSNVList

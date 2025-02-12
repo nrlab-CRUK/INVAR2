@@ -1,5 +1,3 @@
-@Grab('commons-io:commons-io:2.11.0')
-@Grab('com.xlson.groovycsv:groovycsv:1.3')
 
 import org.apache.commons.io.ByteOrderMark
 import org.apache.commons.io.input.BOMInputStream
