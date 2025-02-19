@@ -4,7 +4,7 @@
 # Use makedocker.sh first.
 # See https://stackoverflow.com/a/60316979
 
-TAG="latest"
+TAG="1.0.3"
 REPO="nrlabcruk/invar2:$TAG"
 
 sudo rm -rf invar_sandbox invar2.sif
