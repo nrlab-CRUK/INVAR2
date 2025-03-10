@@ -61,7 +61,7 @@ These parameters all have defaults defined in the `nextflow.config` file in the
 pipeline's source directory. Any redefined in your project's `nextflow.config`
 file will take precedence over the defaults.
 Types are strings unless indicated by `int`eger, decimal `num`ber or `bool`ean (`true`/`false`).
-The default settings are for Whole Genome Sequencing, and you may want to adjust the parameters based on the sequencing depth (DP) of your plasma Bam files. Recommanded settings for sWGS or targeted sequencing are listed.
+The default settings are for Whole Genome Sequencing, and you may want to adjust the parameters based on the real depth (DP) of your plasma Bam files, or the sequencing depth roughly if they are similar. Recommanded settings for sWGS or targeted sequencing are listed.
 
 | Parameter                      | Type | Default                   | Description/Purpose                                       |
 |--------------------------------|------|---------------------------|-----------------------------------------------------------|
