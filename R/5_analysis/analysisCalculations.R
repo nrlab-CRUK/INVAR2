@@ -121,7 +121,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
 
   adjustThreshold <- function(row, conditions, adjustedScoresTable, scoreSpecificity)
   {
-    condition <- slice(conditions, n = row)
+    condition <- slice(conditions, row)
 
     scores <- adjustedScoresTable %>%
       filter(USING_SIZE == condition$USING_SIZE &
