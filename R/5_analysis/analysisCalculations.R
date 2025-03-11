@@ -15,7 +15,10 @@ convertComplementaryMutations <- function(backgroundErrorTable)
 
   complementary <- function(base)
   {
-    length(base) > 0 && (base == 'A' | base == 'G')
+    # See https://builtin.com/data-science/and-in-r for "&" vs "&&".
+    assert_that(is.character(base), msg = "base must be a character.")
+    assert_that(length(base) < 2, msg = str_c("base must be no more than one character long: ", base))
+    length(base) > 0 && (base == 'A' || base == 'G')
   }
 
   forward <- backgroundErrorTable %>%
