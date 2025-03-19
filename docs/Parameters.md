@@ -73,7 +73,7 @@ The default settings are for Whole Genome Sequencing, and you may want to adjust
 | MPILEUP_MINIMUM_DEPTH          | int  | 2                         | Minimum depth to consider for mpileup. Set to 1 for sWGS samples. |
 | SLOP_BASES                     | int  | 10                        | How many bases either side of the target base to assess for the background error rate. |
 | REMOVE_DUPLICATES              | bool | true                      | Whether to remove duplicates in pile ups.                 |
-| MAXIMUM_DEPTH                  | int  | 500                      | Maximum depth to remove abnormally high depth loci. Recommand to set to > 10*DP. Set to >2000 for targeted sequencing. |
+| MAXIMUM_DEPTH                  | int  | 500                      | Maximum depth to remove abnormally high depth loci. Recommand to set to > 100*DP. |
 | MINIMUM_REFERENCE_DEPTH        | int  | 1                         | Minimum number of reference reads of a locus to be considered. Set to 0 for sWGS and 5 for tageted sequencing. |
 | MQSB_THRESHOLD                 | num  | 0.01                      | Exclude data points due to poor MQ and SB, but locus is retained.  |
 | ALT_ALLELES_THRESHOLD          | int  | 3                         | Blacklist loci with &ge; N separate alternate alleles.    |
@@ -82,8 +82,8 @@ The default settings are for Whole Genome Sequencing, and you may want to adjust
 | PROPORTION_OF_CONTROLS         | num  | 0.1                       | LOCUS_NOISE.PASS filter: If the mutations in the patient are also found in &gt; P number of other samples, then the mutations would be filtered out at this step. If only using case samples, recommand to set to at least `2 / total cases`. If there are control samples, then set to `1~2 / total controls`. |
 | MAXIMUM_BACKGROUND_MEAN_ALLELE_FREQUENCY | num | 0.01             | Filter loci with a background allele frequency in controls greater than this value. |
 | ALLELE_FREQUENCY_THRESHOLD     | num  | 0.1                      | Maximum allele frequency value for acceptable samples. This value affects the CONTAMINATION_RISK.PASS filter by preventing samples with too high AF be control samples.    |
-| MAXIMUM_MUTANT_READS           | int  | 100                        | Maximum number of mutant reads of a locus to be considered for detection. Recommand to set to 1*DP. |
-| MINIMUM_INFORMATIVE_READS      | int  | 20000                     | Minimum number of informative reads (reads that have passed all filters) for each sample to be considered as part of the cohort. Ie a low sensitivity threshold (samples with fewer than MINIMUM_INFORMATIVE_READS after filtering) will not be considered for classification. Recommand to set to 100*DP.                      |
+| MAXIMUM_MUTANT_READS           | int  | 100                        | Maximum number of mutant reads of a locus to be considered for detection. Recommand to set to 10*DP. |
+| MINIMUM_INFORMATIVE_READS      | int  | 20000                     | Minimum number of informative reads (reads that have passed all filters) for each sample to be considered as part of the cohort. Ie a low sensitivity threshold (samples with fewer than MINIMUM_INFORMATIVE_READS after filtering) will not be considered for classification.                       |
 | IS_BLOODSPOT                   | bool | false                     | Only change to true if you are running blood spot data through the pipeline. This omits outlier suppression on samples with deduplicated depth of &lt;5x because high AF loci cannot be reliably identified with low depth. |
 | OUTLIER_SUPPRESSION_THRESHOLD  | num  | 0.05                      | Outlier suppression threshold. Related to specificity rate.       |
 | MINIMUM_FRAGMENT_LENGTH        | int  | 60                        | Minimum fragment length.                                  |
