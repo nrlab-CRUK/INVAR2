@@ -1,6 +1,5 @@
 #!/usr/bin/env nextflow
 
-@Grab('org.apache.commons:commons-lang3:3.12.0')
 
 import static org.apache.commons.lang3.StringUtils.isNotBlank
 import static org.apache.commons.lang3.StringUtils.trimToEmpty

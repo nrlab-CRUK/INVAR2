@@ -293,7 +293,7 @@ main <- function(scriptArgs)
                        scoreSpecificity = scriptArgs$SCORE_SPECIFICITY,
                        minInformativeReads = scriptArgs$MINIMUM_INFORMATIVE_READS,
                        maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
-  
+
   plots$P13a <- receiverOperatingCharacteristicPlot(invarScoresTable, layoutTable,
                                                     withSizes = TRUE,
                                                     study = scriptArgs$STUDY,
@@ -309,7 +309,7 @@ main <- function(scriptArgs)
                                                     scoreSpecificity = scriptArgs$SCORE_SPECIFICITY,
                                                     minInformativeReads = scriptArgs$MINIMUM_INFORMATIVE_READS,
                                                     maxBackgroundAlleleFreq = scriptArgs$MAX_BACKGROUND_ALLELE_FREQUENCY)
-  
+
 
   # IR (depth) to IMAF plot
 
@@ -339,13 +339,13 @@ main <- function(scriptArgs)
 
 # QC plot TUMOUR AF per Patient
   plots$P22 <- plot_tumourAF_KDE_perPatient(mutationsTable, study = scriptArgs$STUDY)
-  
+
 # QC plot Patient AF
   plots$P23 <- plot_patientAF_KDE(mutationsTable, study = scriptArgs$STUDY)
-  
+
   # Plot Locus noise pass filter effect histogram
   plots$P24 <- LNP_HIST(mutationsTable, LNP_THRESHOLD = scriptArgs$LNP_THRESHOLD)
-  
+
 
   ## Save the plots as individual files.
 
@@ -460,7 +460,7 @@ main <- function(scriptArgs)
     savePlotSafely(plot = plots$P13,
                    filename = "p13_ROCPlot.pdf",
                    width = 4, height = 3)
-  
+
   plots$P13a <-
     savePlotSafely(plot = plots$P13a,
                    filename = "p13a_receiver_operating_characteristic.pdf",
@@ -538,12 +538,12 @@ main <- function(scriptArgs)
     savePlotSafely(plot = plots$P23,
                    filename = "p22_patientAF.pdf",
                    width = 4, height = 3)
-  
+
   plots$P24 <-
     savePlotSafely(plot = plots$P24,
                    filename = "p24_locus_noise_pass_histogram.pdf",
                    width = 11, height = 7)
-  
+
   ## Render the INVAR analysis report.
 
   dir.create(str_c(getwd(), '/knitting'), showWarnings = FALSE)
@@ -553,6 +553,37 @@ main <- function(scriptArgs)
                     output_format = rmarkdown::html_document(),
                     output_dir = getwd(),
                     output_file = str_c(scriptArgs$STUDY, "_invar2_analysis.html"))
+}
+
+# Debugging options. When run interactively, use this function from the
+# launch call at the bottom of the script instead of parseOptions.
+# Obviously change the values to be correct for the run you are doing.
+
+debugOptions <- function()
+{
+    setwd('/home/bowers01/work/INVAR2_analysis')
+
+    opts <- list()
+    opts$MUTATIONS_TABLE_FILE <- "mutation_table.rds"
+    opts$TUMOUR_MUTATIONS_FILE <- "mutList_EMBRACE_WB.csv"
+    opts$LAYOUT_FILE <- "LAYOUT_TABLE2_2.csv"
+    opts$ERROR_RATES_FILE <- "background_error_rates.rds"
+    opts$ON_TARGET_LOCUS_ERROR_RATES_FILE <- "locus_error_rates.on_target.rds"
+    opts$OFF_TARGET_ERROR_RATES_FILE <- "error_rates.off_target.no_cosmic.rds"
+    opts$SIZE_CHARACTERISATION_FILE <- "size_characterisation.rds"
+    opts$INVAR_SCORES_FILE <- "invar_scores.rds"
+    opts$STUDY <- "EMBRACE"
+    opts$TAPAS_SETTING <- "f0.9_s2_BQ_20.MQ_40"
+    opts$ERROR_SUPPRESSION <- "f0.9_s2"
+    opts$FAMILY_SIZE <- 1L
+    opts$OUTLIER_SUPPRESSION <- 0.05
+    opts$MAX_BACKGROUND_ALLELE_FREQUENCY <- 0.1
+    opts$ALLELE_FREQUENCY_THRESHOLD <- 1
+    opts$MAXIMUM_MUTANT_READS <- 500
+    opts$MINIMUM_INFORMATIVE_READS <- 20000L
+    opts$SCORE_SPECIFICITY <- 0.95
+    opts$LNP_THRESHOLD <- 1
+    opts
 }
 
 # Launch it.

@@ -232,7 +232,7 @@ process createMutationsTable
 
 process offTargetErrorRates
 {
-    memory '100g'
+    memory '128g'
     time   '24h'
     cpus   3
     input:

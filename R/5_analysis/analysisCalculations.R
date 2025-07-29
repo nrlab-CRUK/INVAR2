@@ -15,16 +15,17 @@ convertComplementaryMutations <- function(backgroundErrorTable)
 
   complementary <- function(base)
   {
-    length(base) > 0 && (base == 'A' | base == 'G')
+    assert_that(all(str_length(base) == 1), msg = "Have one or more strings in vector whose length is not 1")
+
+    # See https://builtin.com/data-science/and-in-r for "&" vs "&&".
+    base == 'A' | base == 'G'
   }
 
   forward <- backgroundErrorTable %>%
     filter(!complementary(REF))
 
   reverse <- backgroundErrorTable %>%
-    filter(complementary(REF))
-
-  reverse <- reverse %>%
+    filter(complementary(REF)) %>%
     mutate(MUTATION_CLASS = complement(MUTATION_CLASS))
 
   bind_rows(forward, reverse) %>%
@@ -121,7 +122,7 @@ adjustInvarScores <- function(invarScoresTable, layoutTable, scoreSpecificity)
 
   adjustThreshold <- function(row, conditions, adjustedScoresTable, scoreSpecificity)
   {
-    condition <- slice(conditions, n = row)
+    condition <- slice(conditions, row)
 
     scores <- adjustedScoresTable %>%
       filter(USING_SIZE == condition$USING_SIZE &
