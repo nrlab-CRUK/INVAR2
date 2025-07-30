@@ -73,7 +73,7 @@ process biallelic
 {
     tag "${sampleId}"
 
-    memory '1g'
+    memory '5g'
     time   '5h'
 
     input:
